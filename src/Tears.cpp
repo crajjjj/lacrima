@@ -1539,6 +1539,12 @@ namespace Lacrima
 				continue;
 			}
 			shader->SetMaterialAlpha(a_settings.opacity);
+			if (auto* lighting = netimmerse_cast<RE::BSLightingShaderProperty*>(shader)) {
+				if (lighting->emissiveColor) {
+					*lighting->emissiveColor = RE::NiColor(1.0f, 1.0f, 1.0f);
+				}
+				lighting->emissiveMult = a_settings.glow;
+			}
 			if (shader->GetMaterialType() == RE::BSShaderMaterial::Type::kLighting) {
 				if (auto* material = static_cast<RE::BSLightingShaderMaterialBase*>(shader->GetBaseMaterial())) {
 					material->specularColorScale = a_settings.shine;
@@ -1554,7 +1560,7 @@ namespace Lacrima
 	void Tears::Reshade(Cheek& a_cheek, const Settings& a_settings)
 	{
 		if (a_cheek.opacity == a_settings.opacity && a_cheek.shine == a_settings.shine && a_cheek.gloss == a_settings.gloss &&
-			a_cheek.reflection == a_settings.reflection) {
+			a_cheek.reflection == a_settings.reflection && a_cheek.glow == a_settings.glow) {
 			return;
 		}
 		for (auto& blob : a_cheek.blobs) {
@@ -1567,6 +1573,7 @@ namespace Lacrima
 		a_cheek.shine = a_settings.shine;
 		a_cheek.gloss = a_settings.gloss;
 		a_cheek.reflection = a_settings.reflection;
+		a_cheek.glow = a_settings.glow;
 	}
 
 	Tears::Blob* Tears::AcquireBlob(Cheek& a_cheek)
@@ -1758,7 +1765,7 @@ namespace Lacrima
 		}
 		auto&      particles = a_cheek.particles;
 		const bool restyled = a_cheek.opacity != a_settings.opacity || a_cheek.shine != a_settings.shine || a_cheek.gloss != a_settings.gloss ||
-		                      a_cheek.reflection != a_settings.reflection;
+		                      a_cheek.reflection != a_settings.reflection || a_cheek.glow != a_settings.glow;
 		if (!a_mount.world && !a_cheek.dirty && !restyled && !a_markers) {
 			// Nothing moved since the last draw, and the nodes hang under the head
 			// bone, so they are already where the tears are. Only a trail thinning

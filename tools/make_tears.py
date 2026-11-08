@@ -10,21 +10,23 @@
 import math
 import os
 
-from nifkit import (ALPHA_BLEND, SLSF1_ENVIRONMENT_MAPPING, SLSF1_RECEIVE_SHADOWS, SLSF1_SKINNED, SLSF1_SPECULAR,
-                    SLSF1_ZBUFFER_TEST, TEXTURE_DIR, build_skinned_nif, dds_bgra, f32, glint_normal_map, i32, u32)
+from nifkit import (ALPHA_BLEND, SLSF1_ENVIRONMENT_MAPPING, SLSF1_OWN_EMIT, SLSF1_RECEIVE_SHADOWS, SLSF1_SKINNED,
+                    SLSF1_SPECULAR, SLSF1_ZBUFFER_TEST, TEXTURE_DIR, build_skinned_nif, dds_bgra, f32, glint_normal_map, i32, u32)
 
 ROPE_BONES = 16
 ROPE_SIDES = 8
 
-# Water, not paint: an environment-mapped shader with a dark, cool, translucent
-# base, so what shows is the skin darkened a little under the drop, a reflection of
-# the surroundings and a sharp highlight. No depth write: the drops and the trail
-# overlap and transparent things must not z-fight each other. The game sets opacity,
-# highlight, gloss and reflection at run time from the [look] settings; the values
-# here are only what the mesh starts with.
-TEAR_COLOR = (120, 130, 145)
+# Water, not paint: an environment-mapped shader with a pale, cool, translucent
+# base and a faint light of its own, so a streak reads as a light wet line from any
+# angle, with a reflection of the surroundings and a sharp highlight on top. (A dark
+# base drew as a dark line: the highlight only shows at the right angle.) No depth
+# write: the drops and the trail overlap and transparent things must not z-fight
+# each other. The game sets opacity, highlight, gloss, reflection and glow at run
+# time from the [look] settings; the values here are only what the mesh starts with.
+TEAR_COLOR = (225, 230, 238)
 TEAR_ALPHA = 0.4
-TEAR_REFLECTION = 0.6
+TEAR_REFLECTION = 1.0
+TEAR_GLOW = 0.12
 CUBEMAP = 'textures\\cubemaps\\chrome_e.dds'  # vanilla, in Skyrim - Textures3.bsa
 
 
@@ -102,10 +104,10 @@ def rope_geometry():
 
 
 def tear_shader(texset):
-    flags1 = SLSF1_SPECULAR | SLSF1_SKINNED | SLSF1_RECEIVE_SHADOWS | SLSF1_ENVIRONMENT_MAPPING | SLSF1_ZBUFFER_TEST
+    flags1 = SLSF1_SPECULAR | SLSF1_SKINNED | SLSF1_RECEIVE_SHADOWS | SLSF1_ENVIRONMENT_MAPPING | SLSF1_OWN_EMIT | SLSF1_ZBUFFER_TEST
     out = u32(1) + i32(-1) + u32(0) + i32(-1) + u32(flags1) + u32(0)  # shader type 1 = environment map; SLSF2 empty = no depth write
     out += f32(0.0, 0.0) + f32(1.0, 1.0) + i32(texset)
-    out += f32(0.0, 0.0, 0.0) + f32(1.0)
+    out += f32(1.0, 1.0, 1.0) + f32(TEAR_GLOW)  # emissive colour and multiple: the faint light of its own
     out += u32(3)
     out += f32(TEAR_ALPHA) + f32(0.0) + f32(250.0)
     out += f32(1.0, 1.0, 1.0) + f32(4.0)

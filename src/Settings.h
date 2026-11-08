@@ -31,10 +31,11 @@ namespace Lacrima
 
 		float size{ 1.0f };
 		float trail{ 1.2f };
-		float opacity{ 0.45f };
+		float opacity{ 0.4f };
 		float shine{ 6.0f };
 		float gloss{ 300.0f };
 		float reflection{ 1.0f };
+		float glow{ 0.12f };
 		float eyeShine{ 1.6f };
 		float lifetime{ 30.0f };
 		float fade{ 5.0f };

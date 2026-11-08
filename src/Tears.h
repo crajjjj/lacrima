@@ -159,6 +159,7 @@ namespace Lacrima
 			float                          shine{ -1.0f };
 			float                          gloss{ -1.0f };
 			float                          reflection{ -1.0f };
+			float                          glow{ -1.0f };
 			Fluid::Vec3                    restDown;        // where down was when the sleeping tears settled
 			bool                           rested{ false };
 			bool                           dirty{ true };   // the fluid changed since the last draw
