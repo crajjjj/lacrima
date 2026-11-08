@@ -143,7 +143,7 @@ namespace Lacrima
 		Fluid::Parameters ParametersOf(const Settings& a_settings, float a_scale, Vec3 a_down)
 		{
 			return { 4, a_settings.cohesion, a_settings.viscosity, kGravity / a_scale, a_down, a_settings.stretch, a_settings.friction,
-				a_settings.stickiness };
+				a_settings.stickiness, a_settings.cling };
 		}
 
 		std::string Clean(std::string a_text)

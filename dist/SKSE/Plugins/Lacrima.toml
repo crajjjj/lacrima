@@ -38,6 +38,7 @@ viscosity = 20.0       # how much a tear moves as one; water is low
 cohesion = 2.5         # how strongly a tear holds together as a bead
 stretch = 3.0          # how easily a running tear stretches into a trail
 trail_step = 1.5       # a running tear leaves a drop behind every this many cm, so a 6-drop tear runs about 7 cm and stops
+cling = 2.0            # seconds a drop hangs under the chin before it falls (a lone drop twice this, a heavy bead less)
 fall = 0.6             # seconds a drop that falls off the face stays visible
 
 [wipe]

@@ -42,6 +42,7 @@ namespace Lacrima
 		float cohesion{ 2.5f };
 		float stretch{ 3.0f };
 		float trailStep{ 1.5f };
+		float cling{ 2.0f };
 		float fall{ 0.6f };
 
 		bool  hands{ true };

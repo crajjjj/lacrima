@@ -73,6 +73,8 @@ namespace Lacrima
 				"How easily a running tear stretches into a trail before it breaks." },
 			Field{ "physics", "trail_step", &Settings::trailStep, 0.3f, 5.0f, "Physics", "Trail step", "%.1f cm",
 				"A running tear leaves a drop of its trail behind every this many centimetres, so a 6-drop tear runs about 7 cm before it stops." },
+			Field{ "physics", "cling", &Settings::cling, 0.0f, 20.0f, "Physics", "Cling under the chin", "%.1f s",
+				"How long a drop hangs from skin that faces down, under the chin, before it falls. A lone drop hangs twice this, a heavy bead less." },
 			Field{ "physics", "fall", &Settings::fall, 0.1f, 3.0f, "Physics", "Falling drop life", "%.2f s",
 				"Seconds a drop that falls off the face stays visible." },
 

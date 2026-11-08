@@ -20,6 +20,7 @@ namespace Lacrima::Fluid
 		float         stretch{ 3.0f };
 		float         friction{ 30.0f };
 		float         grip{ 0.6f };
+		float         cling{ 2.0f };  // seconds a drop hangs from a surface that faces down before it lets go (a lone drop longer, a heavy bead shorter)
 	};
 
 	struct Anchor

@@ -41,7 +41,7 @@ namespace Lacrima::Fluid
 		return a_parameters.iterations > 0 && a_parameters.iterations <= 16 && within(a_parameters.cohesion, 0.0f, 20.0f) &&
 		       within(a_parameters.viscosity, 0.0f, 100.0f) && within(a_parameters.gravity, 0.0f, 300.0f) &&
 		       within(a_parameters.stretch, 0.0f, 30.0f) && within(a_parameters.friction, 0.0f, 200.0f) && within(a_parameters.grip, 0.0f, 10.0f) &&
-		       IsFinite(a_parameters.down) && std::abs(LengthSquared(a_parameters.down) - 1.0f) < 0.02f;
+		       within(a_parameters.cling, 0.0f, 60.0f) && IsFinite(a_parameters.down) && std::abs(LengthSquared(a_parameters.down) - 1.0f) < 0.02f;
 	}
 
 	void Solver::Configure(const Parameters& a_parameters)
@@ -121,7 +121,11 @@ namespace Lacrima::Fluid
 			// A particle that just lost the skin (a gap between the patches of a sparse
 			// head, a fold) is still pulled back for a moment instead of falling.
 			const bool sticky = a_particles[i].touching || a_particles[i].airborne < kStickGrace;
-			Vec3&      point = _predicted[i];
+			// Under a chin the skin faces down; a drop clings there for a while before
+			// its weight wins, a lone drop longer than a heavy bead.
+			const float clingLimit = _parameters.cling * 2.0f / std::sqrt(1.0f + static_cast<float>(Neighbors(i).size()));
+			const bool  clinging = a_particles[i].hang < clingLimit;
+			Vec3&       point = _predicted[i];
 			if (std::ranges::any_of(a_colliders.holes, [&](const Hole& a_hole) { return LengthSquared(point - a_hole.center) < a_hole.radius * a_hole.radius; })) {
 				continue;
 			}
@@ -143,7 +147,7 @@ namespace Lacrima::Fluid
 				const Vec3  normal = distance > 1e-7f ? offset * (1.0f / distance) : up;
 				if (distance < limit) {
 					point = closest + normal * limit;
-				} else if (a_pull && sticky && distance < capsule.radius + reach && Dot(normal, up) > kHanging) {
+				} else if (a_pull && sticky && distance < capsule.radius + reach && (Dot(normal, up) > kHanging || clinging)) {
 					point = closest + normal * limit;
 				} else {
 					continue;
@@ -166,7 +170,7 @@ namespace Lacrima::Fluid
 				}
 				const auto& patch = patches[k];
 				const float depth = Dot(point - patch.position, patch.normal);
-				const bool  pulled = a_pull && sticky && depth < reach && Dot(patch.normal, up) > kHanging;
+				const bool  pulled = a_pull && sticky && depth < reach && (Dot(patch.normal, up) > kHanging || clinging);
 				if (depth >= margin && !pulled) {
 					break;
 				}
@@ -421,6 +425,7 @@ namespace Lacrima::Fluid
 			}
 			if (particle.touching) {
 				particle.travel += Length(_predicted[i] - particle.position);
+				particle.hang = Dot(_normal[i], down) < -kHanging ? 0.0f : particle.hang + a_seconds;
 			}
 			particle.airborne = particle.touching ? 0.0f : particle.airborne + a_seconds;
 			particle.position = _predicted[i];
