@@ -581,6 +581,9 @@ namespace Lacrima
 			const float goal = crier.crying ? crier.target : 0.0f;
 			const float step = a_delta / kRamp;
 			crier.intensity = crier.intensity < goal ? std::min(goal, crier.intensity + step) : std::max(goal, crier.intensity - step);
+			if (settings.eyeShine > 1.0f && crier.intensity > 0.001f) {
+				Face::Glisten(actor.get(), 1.0f + (settings.eyeShine - 1.0f) * crier.intensity);  // lapses by itself once this stops
+			}
 
 			// Between tears a cheek only counts down; the face is read when there is
 			// fluid to simulate, a tear to start, a marker to draw or a gesture to watch.
@@ -696,7 +699,7 @@ namespace Lacrima
 					continue;
 				}
 				if (Attach(cheek, crier, root, mount.world)) {
-					Draw(cheek, mount, settings, marker ? &spots[e] : nullptr);
+					Draw(cheek, mount, settings, spots[e], marker);
 				}
 			}
 
@@ -952,6 +955,7 @@ namespace Lacrima
 			particle.position = seat + jitter;
 			particle.velocity = a_spot.down * kWellSpeed;
 			particle.run = a_cheek.run;
+			particle.stream = static_cast<std::uint8_t>(std::clamp(a_cheek.stream, 0, static_cast<int>(Face::kMaxStreams) - 1));
 			// Born on the lid: the solver's stick-pull only reaches for particles already
 			// touching, and a tear that starts free falls off the face before it lands.
 			particle.touching = true;
@@ -1746,7 +1750,7 @@ namespace Lacrima
 		a_rope.root->SetAppCulled(false);
 	}
 
-	void Tears::Draw(Cheek& a_cheek, const Mount& a_mount, const Settings& a_settings, const Spots* a_markers)
+	void Tears::Draw(Cheek& a_cheek, const Mount& a_mount, const Settings& a_settings, const Spots& a_spots, bool a_markers)
 	{
 		auto& meshes = MeshesFor();
 		if (meshes.failed) {
@@ -1975,15 +1979,23 @@ namespace Lacrima
 				const auto& particle = particles[i];
 				if (particle.order > 0) {
 					trail.push_back(i);
-				} else if (!particle.asleep) {
+				} else {
+					// what is left of the bead, running or come to rest
 					beadSum += particle.position;
 					beadLife += particle.life;
 					++bead;
 				}
 			}
-			if (trail.size() + (bead ? 1 : 0) >= 2) {
+			// the streak starts at the lid, where the tear welled
+			const std::optional<Spot>& origin = a_spots[particles[begin].stream];
+			if (trail.size() + (bead ? 1 : 0) + (origin ? 1 : 0) >= 2 && (trail.size() + (bead ? 1 : 0)) >= 1) {
 				std::ranges::sort(trail, [&](std::size_t a_lhs, std::size_t a_rhs) { return particles[a_lhs].order < particles[a_rhs].order; });
 				_ropePoints.clear();
+				if (origin) {
+					Fluid::Particle lid = particles[trail.empty() ? begin : trail.front()];
+					lid.position = origin->point + origin->normal * (0.6f * spacing);
+					_ropePoints.push_back(lid);
+				}
 				for (const auto i : trail) {
 					_ropePoints.push_back(particles[i]);
 				}
@@ -2009,7 +2021,7 @@ namespace Lacrima
 			}
 		}
 		if (a_markers) {
-			for (const auto& spot : *a_markers) {
+			for (const auto& spot : a_spots) {
 				if (!spot) {
 					continue;
 				}

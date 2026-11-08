@@ -17,7 +17,7 @@ namespace Lacrima
 		bool debugLog{ false };
 
 		float rate{ 12.0f };
-		int   drop{ 6 };
+		int   drop{ 4 };
 		float well{ 0.9f };
 		float hold{ 0.8f };
 		float ductPosition{ 0.3f };
@@ -31,10 +31,11 @@ namespace Lacrima
 
 		float size{ 1.0f };
 		float trail{ 1.2f };
-		float opacity{ 0.4f };
-		float shine{ 4.0f };
-		float gloss{ 250.0f };
-		float reflection{ 0.6f };
+		float opacity{ 0.45f };
+		float shine{ 6.0f };
+		float gloss{ 300.0f };
+		float reflection{ 1.0f };
+		float eyeShine{ 1.6f };
 		float lifetime{ 30.0f };
 		float fade{ 5.0f };
 
@@ -43,7 +44,7 @@ namespace Lacrima
 		float viscosity{ 20.0f };
 		float cohesion{ 2.5f };
 		float stretch{ 3.0f };
-		float trailStep{ 1.5f };
+		float trailStep{ 2.5f };
 		float cling{ 2.0f };
 		float fall{ 0.6f };
 

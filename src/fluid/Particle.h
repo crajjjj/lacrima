@@ -54,6 +54,7 @@ namespace Lacrima::Fluid
 		std::int32_t  surface{ -1 };
 		std::uint32_t run{};
 		std::uint32_t order{};  // a drop left behind by a running tear: its place in that tear's trail (0 = not left behind)
+		std::uint8_t  stream{}; // which duct of the eye the tear started from
 		bool          bulk{};
 		bool          asleep{};
 		bool          touching{};

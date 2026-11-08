@@ -11,7 +11,7 @@ debug_log = false      # face, duct and fluid details in Lacrima.log, and a stat
 
 [tears]
 rate = 12.0            # tears per minute from each eye at full intensity
-drop = 6               # fluid particles in one tear at full intensity (2 to 20)
+drop = 4               # fluid particles in one tear at full intensity (2 to 20); a real tear is small
 well = 0.9             # seconds a tear takes to gather at the lower lid
 hold = 0.8             # seconds a full tear clings to the lid before it runs
 duct_position = 0.3    # where tears start: 0 = inner corner of the eye, 1 = outer corner
@@ -26,10 +26,11 @@ max_distance = 3000    # game units from the camera; farther actors' tears pause
 [look]
 size = 1.0             # drop size; real tears are about 1, bigger reads better from afar
 trail = 1.2            # width of the wet trail a tear leaves
-opacity = 0.4          # how much the water hides the skin; the rest shows through
-shine = 4.0            # strength of the wet highlight
-gloss = 250.0          # sharpness of the highlight
-reflection = 0.6       # how much of the surroundings the water reflects; 0 is matte
+opacity = 0.45         # how much the water hides the skin; the rest shows through
+shine = 6.0            # strength of the wet highlight
+gloss = 300.0          # sharpness of the highlight
+reflection = 1.0       # how much of the surroundings the water reflects; 0 is matte
+eye_shine = 1.6        # wet eyes: how much brighter and more reflective the eyes get while crying (1 = unchanged)
 lifetime = 30.0        # seconds a trail stays wet
 fade = 5.0             # seconds at the end of its life a trail spends thinning out
 
@@ -39,7 +40,7 @@ friction = 30.0        # drag on a tear running over skin; higher runs slower (3
 viscosity = 20.0       # how much a tear moves as one; water is low
 cohesion = 2.5         # how strongly a tear holds together as a bead
 stretch = 3.0          # how easily a running tear stretches into a trail
-trail_step = 1.5       # a running tear leaves a drop behind every this many cm, so a 6-drop tear runs about 7 cm and stops
+trail_step = 2.5       # a running tear leaves a drop behind every this many cm, so a 4-drop tear runs about 7 cm and stops
 cling = 2.0            # seconds a drop hangs under the chin before it falls (a lone drop twice this, a heavy bead less)
 fall = 0.6             # seconds a drop that falls off the face stays visible
 

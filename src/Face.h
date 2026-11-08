@@ -72,6 +72,11 @@ namespace Lacrima::Face
 	// One line about what was found on the actor's head, for the status command.
 	std::string Describe(RE::Actor* a_actor, const Placement& a_placement);
 
+	// Wet eyes: scales the eyes' reflection and highlight by a_factor (1 restores
+	// them). Call every frame while it should hold; it lapses on its own half a
+	// second after the last call, and the original values are put back.
+	void Glisten(RE::Actor* a_actor, float a_factor);
+
 	// The name of the bone both head parts are measured against.
 	constexpr const char* kHeadBone = "NPC Head [Head]";
 

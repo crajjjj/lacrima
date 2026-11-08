@@ -103,6 +103,11 @@ namespace Lacrima::Face
 			std::string                                         faceName;
 			std::string                                         eyesName;
 			std::string                                         report;
+			RE::NiPointer<RE::BSGeometry>                       eyesGeometry;
+			float                                               eyeEnv{ -1.0f };    // the eyes material's own values, restored after glistening
+			float                                               eyeSpec{ -1.0f };
+			bool                                                glistening{ false };
+			float                                               glistenUntil{ 0.0f };
 			std::vector<RE::NiTransform>                        world;
 			std::uint64_t                                       frame{ 0 };
 			bool                                                regionPosed{ false };
@@ -115,6 +120,29 @@ namespace Lacrima::Face
 		std::unordered_map<std::uint32_t, Head> heads;
 		std::uint64_t                           frame{ 1 };
 		float                                   clock{ 0.0f };
+
+		RE::BSLightingShaderMaterialEye* EyeMaterial(const Head& a_head)
+		{
+			auto* shader = a_head.eyesGeometry ? a_head.eyesGeometry->GetGeometryRuntimeData().shaderProperty.get() : nullptr;
+			if (!shader || shader->GetMaterialType() != RE::BSShaderMaterial::Type::kLighting) {
+				return nullptr;
+			}
+			auto* material = static_cast<RE::BSLightingShaderMaterialBase*>(shader->GetBaseMaterial());
+			return material && material->GetFeature() == RE::BSShaderMaterial::Feature::kEye ? static_cast<RE::BSLightingShaderMaterialEye*>(material) : nullptr;
+		}
+
+		// Puts the eyes' own reflection and highlight back.
+		void Dull(Head& a_head)
+		{
+			if (!a_head.glistening) {
+				return;
+			}
+			a_head.glistening = false;
+			if (auto* eye = EyeMaterial(a_head)) {
+				eye->envMapScale = a_head.eyeEnv;
+				eye->specularColorScale = a_head.eyeSpec;
+			}
+		}
 
 		float Half(std::uint16_t a_value)
 		{
@@ -495,6 +523,8 @@ namespace Lacrima::Face
 
 		void Build(RE::Actor* a_actor, Head& a_head)
 		{
+			Dull(a_head);
+			a_head.eyesGeometry.reset();
 			a_head.joints.clear();
 			a_head.points.clear();
 			a_head.dynamics.clear();
@@ -536,6 +566,7 @@ namespace Lacrima::Face
 				a_head.report = "the eyes mesh has no readable vertices";
 				return;
 			}
+			a_head.eyesGeometry.reset(eyes);
 
 			// Each head part is authored in its own space (a vanilla eyes part around
 			// the head bone, a face part around the skeleton root); the skin-to-bone
@@ -819,9 +850,38 @@ namespace Lacrima::Face
 	{
 		++frame;
 		clock += a_delta;
-		std::erase_if(heads, [](const auto& a_entry) {
-			return clock - a_entry.second.seen > kForget || !a_entry.second.root || !a_entry.second.root->parent;
-		});
+		for (auto it = heads.begin(); it != heads.end();) {
+			auto&      head = it->second;
+			const bool gone = clock - head.seen > kForget || !head.root || !head.root->parent;
+			if (gone || (head.glistening && clock > head.glistenUntil)) {
+				Dull(head);
+			}
+			it = gone ? heads.erase(it) : std::next(it);
+		}
+	}
+
+	void Glisten(RE::Actor* a_actor, float a_factor)
+	{
+		auto* head = HeadOf(a_actor);
+		if (!head) {
+			return;
+		}
+		if (!(a_factor > 1.001f)) {
+			Dull(*head);
+			return;
+		}
+		auto* eye = EyeMaterial(*head);
+		if (!eye) {
+			return;
+		}
+		if (!head->glistening) {
+			head->eyeEnv = eye->envMapScale;
+			head->eyeSpec = eye->specularColorScale;
+			head->glistening = true;
+		}
+		eye->envMapScale = head->eyeEnv * a_factor;
+		eye->specularColorScale = head->eyeSpec * a_factor;
+		head->glistenUntil = clock + 0.5f;
 	}
 
 	std::optional<View> Of(RE::Actor* a_actor, const Placement& a_placement, const Region* a_region)
@@ -865,6 +925,9 @@ namespace Lacrima::Face
 
 	void Reset()
 	{
+		for (auto& [key, head] : heads) {
+			Dull(head);
+		}
 		heads.clear();
 	}
 }

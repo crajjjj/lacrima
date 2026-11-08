@@ -242,7 +242,7 @@ namespace Lacrima
 		void DryFace(Crier& a_crier);
 		void Expire(Cheek& a_cheek, const Frame& a_frame, const Settings& a_settings, float a_delta);
 		bool Attach(Cheek& a_cheek, const Crier& a_crier, RE::NiAVObject* a_root, bool a_world);
-		void Draw(Cheek& a_cheek, const Mount& a_mount, const Settings& a_settings, const Spots* a_markers);
+		void Draw(Cheek& a_cheek, const Mount& a_mount, const Settings& a_settings, const Spots& a_spots, bool a_markers);
 		void Clear(Cheek& a_cheek);
 		void Release(Cheek& a_cheek);
 		bool Idle(const Crier& a_crier) const;
