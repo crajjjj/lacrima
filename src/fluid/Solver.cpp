@@ -304,19 +304,17 @@ namespace Lacrima::Fluid
 				if (rest <= 0.0f) {
 					continue;
 				}
-				const bool  first = !a_particles[i].asleep;
-				const bool  second = !a_particles[i + 1].asleep;
+				// A link to a sleeping particle (a drop left behind on the skin) is the
+				// trail the rope pass draws, not a tether: it only lengthens.
+				if (a_particles[i].asleep || a_particles[i + 1].asleep) {
+					continue;
+				}
 				const Vec3  delta = _predicted[i + 1] - _predicted[i];
 				const float length = Length(delta);
-				if (length > 1e-6f && (first || second)) {
-					const float share = first && second ? 0.5f : 1.0f;
-					const Vec3  correction = LimitLength(delta * ((length - rest) / length * share * kLinkStiffness), 0.25f * _spacing);
-					if (first) {
-						_predicted[i] += correction;
-					}
-					if (second) {
-						_predicted[i + 1] = _predicted[i + 1] - correction;
-					}
+				if (length > 1e-6f) {
+					const Vec3 correction = LimitLength(delta * ((length - rest) / length * 0.5f * kLinkStiffness), 0.25f * _spacing);
+					_predicted[i] += correction;
+					_predicted[i + 1] = _predicted[i + 1] - correction;
 				}
 			}
 			for (const auto& anchor : a_anchors) {

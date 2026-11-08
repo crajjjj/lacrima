@@ -1091,7 +1091,11 @@ namespace Lacrima
 				particle.asleep = true;
 				particle.velocity = {};
 				particle.idle = 0.0f;
-				particle.travel = 0.0f;
+				// the rest of the bead starts counting again: the next drop is left another
+				// step further on, not on the next frame
+				for (std::size_t i = begin; i < end; ++i) {
+					particles[i].travel = 0.0f;
+				}
 				a_cheek.dirty = true;
 			}
 			begin = end;
