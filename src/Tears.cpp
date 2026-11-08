@@ -1917,12 +1917,19 @@ namespace Lacrima
 			droplets.push_back({ single.position, Fluid::VolumeRadius(1, volume) * std::cbrt(field.Weight(single)), single.velocity,
 				contactOf({ &index, 1 }) });
 		}
+		// A welling tear hangs from the lid on one rope, from its newest particle to
+		// the seat. Its other leashes are not drawn: stacked translucent tubes at one
+		// spot blend into an opaque dark lump.
+		const Fluid::Anchor* newest = nullptr;
 		for (const auto& anchor : a_cheek.anchors) {
-			if (anchor.particle < particles.size() && particles[anchor.particle].bulk) {
-				if (Rope* rope = AcquireRope(a_cheek)) {
-					PoseRope(a_mount, a_cheek, *rope, anchor.particle, anchor.particle + 1, &anchor, a_settings.trail, a_settings.fade);
-					++ropes;
-				}
+			if (anchor.particle < particles.size() && particles[anchor.particle].bulk && (!newest || anchor.particle > newest->particle)) {
+				newest = &anchor;
+			}
+		}
+		if (newest && Fluid::Length(particles[newest->particle].position - newest->point) > 1.5f * spacing) {
+			if (Rope* rope = AcquireRope(a_cheek)) {
+				PoseRope(a_mount, a_cheek, *rope, newest->particle, newest->particle + 1, newest, a_settings.trail, a_settings.fade);
+				++ropes;
 			}
 		}
 		// The trail a tear left behind: the drops it deposited, in the order it left
