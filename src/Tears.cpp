@@ -36,6 +36,9 @@ namespace Lacrima
 		constexpr float       kSkinMargin = 0.06f;
 		constexpr float       kWellSpeed = 0.02f;
 		constexpr float       kFallSpeed = 0.25f;
+		// A particle must be off every surface this long before falling counts: free
+		// fall passes kFallSpeed within 30 ms, before a released tear can land.
+		constexpr float kFallGrace = 0.2f;
 		constexpr float       kRamp = 1.5f;
 		constexpr float       kMarkerRadius = 1.5f;  // units; big on purpose, it is a "do the meshes show at all" probe
 		constexpr float       kGravity = 9.81f;
@@ -905,6 +908,9 @@ namespace Lacrima
 			particle.position = seat + jitter;
 			particle.velocity = a_spot.down * kWellSpeed;
 			particle.run = a_cheek.run;
+			// Born on the lid: the solver's stick-pull only reaches for particles already
+			// touching, and a tear that starts free falls off the face before it lands.
+			particle.touching = true;
 			if (!particles.empty() && particles.back().run == a_cheek.run) {
 				const float gap = Fluid::Length(particle.position - particles.back().position);
 				if (gap < 2.0f * spacing) {
@@ -1053,7 +1059,8 @@ namespace Lacrima
 		};
 		for (auto& particle : particles) {
 			particle.life -= a_delta;
-			if (!particle.touching && Fluid::Dot(particle.velocity, a_frame.down) > kFallSpeed && particle.life > a_settings.fall) {
+			particle.airborne = particle.touching ? 0.0f : particle.airborne + a_delta;
+			if (particle.airborne > kFallGrace && Fluid::Dot(particle.velocity, a_frame.down) > kFallSpeed && particle.life > a_settings.fall) {
 				particle.life = a_settings.fall;
 				++a_cheek.cutFalling;
 			}

@@ -48,6 +48,7 @@ namespace Lacrima::Fluid
 		float         link{};
 		float         idle{};
 		float         along{};
+		float         airborne{};  // seconds since the particle last touched a surface
 		std::int32_t  surface{ -1 };
 		std::uint32_t run{};
 		bool          bulk{};
