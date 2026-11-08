@@ -894,7 +894,7 @@ namespace Lacrima
 		const Vec3  side = Fluid::Normalize(Fluid::Cross(a_spot.normal, a_spot.down), { 1.0f, 0.0f, 0.0f });
 		const Vec3  seat = a_spot.point + a_spot.normal * lift;
 		auto&       particles = a_cheek.particles;
-		std::optional<std::size_t> newest;
+		bool        born = false;
 		a_cheek.slot -= a_delta;
 		while (a_cheek.left > 0 && a_cheek.slot <= 0.0f) {
 			a_cheek.slot += a_cheek.interval;
@@ -917,21 +917,22 @@ namespace Lacrima
 					particles.back().link = std::max(kLinkSpacing * spacing, gap);
 				}
 			}
-			newest = particles.size();
+			// Every welling particle hangs from the lid on its own leash, so the bead
+			// gathers there instead of running off as soon as it is born; the leashes
+			// go when the tear is released.
+			const float rest = std::max(Fluid::Length(particle.position - seat), 0.5f * spacing);
+			a_cheek.anchors.push_back({ particles.size(), seat, rest, a_cheek.id });
 			particles.push_back(particle);
+			born = true;
 			++a_cheek.emitted;
 			a_cheek.dirty = true;
 		}
-		const auto held = std::ranges::find_if(a_cheek.anchors, [&](const Fluid::Anchor& a) { return a.owner == a_cheek.id; });
-		if (newest) {
-			const float rest = std::max(Fluid::Length(particles[*newest].position - seat), 0.5f * spacing);
-			if (held != a_cheek.anchors.end()) {
-				*held = { *newest, seat, rest, a_cheek.id };
-			} else {
-				a_cheek.anchors.push_back({ *newest, seat, rest, a_cheek.id });
+		if (!born) {
+			for (auto& anchor : a_cheek.anchors) {
+				if (anchor.owner == a_cheek.id) {
+					anchor.point = seat;  // the lid moves with the expression
+				}
 			}
-		} else if (held != a_cheek.anchors.end()) {
-			held->point = seat;
 		}
 		if (a_cheek.left > 0) {
 			return;
@@ -941,6 +942,11 @@ namespace Lacrima
 			return;
 		}
 		std::erase_if(a_cheek.anchors, [&](const Fluid::Anchor& a) { return a.owner == a_cheek.id; });
+		for (auto& particle : particles) {
+			if (particle.run == a_cheek.run) {
+				particle.travel = 0.0f;  // the run starts here; the shuffling while welling does not count
+			}
+		}
 		a_cheek.welling = false;
 		const float rate = a_settings.rate * std::max(a_crier.intensity, 0.05f);
 		a_cheek.wait = 60.0f / rate * (0.5f + unit(_rng));
@@ -1045,6 +1051,51 @@ namespace Lacrima
 		a_cheek.lastPatches = patches.size();
 		a_cheek.lastSteps = steps;
 		std::erase_if(a_cheek.anchors, [](const Fluid::Anchor& a_anchor) { return a_anchor.rest <= 0.0f; });
+		if (steps > 0) {
+			Deposit(a_cheek, a_frame, a_settings);
+		}
+	}
+
+	// A running tear leaves its trail behind: every trail_step of travel the hindmost
+	// awake particle of a tear stays where it is, asleep, so the bead thins as it
+	// runs and the last drop, alone, sticks. The link to the deposit stretches into
+	// the trail the rope pass draws.
+	void Tears::Deposit(Cheek& a_cheek, const Frame& a_frame, const Settings& a_settings)
+	{
+		auto&       particles = a_cheek.particles;
+		const float step = a_settings.trailStep * 0.01f;
+		const Vec3  up = -a_frame.down;
+		std::size_t begin = 0;
+		while (begin < particles.size()) {
+			std::size_t end = begin + 1;
+			while (end < particles.size() && particles[end].run == particles[begin].run) {
+				++end;
+			}
+			std::size_t awake = 0;
+			std::size_t hindmost = Fluid::kNone;
+			float       highest = -std::numeric_limits<float>::max();
+			for (std::size_t i = begin; i < end; ++i) {
+				const auto& particle = particles[i];
+				if (particle.asleep || !particle.touching) {
+					continue;
+				}
+				++awake;
+				const float height = Fluid::Dot(particle.position, up);
+				if (height > highest) {
+					highest = height;
+					hindmost = i;
+				}
+			}
+			if (awake >= 2 && hindmost != Fluid::kNone && particles[hindmost].travel >= step) {
+				auto& particle = particles[hindmost];
+				particle.asleep = true;
+				particle.velocity = {};
+				particle.idle = 0.0f;
+				particle.travel = 0.0f;
+				a_cheek.dirty = true;
+			}
+			begin = end;
+		}
 	}
 
 	void Tears::Expire(Cheek& a_cheek, const Frame& a_frame, const Settings& a_settings, float a_delta)

@@ -14,8 +14,8 @@ namespace Lacrima::Fluid
 		constexpr float       kLinkStiffness = 0.6f;
 		constexpr float       kLinkBreak = 12.0f;
 		constexpr float       kLinkSnap = 6.0f;
-		constexpr float       kSleepSpeed = 0.02f;
-		constexpr float       kWakeSpeed = 0.08f;
+		constexpr float       kSleepSpeed = 0.005f;  // a tear runs at a few cm/s; below 5 mm/s it is at rest
+		constexpr float       kWakeSpeed = 0.08f;  // a running bead (a few cm/s) must not wake the trail it leaves; hands wake explicitly
 		constexpr float       kSleepTime = 0.4f;
 		constexpr float       kSkinGravity = 0.25f;
 		constexpr float       kStickReach = 2.0f;
@@ -23,7 +23,10 @@ namespace Lacrima::Fluid
 		constexpr float       kSeparation = 0.1f;
 		constexpr float       kAnchorBreak = 12.0f;
 		constexpr float       kAnchorFlow = 15.0f;
-		constexpr float       kCreep = 0.035f;
+		// How fast an anchor lets its particle sag below it, metres per second (times
+		// the square root of the load hanging on it). OStrands lengthens a strand with
+		// 0.035; a tear welling at the lid must stay there, so a few millimetres.
+		constexpr float kCreep = 0.003f;
 		constexpr std::size_t kMaxLoad = 64;
 		constexpr float       kCohesionFloor = 1.0f;
 		// The neighbour list for one solve is built once, with this much slack over the
@@ -398,7 +401,10 @@ namespace Lacrima::Fluid
 				const float normal = Dot(against, _normal[i]);
 				Vec3        sliding = against - _normal[i] * normal;
 				const float slip = Length(sliding);
-				const float grip = _parameters.grip * a_seconds;
+				// Adhesion per particle falls with the fluid around it: a drop's weight
+				// grows with its volume, its contact line only with its footprint, so a
+				// bead runs while the thin trail it leaves behind sticks.
+				const float grip = _parameters.grip * a_seconds * 2.0f / std::sqrt(1.0f + static_cast<float>(Neighbors(i).size()));
 				sliding = slip > grip ? sliding * ((slip - grip) / slip * std::exp(-_parameters.friction * a_seconds)) : Vec3{};
 				velocity = surface + sliding + _normal[i] * std::clamp(normal, 0.0f, kSeparation);
 				relative = velocity - surface;
@@ -407,6 +413,9 @@ namespace Lacrima::Fluid
 				particle.along = _along[i];
 			} else {
 				particle.surface = -1;
+			}
+			if (particle.touching) {
+				particle.travel += Length(_predicted[i] - particle.position);
 			}
 			particle.position = _predicted[i];
 			particle.velocity = velocity;

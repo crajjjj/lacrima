@@ -226,6 +226,7 @@ namespace Lacrima
 		void Emit(Crier& a_crier, Cheek& a_cheek, const Spot& a_spot, const Settings& a_settings, float a_delta);
 		void StartTear(Cheek& a_cheek, float a_strength, const Settings& a_settings);
 		void Wake(Cheek& a_cheek, const Frame& a_frame, bool a_morphing, std::span<const Fluid::Capsule> a_hands);
+		void Deposit(Cheek& a_cheek, const Frame& a_frame, const Settings& a_settings);
 		void Simulate(Cheek& a_cheek, const Frame& a_frame, const std::optional<Face::View>& a_view, std::span<const Fluid::Capsule> a_hands,
 			const Settings& a_settings, float a_delta);
 		void PoseHands(Crier& a_crier, float a_delta);

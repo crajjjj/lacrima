@@ -35,11 +35,12 @@ namespace Lacrima
 		float lifetime{ 30.0f };
 		float fade{ 5.0f };
 
-		float stickiness{ 0.3f };
-		float friction{ 45.0f };
+		float stickiness{ 2.0f };
+		float friction{ 30.0f };
 		float viscosity{ 20.0f };
 		float cohesion{ 2.5f };
 		float stretch{ 3.0f };
+		float trailStep{ 1.5f };
 		float fall{ 0.6f };
 
 		bool  hands{ true };
@@ -48,7 +49,7 @@ namespace Lacrima
 		float gestureWait{ 3.5f };
 
 		bool showDucts{ false };
-		bool mountWorld{ false };
+		bool mountWorld{ true };
 
 		static std::unique_lock<std::recursive_mutex> Lock();
 		static Settings&                              Get();

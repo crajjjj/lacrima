@@ -31,11 +31,12 @@ lifetime = 30.0        # seconds a trail stays wet
 fade = 5.0             # seconds at the end of its life a trail spends thinning out
 
 [physics]
-stickiness = 0.3       # how firmly a slow tear sticks to the skin and stops
-friction = 45.0        # drag on a tear running over skin; higher runs slower
+stickiness = 2.0       # how firmly a tear sticks to the skin; a full bead still runs, the thin trail behind it stops
+friction = 30.0        # drag on a tear running over skin; higher runs slower (30: a bead runs about 2 cm a second)
 viscosity = 20.0       # how much a tear moves as one; water is low
 cohesion = 2.5         # how strongly a tear holds together as a bead
 stretch = 3.0          # how easily a running tear stretches into a trail
+trail_step = 1.5       # a running tear leaves a drop behind every this many cm, so a 6-drop tear runs about 7 cm and stops
 fall = 0.6             # seconds a drop that falls off the face stays visible
 
 [wipe]
@@ -46,4 +47,4 @@ gesture_wait = 3.5     # seconds a wipe gesture waits for the hand before drying
 
 [debug]
 show_ducts = false     # mark where tears start on the console-selected actor, or the player
-mount_world = false    # A/B: draw the tears in world space under the cell node, as 0.1.0 did, instead of under the head bone
+mount_world = true     # true: draw the tears in world space under the cell node (the proven way); false: under the head bone (cheaper, being validated)

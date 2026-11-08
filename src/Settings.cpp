@@ -69,6 +69,8 @@ namespace Lacrima
 				"How strongly a tear holds together as a bead." },
 			Field{ "physics", "stretch", &Settings::stretch, 0.0f, 30.0f, "Physics", "Trail stretch", "%.1f",
 				"How easily a running tear stretches into a trail before it breaks." },
+			Field{ "physics", "trail_step", &Settings::trailStep, 0.3f, 5.0f, "Physics", "Trail step", "%.1f cm",
+				"A running tear leaves a drop of its trail behind every this many centimetres, so a 6-drop tear runs about 7 cm before it stops." },
 			Field{ "physics", "fall", &Settings::fall, 0.1f, 3.0f, "Physics", "Falling drop life", "%.2f s",
 				"Seconds a drop that falls off the face stays visible." },
 
