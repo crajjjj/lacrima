@@ -98,7 +98,7 @@ there is nothing to link. Every call is safe from any thread.
 ## Building
 
 ```
-git clone --recurse-submodules <this repo>
+git clone --recurse-submodules https://github.com/crajjjj/lacrima.git
 xmake f -m release
 xmake                  # Lacrima.dll -> dist\SKSE\Plugins
 xmake build papyrus    # scripts -> dist\Scripts, and Release\Lacrima-<version>.zip
