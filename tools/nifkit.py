@@ -71,9 +71,12 @@ def build_skinned_nif(root_name, bone_names, bone_offsets, shape_name, verts, tr
     shape += struct.pack('<Q', VERTEX_DESC) + u16(0) + u16(0) + u32(0) + u32(0)
     blocks.append(('BSTriShape', shape))
 
+    # A plain NiSkinInstance, not a BSDismemberSkinInstance: the tear nodes hang under
+    # the actor's head bone, and the game hides every dismember partition under an
+    # actor's 3D whose body-part slot an equipped item covers (how a helmet hides the
+    # ears, how SOS hides the body's crotch). A partition-less skin has no slot to hide.
     skin = i32(DATA) + i32(PART) + i32(ROOT) + u32(bones) + b''.join(i32(BONE0 + i) for i in range(bones))
-    skin += i32(1) + bytes([0x01, 0x01, 0x34, 0x00])
-    blocks.append(('BSDismemberSkinInstance', skin))
+    blocks.append(('NiSkinInstance', skin))
 
     data = f32(*IDENTITY) + f32(0.0, 0.0, 0.0) + f32(1.0) + u32(bones) + u8(1)
     for i in range(bones):

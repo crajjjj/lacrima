@@ -1199,7 +1199,10 @@ namespace Lacrima
 				return false;
 			}
 			a_cheek.root->name = "LacrimaTears";
-			a_cheek.root->GetFlags().set(RE::NiAVObject::Flag::kAlwaysDraw);
+			// The selective-update flags let the skeleton's own per-frame update reach
+			// this subtree, so settled tears that skip Draw still ride the head.
+			a_cheek.root->GetFlags().set(RE::NiAVObject::Flag::kAlwaysDraw, RE::NiAVObject::Flag::kSelectiveUpdate,
+				RE::NiAVObject::Flag::kSelectiveUpdateTransforms, RE::NiAVObject::Flag::kSelectiveUpdateController);
 		}
 		if (a_cheek.root->parent != parent) {
 			if (a_cheek.root->parent) {
@@ -1279,6 +1282,33 @@ namespace Lacrima
 		return meshes;
 	}
 
+	RE::NiPointer<RE::BSDismemberSkinInstance> Tears::DismemberOf(RE::NiNode* a_root, const RE::BSFixedString& a_shape)
+	{
+		auto* object = a_root ? a_root->GetObjectByName(a_shape) : nullptr;
+		auto* geometry = object ? object->AsGeometry() : nullptr;
+		auto* skin = geometry ? geometry->GetGeometryRuntimeData().skinInstance.get() : nullptr;
+		return RE::NiPointer<RE::BSDismemberSkinInstance>(skin ? netimmerse_cast<RE::BSDismemberSkinInstance*>(skin) : nullptr);
+	}
+
+	// Under an actor's 3D the game hides every dismember partition whose body-part
+	// slot an equipped item covers. The shipped meshes carry no partitions since
+	// 0.1.1; a mesh that still does (0.1.0 left installed) is shown again each draw.
+	void Tears::Reveal(RE::BSDismemberSkinInstance* a_skin)
+	{
+		if (!a_skin) {
+			return;
+		}
+		const auto& data = a_skin->GetRuntimeData();
+		if (!data.partitions) {
+			return;
+		}
+		for (std::int32_t i = 0; i < data.numPartitions; ++i) {
+			if (!data.partitions[i].visible) {
+				a_skin->UpdateDismemberPartion(data.partitions[i].slot, true);
+			}
+		}
+	}
+
 	bool Tears::CloneBlob(Blob& a_blob)
 	{
 		auto& meshes = MeshesFor();
@@ -1300,6 +1330,7 @@ namespace Lacrima
 		if (auto* shape = node->GetObjectByName(MeshNames::Get().blobShape)) {
 			shape->GetFlags().set(RE::NiAVObject::Flag::kAlwaysDraw);
 		}
+		a_blob.dismember = DismemberOf(node, MeshNames::Get().blobShape);
 		return true;
 	}
 
@@ -1322,6 +1353,7 @@ namespace Lacrima
 		if (auto* shape = node->GetObjectByName(MeshNames::Get().ropeShape)) {
 			shape->GetFlags().set(RE::NiAVObject::Flag::kAlwaysDraw);
 		}
+		a_rope.dismember = DismemberOf(node, MeshNames::Get().ropeShape);
 		return true;
 	}
 
@@ -1734,13 +1766,16 @@ namespace Lacrima
 		for (auto& blob : a_cheek.blobs) {
 			if (blob.used) {
 				++blobs;
+				Reveal(blob.dismember.get());
 			} else {
 				blob.live = false;
 				blob.root->SetAppCulled(true);
 			}
 		}
 		for (auto& rope : a_cheek.ropes) {
-			if (!rope.used) {
+			if (rope.used) {
+				Reveal(rope.dismember.get());
+			} else {
 				rope.root->SetAppCulled(true);
 			}
 		}
@@ -1782,6 +1817,23 @@ namespace Lacrima
 			}
 			if (!a_crier->head) {
 				text += "No head bone; using the actor's root. ";
+			}
+			// Where the first drawn drop actually is, for a "nothing shows" report.
+			for (const auto& cheek : a_crier->cheeks) {
+				const auto drawn = std::ranges::find_if(cheek.blobs, [](const Blob& a_blob) { return a_blob.used && a_blob.root && !a_blob.bones.empty(); });
+				if (drawn == cheek.blobs.end()) {
+					continue;
+				}
+				const auto& bone = drawn->bones.front()->world.translate;
+				const auto& head = a_crier->frame.origin;
+				bool        culled = false;
+				for (const RE::NiAVObject* node = drawn->root.get(); node; node = node->parent) {
+					culled = culled || node->GetAppCulled();
+				}
+				text += std::format("A drop is drawn at ({:.0f}, {:.0f}, {:.0f}), {:.1f} units from the head bone, {}, {}. ", bone.x, bone.y, bone.z,
+					bone.GetDistance(head), culled ? "culled somewhere up its tree" : "not culled",
+					drawn->dismember ? "with a dismember skin (old mesh)" : "plain skin");
+				break;
 			}
 		}
 		if (!a_settings.enabled) {

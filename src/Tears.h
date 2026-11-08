@@ -73,9 +73,12 @@ namespace Lacrima
 			RE::NiPointer<RE::NiNode>        root;
 			std::vector<RE::NiAVObject*>     bones;
 			std::vector<Fluid::SurfacePoint> surface;
-			std::size_t                      seed{ 0 };
-			bool                             live{ false };
-			bool                             used{ false };
+			// Set when the mesh still carries a dismember skin (meshes from 0.1.0),
+			// whose partitions the game hides by body-part slot under an actor.
+			RE::NiPointer<RE::BSDismemberSkinInstance> dismember;
+			std::size_t                                seed{ 0 };
+			bool                                       live{ false };
+			bool                                       used{ false };
 		};
 
 		struct Rope
@@ -83,6 +86,7 @@ namespace Lacrima
 			RE::NiPointer<RE::NiNode>                   root;
 			std::array<RE::NiAVObject*, kRopeBones>     bones{};
 			std::array<GeometryMath::Frame, kRopeBones> frames{};
+			RE::NiPointer<RE::BSDismemberSkinInstance>  dismember;
 			bool                                        used{ false };
 		};
 
@@ -213,6 +217,8 @@ namespace Lacrima
 		bool Idle(const Crier& a_crier) const;
 
 		Meshes& MeshesFor();
+		static RE::NiPointer<RE::BSDismemberSkinInstance> DismemberOf(RE::NiNode* a_root, const RE::BSFixedString& a_shape);
+		static void                                       Reveal(RE::BSDismemberSkinInstance* a_skin);
 		bool    CloneBlob(Blob& a_blob);
 		bool    CloneRope(Rope& a_rope);
 		Blob*   AcquireBlob(Cheek& a_cheek);
