@@ -29,13 +29,13 @@ namespace Lacrima
 		int   maxParticles{ 160 };
 		float maxDistance{ 3000.0f };
 
-		float size{ 1.0f };
+		float size{ 0.8f };
 		float trail{ 1.2f };
-		float opacity{ 0.4f };
+		float opacity{ 0.3f };
 		float shine{ 6.0f };
 		float gloss{ 300.0f };
 		float reflection{ 1.0f };
-		float glow{ 0.12f };
+		float glow{ 0.06f };
 		float eyeShine{ 1.6f };
 		float lifetime{ 30.0f };
 		float fade{ 5.0f };
