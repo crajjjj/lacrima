@@ -7,7 +7,10 @@ Lacrima sends two mod events with the crying actor as the sender:
   Lacrima_CryStart   numArg = intensity
   Lacrima_CryStop
 Register with RegisterForModEvent("Lacrima_CryStart", "OnCryStart") and handle
-  Event OnCryStart(String asEventName, String asUnused, Float afIntensity, Form akSender)}
+  Event OnCryStart(String asEventName, String asUnused, Float afIntensity, Form akSender)
+
+Crying does not survive loading a save, and no Lacrima_CryStop is sent then. A mod
+that tracks crying actors should forget them on load, or ask IsCrying again.}
 
 ; Bumped whenever a function is added. 0 means Lacrima.dll did not load.
 Int Function GetAPIVersion() global native
@@ -47,7 +50,7 @@ Float Function GetTimeLeft(Actor akActor) global native
 Bool Function IsEnabled() global native
 
 ; Turns tears on or off. Off removes every tear at once and ignores new requests.
-; Lasts for this session; the SKSE menu saves the setting.
+; Lasts for this session only; the checkbox in the SKSE menu is the saved setting.
 Function SetEnabled(Bool abEnabled) global native
 
 ; Reads Lacrima.toml and Lacrima_User.toml again.

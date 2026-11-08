@@ -30,6 +30,11 @@ function main()
     end
     os.cp(path.join(os.projectdir(), "papyrus", "Source", "*.psc"), src_out)
 
+    -- the archive ships GPL code, so it carries the license and the notice
+    local plugins = path.join(os.projectdir(), "dist", "SKSE", "Plugins")
+    os.cp(path.join(os.projectdir(), "LICENSE"), path.join(plugins, "Lacrima-LICENSE.txt"))
+    os.cp(path.join(os.projectdir(), "NOTICE.txt"), path.join(plugins, "Lacrima-NOTICE.txt"))
+
     os.execv(pyro, {
         "-i", path.join(os.projectdir(), "Lacrima.ppj"),
         "--game-path", game

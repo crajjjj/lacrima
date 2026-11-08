@@ -160,7 +160,8 @@ namespace Lacrima
 		};
 
 		void   Apply(const Request& a_request, const Settings& a_settings);
-		Crier* CrierFor(RE::ActorHandle a_actor, const Settings& a_settings, bool a_create);
+		Crier* CrierFor(RE::ActorHandle a_actor, const Settings& a_settings, bool a_create, bool a_evict = true);
+		static bool Enabled();
 		void   StartCrying(Crier& a_crier, float a_intensity, float a_seconds, const Settings& a_settings);
 		void   StopCrying(Crier& a_crier);
 		void   SendEvent(const char* a_name, RE::ActorHandle a_actor, float a_value);
@@ -221,8 +222,6 @@ namespace Lacrima
 		std::uint32_t                                              _nextId{ 0 };
 		std::uint32_t                                              _nextRun{ 0 };
 		int                                                        _cloneBudget{ 0 };
-		float                                                      _clock{ 0.0f };
 		float                                                      _statTime{ 0.0f };
-		bool                                                       _enabled{ true };
 	};
 }

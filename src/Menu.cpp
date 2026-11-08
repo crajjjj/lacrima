@@ -81,6 +81,7 @@ namespace Lacrima::Menu
 					}
 					if (changed && edited != value) {
 						value = edited;
+						Settings::Persisted().*a_member = edited;
 						g_dirty = true;
 					}
 				},

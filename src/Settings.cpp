@@ -13,6 +13,7 @@ namespace Lacrima
 
 		std::recursive_mutex g_lock;
 		Settings             g_settings;
+		Settings             g_persisted;
 		Settings             g_defaults;
 
 		// clang-format off
@@ -160,6 +161,11 @@ namespace Lacrima
 		return g_settings;
 	}
 
+	Settings& Settings::Persisted()
+	{
+		return g_persisted;
+	}
+
 	Settings Settings::Snapshot()
 	{
 		auto guard = Lock();
@@ -179,6 +185,7 @@ namespace Lacrima
 		g_defaults = loaded;
 		const bool user = ReadFile(kUserFile, loaded, false);
 		g_settings = loaded;
+		g_persisted = loaded;
 		logger::info("settings loaded from {}{}", kBaseFile, user ? std::format(" and {}", kUserFile) : std::string{});
 	}
 
@@ -189,7 +196,7 @@ namespace Lacrima
 		for (const auto& field : kFields) {
 			std::visit(
 				[&](auto a_member) {
-					const auto value = g_settings.*a_member;
+					const auto value = g_persisted.*a_member;
 					if (value == g_defaults.*a_member) {
 						return;
 					}
@@ -243,5 +250,6 @@ namespace Lacrima
 	{
 		auto guard = Lock();
 		g_settings = g_defaults;
+		g_persisted = g_defaults;
 	}
 }

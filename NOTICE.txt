@@ -1,4 +1,7 @@
-Lacrima by crajjjj, GNU General Public License version 3; see LICENSE.
+Lacrima by crajjjj, GNU General Public License version 3; see LICENSE
+(Lacrima-LICENSE.txt in the mod archive).
+
+Source code: https://github.com/crajjjj/lacrima
 
 Lacrima contains code adapted from OStrands by LeonVanWinkle (Saint), also
 GPL-3.0, taken from OStrands 0.8.0 (https://gitlab.com/LilRicefield/ostrands):

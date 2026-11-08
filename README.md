@@ -31,7 +31,7 @@ once the hand comes near the eyes.
 
 ## Settings
 
-With SKSE Menu Framework installed, the Lacrima pages (Tears, Look, Physics, Test)
+With SKSE Menu Framework installed, the Lacrima pages (Tears, Look, Physics, Wipe, Test)
 change everything live and save your changes when the menu closes. Without it, write
 the values you want to change into `Data\SKSE\Plugins\Lacrima_User.toml`, using the
 sections and keys of `Lacrima.toml`, which lists every setting with its default.
@@ -74,7 +74,8 @@ Bool  crying = Lacrima.IsCrying(akActor)
 Float left   = Lacrima.GetTimeLeft(akActor)   ; -1 = until stopped
 ```
 
-`Cry` on an actor who already cries replaces the intensity and the time left. Calling a
+`Cry` on an actor who already cries replaces the intensity and the time left. Crying
+does not survive loading a save, and no `Lacrima_CryStop` is sent then. Calling a
 global function of a script that is not installed only logs an error, so the
 `GetAPIVersion` check is all an optional integration needs.
 

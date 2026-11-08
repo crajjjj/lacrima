@@ -19,7 +19,6 @@ namespace Lacrima::Face
 		RE::NiPoint3 point;
 		RE::NiPoint3 normal;
 		RE::NiPoint3 down;
-		float        eyeRadius{ 0.0f };
 		bool         valid{ false };
 	};
 

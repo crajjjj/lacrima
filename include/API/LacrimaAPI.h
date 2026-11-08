@@ -56,6 +56,8 @@ namespace RE
 //   touch, in any animation, unless the player turned that off.
 // - Lacrima sends the mod events Lacrima_CryStart (numArg = intensity) and
 //   Lacrima_CryStop, with the actor as the sender, when crying starts and stops.
+// - Crying does not survive loading a save, and no Lacrima_CryStop is sent then:
+//   forget tracked actors on load, or ask Lacrima_IsCrying again.
 //
 // Interface version is packed MMmmpp and only ever grows: exports are appended,
 // never changed or removed.

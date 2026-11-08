@@ -175,10 +175,10 @@ namespace Lacrima
 		}
 		const float intensity = std::isfinite(a_intensity) ? std::clamp(a_intensity, 0.0f, 1.0f) : 0.6f;
 		const float seconds = std::isfinite(a_seconds) ? a_seconds : 0.0f;
-		std::scoped_lock guard(_lock);
-		if (!_enabled) {
+		if (!Enabled()) {
 			return;
 		}
+		std::scoped_lock guard(_lock);
 		_pending.push_back({ Request::Kind::kCry, a_actor, intensity, seconds });
 		auto& state = _states[a_actor.native_handle()];
 		state.crying = intensity > 0.0f;
@@ -203,10 +203,11 @@ namespace Lacrima
 		if (!a_actor) {
 			return;
 		}
-		std::scoped_lock guard(_lock);
-		if (_enabled) {
-			_pending.push_back({ Request::Kind::kShed, a_actor, 0.0f, 0.0f, a_eye });
+		if (!Enabled()) {
+			return;
 		}
+		std::scoped_lock guard(_lock);
+		_pending.push_back({ Request::Kind::kShed, a_actor, 0.0f, 0.0f, a_eye });
 	}
 
 	void Tears::Wipe(RE::ActorHandle a_actor)
@@ -237,14 +238,15 @@ namespace Lacrima
 
 	void Tears::CryNearby(float a_radius, float a_intensity, float a_seconds)
 	{
-		std::scoped_lock guard(_lock);
-		if (_enabled) {
-			Request request{ Request::Kind::kNearby };
-			request.intensity = std::isfinite(a_intensity) ? std::clamp(a_intensity, 0.0f, 1.0f) : 0.6f;
-			request.seconds = std::isfinite(a_seconds) ? a_seconds : 0.0f;
-			request.radius = std::isfinite(a_radius) ? std::max(a_radius, 0.0f) : 0.0f;
-			_pending.push_back(request);
+		if (!Enabled()) {
+			return;
 		}
+		Request request{ Request::Kind::kNearby };
+		request.intensity = std::isfinite(a_intensity) ? std::clamp(a_intensity, 0.0f, 1.0f) : 0.6f;
+		request.seconds = std::isfinite(a_seconds) ? a_seconds : 0.0f;
+		request.radius = std::isfinite(a_radius) ? std::max(a_radius, 0.0f) : 0.0f;
+		std::scoped_lock guard(_lock);
+		_pending.push_back(request);
 	}
 
 	Tears::State Tears::Query(RE::ActorHandle a_actor) const
@@ -304,7 +306,13 @@ namespace Lacrima
 		source->SendEvent(&event);
 	}
 
-	Tears::Crier* Tears::CrierFor(RE::ActorHandle a_actor, const Settings& a_settings, bool a_create)
+	bool Tears::Enabled()
+	{
+		auto guard = Settings::Lock();
+		return Settings::Get().enabled;
+	}
+
+	Tears::Crier* Tears::CrierFor(RE::ActorHandle a_actor, const Settings& a_settings, bool a_create, bool a_evict)
 	{
 		const auto key = a_actor.native_handle();
 		if (auto it = _criers.find(key); it != _criers.end()) {
@@ -315,6 +323,9 @@ namespace Lacrima
 		}
 		const auto actor = a_actor.get();
 		if (!actor || !actor->Get3D(false)) {
+			return nullptr;
+		}
+		if (!a_evict && _order.size() >= static_cast<std::size_t>(a_settings.maxActors)) {
 			return nullptr;
 		}
 		while (_order.size() >= static_cast<std::size_t>(a_settings.maxActors)) {
@@ -419,15 +430,17 @@ namespace Lacrima
 			}
 			break;
 		case Request::Kind::kHandWipe:
-			if (auto* crier = CrierFor(a_request.actor, a_settings, true)) {
+			{
 				const auto actor = a_request.actor.get();
 				auto*      idle = a_request.idle ? a_request.idle : RE::TESForm::LookupByID<RE::TESIdleForm>(kWipeIdle);
 				auto*      process = actor ? actor->GetActorRuntimeData().currentProcess : nullptr;
-				const bool playing = idle && process && process->PlayIdle(actor.get(), idle, nullptr);
-				if (playing) {
-					crier->wipeArm = a_settings.gestureWait;
-				} else {
-					DryFace(*crier);
+				const bool playing = idle && process && actor->Get3D(false) && process->PlayIdle(actor.get(), idle, nullptr);
+				if (auto* crier = CrierFor(a_request.actor, a_settings, false)) {
+					if (playing) {
+						crier->wipeArm = a_settings.gestureWait;
+					} else {
+						DryFace(*crier);
+					}
 				}
 				if (a_settings.debugLog) {
 					logger::info("{}: wipe gesture {}", NameOf(actor.get()), playing ? "started" : "could not play; face dried at once");
@@ -443,17 +456,24 @@ namespace Lacrima
 				}
 				const auto  center = player->GetPosition();
 				std::size_t started = 0;
+				std::size_t skipped = 0;
 				for (const auto& handle : lists->highActorHandles) {
 					const auto actor = handle.get();
 					if (!actor || actor->IsDead() || !actor->Get3D(false) || actor->GetPosition().GetDistance(center) > a_request.radius) {
 						continue;
 					}
-					if (auto* crier = CrierFor(handle, a_settings, true)) {
+					if (!Face::Of(actor.get(), a_settings.ductPosition, a_settings.ductBelow)) {
+						continue;
+					}
+					if (auto* crier = CrierFor(handle, a_settings, true, false)) {
 						StartCrying(*crier, a_request.intensity, a_request.seconds, a_settings);
 						++started;
+					} else {
+						++skipped;
 					}
 				}
-				logger::info("{} nearby actor(s) started crying", started);
+				logger::info("{} nearby actor(s) started crying{}", started,
+					skipped ? std::format("; {} more had no free slot ([tears] max_actors)", skipped) : std::string{});
 			}
 			break;
 		}
@@ -475,20 +495,19 @@ namespace Lacrima
 		{
 			std::scoped_lock guard(_lock);
 			requests.swap(_pending);
-			_enabled = settings.enabled;
 		}
 		if (!settings.enabled) {
-			if (!_criers.empty()) {
-				for (auto& [key, crier] : _criers) {
-					if (crier->crying) {
-						SendEvent("Lacrima_CryStop", crier->actor, 0.0f);
-					}
-					for (auto& cheek : crier->cheeks) {
-						Release(cheek);
-					}
+			for (auto& [key, crier] : _criers) {
+				if (crier->crying) {
+					SendEvent("Lacrima_CryStop", crier->actor, 0.0f);
 				}
-				_criers.clear();
-				_order.clear();
+				for (auto& cheek : crier->cheeks) {
+					Release(cheek);
+				}
+			}
+			_criers.clear();
+			_order.clear();
+			{
 				std::scoped_lock guard(_lock);
 				_states.clear();
 			}
@@ -508,7 +527,7 @@ namespace Lacrima
 			}
 			if (actor && actor->Get3D(false)) {
 				watch = actor->GetHandle();
-				CrierFor(watch, settings, true);
+				CrierFor(watch, settings, true, false);
 			}
 		}
 		for (auto& [key, crier] : _criers) {
@@ -521,7 +540,6 @@ namespace Lacrima
 			return;
 		}
 		a_delta = std::min(a_delta, 0.05f);
-		_clock += a_delta;
 		_cloneBudget = kClonesPerFrame;
 		Face::BeginFrame(a_delta);
 
@@ -552,6 +570,31 @@ namespace Lacrima
 			const float step = a_delta / kRamp;
 			crier.intensity = crier.intensity < goal ? std::min(goal, crier.intensity + step) : std::max(goal, crier.intensity - step);
 
+			// Between tears a cheek only counts down; the face is read when there is
+			// fluid to simulate, a tear to start, a marker to draw or a gesture to watch.
+			bool busy = crier.watched || crier.wipeArm > 0.0f;
+			for (auto& cheek : crier.cheeks) {
+				const bool due = crier.crying && cheek.sheds && crier.intensity > 0.01f;
+				if (!cheek.welling && cheek.queued == 0 && due) {
+					cheek.wait -= a_delta;
+				}
+				busy = busy || !cheek.particles.empty() || cheek.welling || cheek.queued > 0 || (due && cheek.wait <= 0.0f);
+			}
+			if (!busy) {
+				for (auto& cheek : crier.cheeks) {
+					if (cheek.root) {
+						Release(cheek);
+					}
+				}
+				if (Idle(crier)) {
+					std::erase(_order, it->first);
+					it = _criers.erase(it);
+				} else {
+					++it;
+				}
+				continue;
+			}
+
 			const auto view = Face::Of(actor.get(), settings.ductPosition, settings.ductBelow);
 			if (settings.hands || crier.wipeArm > 0.0f) {
 				PoseHands(crier, actor.get(), a_delta);
@@ -569,6 +612,11 @@ namespace Lacrima
 				}
 				if (duct) {
 					Emit(crier, cheek, *duct, settings, a_delta);
+				} else if (cheek.welling || cheek.queued > 0) {
+					std::erase_if(cheek.anchors, [&](const Fluid::Anchor& a_anchor) { return a_anchor.owner == cheek.id; });
+					cheek.welling = false;
+					cheek.left = 0;
+					cheek.queued = 0;
 				}
 				try {
 					Simulate(cheek, view, hands, settings, a_delta);
@@ -620,7 +668,11 @@ namespace Lacrima
 	void Tears::Publish()
 	{
 		std::scoped_lock guard(_lock);
-		std::erase_if(_states, [&](const auto& a_entry) { return !_criers.contains(a_entry.first); });
+		std::unordered_set<std::uint32_t> pending;
+		for (const auto& request : _pending) {
+			pending.insert(request.actor.native_handle());
+		}
+		std::erase_if(_states, [&](const auto& a_entry) { return !_criers.contains(a_entry.first) && !pending.contains(a_entry.first); });
 		for (const auto& [key, crier] : _criers) {
 			auto& state = _states[key];
 			state.crying = crier->crying;
@@ -693,11 +745,8 @@ namespace Lacrima
 			if (a_cheek.queued > 0) {
 				--a_cheek.queued;
 				StartTear(a_cheek, std::max(a_crier.intensity, 0.6f), a_settings);
-			} else if (a_crier.crying && a_cheek.sheds && a_crier.intensity > 0.01f) {
-				a_cheek.wait -= a_delta;
-				if (a_cheek.wait <= 0.0f) {
-					StartTear(a_cheek, a_crier.intensity, a_settings);
-				}
+			} else if (a_crier.crying && a_cheek.sheds && a_crier.intensity > 0.01f && a_cheek.wait <= 0.0f) {
+				StartTear(a_cheek, a_crier.intensity, a_settings);
 			}
 			if (!a_cheek.welling) {
 				return;
@@ -819,15 +868,23 @@ namespace Lacrima
 
 	void Tears::Expire(Cheek& a_cheek, const Settings& a_settings, float a_delta)
 	{
-		auto& particles = a_cheek.particles;
-		bool  expired = false;
+		auto&      particles = a_cheek.particles;
+		bool       expired = false;
+		const auto touched = [&](Vec3 a_point) {
+			return std::ranges::any_of(a_cheek.capsules, [&](const Fluid::Capsule& a_capsule) {
+				const Vec3  span = a_capsule.b - a_capsule.a;
+				const float length = Fluid::LengthSquared(span);
+				const float t = length > 1e-12f ? std::clamp(Fluid::Dot(a_point - a_capsule.a, span) / length, 0.0f, 1.0f) : 0.0f;
+				const float reach = a_capsule.radius + a_cheek.spacing;
+				return Fluid::LengthSquared(a_point - (a_capsule.a + span * t)) < reach * reach;
+			});
+		};
 		for (auto& particle : particles) {
 			particle.life -= a_delta;
 			if (!particle.touching && particle.velocity.z < -kFallSpeed && particle.life > a_settings.fall) {
 				particle.life = a_settings.fall;
 			}
-			const bool held = particle.touching && particle.surface >= 0 && static_cast<std::size_t>(particle.surface) < a_cheek.capsules.size();
-			if (held && particle.life > a_settings.absorb) {
+			if (particle.life > a_settings.absorb && !a_cheek.capsules.empty() && touched(particle.position)) {
 				particle.life = a_settings.absorb;
 			}
 			expired = expired || particle.life <= 0.0f;
@@ -874,8 +931,8 @@ namespace Lacrima
 			}
 			a_crier.handPrevious.clear();
 		}
-		std::vector<Bone> next;
-		next.reserve(2 * (1 + 4 * 3));
+		auto& next = a_crier.hands;
+		next.clear();
 		for (std::size_t side = 0; side < 2; ++side) {
 			const auto bone = [&](std::size_t a_index) { return a_crier.handBones[side * kSideBones + a_index].get(); };
 			auto*      hand = bone(0);
@@ -911,7 +968,6 @@ namespace Lacrima
 			a_crier.handPrevious[2 * k] = piece.a;
 			a_crier.handPrevious[2 * k + 1] = piece.b;
 		}
-		a_crier.hands = std::move(next);
 	}
 
 	void Tears::Gesture(Crier& a_crier, const std::optional<Face::View>& a_view, const Settings& a_settings, float a_delta)
@@ -1528,6 +1584,9 @@ namespace Lacrima
 				text += std::format("{} cheek: {} particles, {} trails, {} drops{}. ", kNames[e], cheek.particles.size(), cheek.shownRopes,
 					cheek.shownBlobs, cheek.sheds ? "" : ", not shedding");
 			}
+		}
+		if (!a_settings.enabled) {
+			return text;
 		}
 		if (a_actor && a_actor->Get3D(false)) {
 			text += "Head: " + Clean(Face::Describe(a_actor, a_settings.ductPosition, a_settings.ductBelow));

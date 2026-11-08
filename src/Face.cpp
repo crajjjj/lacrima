@@ -81,6 +81,8 @@ namespace Lacrima::Face
 			std::string                                         faceName;
 			std::string                                         eyesName;
 			std::string                                         report;
+			std::vector<RE::NiTransform>                        world;
+			std::vector<float>                                  scales;
 			std::uint64_t                                       frame{ 0 };
 			float                                               seen{ 0.0f };
 			float                                               checked{ 0.0f };
@@ -308,7 +310,7 @@ namespace Lacrima::Face
 
 		// Adds a mesh's vertices as wrap points: deduplicated on a fine voxel, with
 		// normals turned outward. Returns how many points it added.
-		std::size_t Add(Head& a_head, RE::BSGeometry* a_geometry, const Mesh& a_mesh, std::uint64_t a_tag,
+		std::size_t Add(Head& a_head, RE::BSGeometry* a_geometry, const Mesh& a_mesh,
 			const std::function<bool(const RE::NiPoint3&, const RE::NiPoint3&)>& a_outward)
 		{
 			auto* skin = a_geometry->GetGeometryRuntimeData().skinInstance.get();
@@ -348,7 +350,7 @@ namespace Lacrima::Face
 				}
 				const std::uint64_t key = (cell(position.x) << 43) | (cell(position.y) << 23) | (cell(position.z) << 3) |
 				                          (normal.x > 0.0f ? 4u : 0u) | (normal.y > 0.0f ? 2u : 0u) | (normal.z > 0.0f ? 1u : 0u);
-				if (!taken.insert(key ^ a_tag).second) {
+				if (!taken.insert(key).second) {
 					continue;
 				}
 				Point point{ position, normal, {}, {} };
@@ -499,10 +501,10 @@ namespace Lacrima::Face
 			a_head.eyes[kRight] = a_head.forward > 0.0f ? sides[1] : sides[0];
 			a_head.eyes[kLeft] = a_head.forward > 0.0f ? sides[0] : sides[1];
 
-			const std::size_t facePoints = Add(a_head, face, faceMesh, 0,
+			const std::size_t facePoints = Add(a_head, face, faceMesh,
 				[&](const RE::NiPoint3& a_position, const RE::NiPoint3& a_normal) { return a_normal.Dot(a_position - centroid) > 0.0f; });
 			a_head.facePoints = facePoints;
-			const std::size_t eyePoints = Add(a_head, eyes, eyeMesh, 1, [&](const RE::NiPoint3& a_position, const RE::NiPoint3& a_normal) {
+			const std::size_t eyePoints = Add(a_head, eyes, eyeMesh, [&](const RE::NiPoint3& a_position, const RE::NiPoint3& a_normal) {
 				const auto& side = sides[a_position.x >= 0.0f ? 1 : 0];
 				return a_normal.Dot(a_position - side.center) > 0.0f;
 			});
@@ -555,7 +557,8 @@ namespace Lacrima::Face
 					a_head.points[point].position = { xyz[0], xyz[1], xyz[2] };
 				}
 			}
-			std::vector<RE::NiTransform> world(a_head.joints.size());
+			auto& world = a_head.world;
+			world.assign(a_head.joints.size(), RE::NiTransform{});
 			for (std::size_t j = 0; j < a_head.joints.size(); ++j) {
 				const auto& joint = a_head.joints[j];
 				if (joint.bone) {
@@ -563,7 +566,8 @@ namespace Lacrima::Face
 				}
 			}
 			a_head.patches.resize(a_head.points.size());
-			std::vector<float> scales(a_head.points.size(), 1.0f);
+			auto& scales = a_head.scales;
+			scales.assign(a_head.points.size(), 1.0f);
 			for (std::size_t k = 0; k < a_head.points.size(); ++k) {
 				const auto&  point = a_head.points[k];
 				RE::NiPoint3 position;
@@ -597,7 +601,6 @@ namespace Lacrima::Face
 				duct.point = patch.position;
 				duct.normal = patch.normal;
 				duct.down = Unit(gravity - patch.normal * gravity.Dot(patch.normal), gravity);
-				duct.eyeRadius = a_head.eyes[e].radius * scales[k];
 				duct.valid = true;
 				a_head.scale = scales[k];
 			}
@@ -627,9 +630,13 @@ namespace Lacrima::Face
 				geometry = geometry ? geometry : Guess(root, type == RE::BGSHeadPart::HeadPartType::kEyes);
 				signature.emplace_back(geometry, VerticesOf(geometry));
 			}
-			if (fresh || signature != head.signature) {
+			if (fresh || signature != head.signature || !head.ok) {
+				const std::string before = head.report;
 				head.signature = std::move(signature);
 				Build(a_actor, head);
+				if (head.report == before) {
+					return &head;
+				}
 				logger::info("{}: {}{}{}", a_actor->GetDisplayFullName(), head.report, head.ok ? "; face " + head.faceName : std::string{},
 					head.ok ? "; eyes " + head.eyesName : std::string{});
 			}

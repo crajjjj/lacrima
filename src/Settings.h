@@ -50,6 +50,9 @@ namespace Lacrima
 
 		static std::unique_lock<std::recursive_mutex> Lock();
 		static Settings&                              Get();
+		// What the menu saves. The menu edits both this and Get(); a script or the
+		// console (SetEnabled, tears ducts) edits only Get(), so it lasts one session.
+		static Settings&                              Persisted();
 		static Settings                               Snapshot();
 		static const Settings&                        Defaults();
 
