@@ -155,10 +155,13 @@ namespace Lacrima
 			float                          opacity{ -1.0f };
 			float                          shine{ -1.0f };
 			float                          gloss{ -1.0f };
+			float                          reflection{ -1.0f };
 			Fluid::Vec3                    restDown;        // where down was when the sleeping tears settled
 			bool                           rested{ false };
 			bool                           dirty{ true };   // the fluid changed since the last draw
 			bool                           probe{ false };  // debug: log the first solver step of the tear that just started
+
+			std::uint32_t deposits{ 0 };  // drops left on the trail so far, numbering them
 
 			bool          sheds{ true };
 			bool          welling{ false };
@@ -255,6 +258,8 @@ namespace Lacrima
 			   std::optional<Fluid::Vec3> a_contact = std::nullopt);
 		void    PoseRope(const Mount& a_mount, Cheek& a_cheek, Rope& a_rope, std::size_t a_begin, std::size_t a_end, const Fluid::Anchor* a_anchor,
 			   float a_width, float a_fade);
+		// Poses a_rope along the particles in _ropePoints (filled by the caller).
+		void    PoseRopeFrom(const Mount& a_mount, Cheek& a_cheek, Rope& a_rope, const Fluid::Anchor* a_anchor, float a_width, float a_fade);
 		void    Bend(Rope& a_rope, const std::array<RE::NiPoint3, kRopeBones>& a_positions, const std::array<float, kRopeBones>& a_radii);
 
 		static Fluid::Vec3  ToLocal(const Frame& a_frame, const RE::NiPoint3& a_point);
@@ -288,6 +293,7 @@ namespace Lacrima
 		std::vector<std::size_t>              _claimed;
 		std::vector<std::size_t>              _seeds;
 		std::vector<std::size_t>              _remap;
+		std::vector<std::size_t>              _trail;
 		std::vector<std::vector<std::size_t>> _hints;
 		std::vector<Fluid::Cluster>           _clusters;
 		std::vector<Fluid::Piece>             _pieces;

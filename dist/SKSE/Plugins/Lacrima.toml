@@ -7,7 +7,7 @@
 
 [general]
 enabled = true
-debug_log = true       # face, duct and fluid details in Lacrima.log (on in this diagnostic build; a status line every 10 s while anyone cries)
+debug_log = false      # face, duct and fluid details in Lacrima.log, and a status line every 10 s while anyone cries
 
 [tears]
 rate = 12.0            # tears per minute from each eye at full intensity
@@ -23,10 +23,11 @@ max_distance = 3000    # game units from the camera; farther actors' tears pause
 
 [look]
 size = 1.0             # drop size; real tears are about 1, bigger reads better from afar
-trail = 0.8            # width of the wet trail a tear leaves
-opacity = 0.55
-shine = 3.0            # strength of the wet highlight
-gloss = 160.0          # sharpness of the highlight
+trail = 1.2            # width of the wet trail a tear leaves
+opacity = 0.4          # how much the water hides the skin; the rest shows through
+shine = 4.0            # strength of the wet highlight
+gloss = 250.0          # sharpness of the highlight
+reflection = 0.6       # how much of the surroundings the water reflects; 0 is matte
 lifetime = 30.0        # seconds a trail stays wet
 fade = 5.0             # seconds at the end of its life a trail spends thinning out
 
@@ -46,5 +47,5 @@ reach = 7.0            # in a wipe gesture, how close the hand must come to the 
 gesture_wait = 3.5     # seconds a wipe gesture waits for the hand before drying the face anyway
 
 [debug]
-show_ducts = true      # mark where tears start on the console-selected actor, or the player (on in this diagnostic build: two beads under the eyes)
+show_ducts = false     # mark where tears start on the console-selected actor, or the player (two beads under the eyes)
 mount_world = true     # true: draw the tears in world space under the cell node (the proven way); false: under the head bone (cheaper, being validated)

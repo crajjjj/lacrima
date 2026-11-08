@@ -54,6 +54,8 @@ namespace Lacrima
 				"Strength of the wet highlight." },
 			Field{ "look", "gloss", &Settings::gloss, 1.0f, 1000.0f, "Look", "Gloss", "%.0f",
 				"Sharpness of the highlight. High is a small bright glint, low a broad sheen." },
+			Field{ "look", "reflection", &Settings::reflection, 0.0f, 3.0f, "Look", "Reflection", "%.2f",
+				"How much of the surroundings the water reflects. 0 is matte." },
 			Field{ "look", "lifetime", &Settings::lifetime, 3.0f, 300.0f, "Look", "Trail lifetime", "%.0f s",
 				"Seconds a tear trail stays wet on the face." },
 			Field{ "look", "fade", &Settings::fade, 0.2f, 30.0f, "Look", "Fade", "%.1f s",

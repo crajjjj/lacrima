@@ -52,6 +52,7 @@ namespace Lacrima::Fluid
 		float         travel{};    // metres moved along a surface since it last stopped
 		std::int32_t  surface{ -1 };
 		std::uint32_t run{};
+		std::uint32_t order{};  // a drop left behind by a running tear: its place in that tear's trail (0 = not left behind)
 		bool          bulk{};
 		bool          asleep{};
 		bool          touching{};

@@ -14,7 +14,7 @@ namespace Lacrima
 	struct Settings
 	{
 		bool enabled{ true };
-		bool debugLog{ true };
+		bool debugLog{ false };
 
 		float rate{ 12.0f };
 		int   drop{ 6 };
@@ -28,10 +28,11 @@ namespace Lacrima
 		float maxDistance{ 3000.0f };
 
 		float size{ 1.0f };
-		float trail{ 0.8f };
-		float opacity{ 0.55f };
-		float shine{ 3.0f };
-		float gloss{ 160.0f };
+		float trail{ 1.2f };
+		float opacity{ 0.4f };
+		float shine{ 4.0f };
+		float gloss{ 250.0f };
+		float reflection{ 0.6f };
 		float lifetime{ 30.0f };
 		float fade{ 5.0f };
 
@@ -48,7 +49,7 @@ namespace Lacrima
 		float reach{ 7.0f };
 		float gestureWait{ 3.5f };
 
-		bool showDucts{ true };
+		bool showDucts{ false };
 		bool mountWorld{ true };
 
 		static std::unique_lock<std::recursive_mutex> Lock();

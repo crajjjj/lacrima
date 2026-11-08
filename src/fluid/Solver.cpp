@@ -19,6 +19,7 @@ namespace Lacrima::Fluid
 		constexpr float       kSleepTime = 0.4f;
 		constexpr float       kSkinGravity = 0.25f;
 		constexpr float       kStickReach = 2.0f;
+		constexpr float       kStickGrace = 0.15f;  // seconds after losing the skin during which the stick-pull still reaches for a particle
 		constexpr float       kHanging = -0.5f;
 		constexpr float       kSeparation = 0.1f;
 		constexpr float       kAnchorBreak = 12.0f;
@@ -117,7 +118,10 @@ namespace Lacrima::Fluid
 			if (a_particles[i].asleep) {
 				continue;
 			}
-			Vec3& point = _predicted[i];
+			// A particle that just lost the skin (a gap between the patches of a sparse
+			// head, a fold) is still pulled back for a moment instead of falling.
+			const bool sticky = a_particles[i].touching || a_particles[i].airborne < kStickGrace;
+			Vec3&      point = _predicted[i];
 			if (std::ranges::any_of(a_colliders.holes, [&](const Hole& a_hole) { return LengthSquared(point - a_hole.center) < a_hole.radius * a_hole.radius; })) {
 				continue;
 			}
@@ -139,7 +143,7 @@ namespace Lacrima::Fluid
 				const Vec3  normal = distance > 1e-7f ? offset * (1.0f / distance) : up;
 				if (distance < limit) {
 					point = closest + normal * limit;
-				} else if (a_pull && a_particles[i].touching && distance < capsule.radius + reach && Dot(normal, up) > kHanging) {
+				} else if (a_pull && sticky && distance < capsule.radius + reach && Dot(normal, up) > kHanging) {
 					point = closest + normal * limit;
 				} else {
 					continue;
@@ -162,7 +166,7 @@ namespace Lacrima::Fluid
 				}
 				const auto& patch = patches[k];
 				const float depth = Dot(point - patch.position, patch.normal);
-				const bool  pulled = a_pull && a_particles[i].touching && depth < reach && Dot(patch.normal, up) > kHanging;
+				const bool  pulled = a_pull && sticky && depth < reach && Dot(patch.normal, up) > kHanging;
 				if (depth >= margin && !pulled) {
 					break;
 				}
@@ -418,6 +422,7 @@ namespace Lacrima::Fluid
 			if (particle.touching) {
 				particle.travel += Length(_predicted[i] - particle.position);
 			}
+			particle.airborne = particle.touching ? 0.0f : particle.airborne + a_seconds;
 			particle.position = _predicted[i];
 			particle.velocity = velocity;
 			// A tear at rest on the skin sleeps: the skin does not move in this frame,

@@ -10,18 +10,22 @@
 import math
 import os
 
-from nifkit import (ALPHA_BLEND, SLSF1_RECEIVE_SHADOWS, SLSF1_REMAPPABLE_TEXTURES, SLSF1_SKINNED, SLSF1_SPECULAR,
+from nifkit import (ALPHA_BLEND, SLSF1_ENVIRONMENT_MAPPING, SLSF1_RECEIVE_SHADOWS, SLSF1_SKINNED, SLSF1_SPECULAR,
                     SLSF1_ZBUFFER_TEST, TEXTURE_DIR, build_skinned_nif, dds_bgra, f32, glint_normal_map, i32, u32)
 
 ROPE_BONES = 16
 ROPE_SIDES = 8
-SLSF2_ZBUFFER_WRITE = 0x1
 
-# Tears read as wet skin: a slightly darkening, cool tint under a strong highlight.
-# The game sets opacity, highlight strength and sharpness at run time from the
-# [look] settings; the values here are only what the mesh starts with.
-TEAR_COLOR = (178, 188, 198)
-TEAR_ALPHA = 0.55
+# Water, not paint: an environment-mapped shader with a dark, cool, translucent
+# base, so what shows is the skin darkened a little under the drop, a reflection of
+# the surroundings and a sharp highlight. No depth write: the drops and the trail
+# overlap and transparent things must not z-fight each other. The game sets opacity,
+# highlight, gloss and reflection at run time from the [look] settings; the values
+# here are only what the mesh starts with.
+TEAR_COLOR = (120, 130, 145)
+TEAR_ALPHA = 0.4
+TEAR_REFLECTION = 0.6
+CUBEMAP = 'textures\\cubemaps\\chrome_e.dds'  # vanilla, in Skyrim - Textures3.bsa
 
 
 def normalize(p):
@@ -98,18 +102,20 @@ def rope_geometry():
 
 
 def tear_shader(texset):
-    flags1 = SLSF1_SPECULAR | SLSF1_SKINNED | SLSF1_RECEIVE_SHADOWS | SLSF1_REMAPPABLE_TEXTURES | SLSF1_ZBUFFER_TEST
-    out = u32(0) + i32(-1) + u32(0) + i32(-1) + u32(flags1) + u32(SLSF2_ZBUFFER_WRITE)
+    flags1 = SLSF1_SPECULAR | SLSF1_SKINNED | SLSF1_RECEIVE_SHADOWS | SLSF1_ENVIRONMENT_MAPPING | SLSF1_ZBUFFER_TEST
+    out = u32(1) + i32(-1) + u32(0) + i32(-1) + u32(flags1) + u32(0)  # shader type 1 = environment map; SLSF2 empty = no depth write
     out += f32(0.0, 0.0) + f32(1.0, 1.0) + i32(texset)
     out += f32(0.0, 0.0, 0.0) + f32(1.0)
     out += u32(3)
-    out += f32(TEAR_ALPHA) + f32(0.0) + f32(160.0)
-    out += f32(1.0, 1.0, 1.0) + f32(3.0)
+    out += f32(TEAR_ALPHA) + f32(0.0) + f32(250.0)
+    out += f32(1.0, 1.0, 1.0) + f32(4.0)
     out += f32(0.3) + f32(2.0)
+    out += f32(TEAR_REFLECTION)  # environment map scale (shader type 1 only)
     return out
 
 
-TEXTURES = [TEXTURE_DIR + 'tear.dds', TEXTURE_DIR + 'tear_n.dds']
+# slots: 0 diffuse, 1 normal (alpha = specular mask), 4 cube map, 5 environment mask
+TEXTURES = [TEXTURE_DIR + 'tear.dds', TEXTURE_DIR + 'tear_n.dds', '', '', CUBEMAP, TEXTURE_DIR + 'tear_m.dds']
 
 
 def build_blob():
@@ -143,7 +149,9 @@ def main():
     # A gentle ripple normal map; its alpha is the specular mask, so the highlight
     # breaks into small glints along a trail instead of one flat sheen.
     open(os.path.join(tex_dir, 'tear_n.dds'), 'wb').write(dds_bgra(32, 64, glint_normal_map(32, 64), normal=True))
-    print('tear.dds, tear_n.dds')
+    # the environment mask: reflect everywhere, scaled at run time by [look] reflection
+    open(os.path.join(tex_dir, 'tear_m.dds'), 'wb').write(dds_bgra(8, 8, lambda x, y: (255, 255, 255, 255)))
+    print('tear.dds, tear_n.dds, tear_m.dds')
 
 
 if __name__ == '__main__':

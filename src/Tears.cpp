@@ -32,7 +32,7 @@ namespace Lacrima
 		constexpr float       kStreakStart = 0.3f;
 		constexpr float       kMaxStretch = 3.0f;
 		constexpr float       kSquash = 0.45f;
-		constexpr float       kSkinCell = 0.02f;
+		constexpr float       kSkinCell = 0.03f;  // the skin lookup finds a patch within half of this: a vanilla head's cheek has 1 cm gaps
 		constexpr float       kSkinMargin = 0.06f;
 		constexpr float       kWellSpeed = 0.02f;
 		constexpr float       kFallSpeed = 0.25f;
@@ -1146,6 +1146,8 @@ namespace Lacrima
 				particle.asleep = true;
 				particle.velocity = {};
 				particle.idle = 0.0f;
+				particle.bulk = false;  // a drop on the trail is drawn as part of the trail, not as part of the bead
+				particle.order = ++a_cheek.deposits;
 				// the rest of the bead starts counting again: the next drop is left another
 				// step further on, not on the next frame
 				for (std::size_t i = begin; i < end; ++i) {
@@ -1169,7 +1171,6 @@ namespace Lacrima
 		};
 		for (auto& particle : particles) {
 			particle.life -= a_delta;
-			particle.airborne = particle.touching ? 0.0f : particle.airborne + a_delta;
 			if (particle.airborne > kFallGrace && Fluid::Dot(particle.velocity, a_frame.down) > kFallSpeed && particle.life > a_settings.fall) {
 				particle.life = a_settings.fall;
 				++a_cheek.cutFalling;
@@ -1512,6 +1513,9 @@ namespace Lacrima
 				if (auto* material = static_cast<RE::BSLightingShaderMaterialBase*>(shader->GetBaseMaterial())) {
 					material->specularColorScale = a_settings.shine;
 					material->specularPower = a_settings.gloss;
+					if (material->GetFeature() == RE::BSShaderMaterial::Feature::kEnvironmentMap) {
+						static_cast<RE::BSLightingShaderMaterialEnvmap*>(material)->envMapScale = a_settings.reflection;
+					}
 				}
 			}
 		}
@@ -1519,7 +1523,8 @@ namespace Lacrima
 
 	void Tears::Reshade(Cheek& a_cheek, const Settings& a_settings)
 	{
-		if (a_cheek.opacity == a_settings.opacity && a_cheek.shine == a_settings.shine && a_cheek.gloss == a_settings.gloss) {
+		if (a_cheek.opacity == a_settings.opacity && a_cheek.shine == a_settings.shine && a_cheek.gloss == a_settings.gloss &&
+			a_cheek.reflection == a_settings.reflection) {
 			return;
 		}
 		for (auto& blob : a_cheek.blobs) {
@@ -1531,6 +1536,7 @@ namespace Lacrima
 		a_cheek.opacity = a_settings.opacity;
 		a_cheek.shine = a_settings.shine;
 		a_cheek.gloss = a_settings.gloss;
+		a_cheek.reflection = a_settings.reflection;
 	}
 
 	Tears::Blob* Tears::AcquireBlob(Cheek& a_cheek)
@@ -1635,11 +1641,16 @@ namespace Lacrima
 	void Tears::PoseRope(const Mount& a_mount, Cheek& a_cheek, Rope& a_rope, std::size_t a_begin, std::size_t a_end, const Fluid::Anchor* a_anchor,
 		float a_width, float a_fade)
 	{
+		_ropePoints.assign(a_cheek.particles.begin() + static_cast<std::ptrdiff_t>(a_begin), a_cheek.particles.begin() + static_cast<std::ptrdiff_t>(a_end));
+		PoseRopeFrom(a_mount, a_cheek, a_rope, a_anchor, a_width, a_fade);
+	}
+
+	void Tears::PoseRopeFrom(const Mount& a_mount, Cheek& a_cheek, Rope& a_rope, const Fluid::Anchor* a_anchor, float a_width, float a_fade)
+	{
 		const float spacing = a_cheek.spacing;
 		const float volume = spacing * spacing * spacing;
 		const float fade = std::max(a_fade, 1e-3f);
 		auto&       points = _ropePoints;
-		points.assign(a_cheek.particles.begin() + static_cast<std::ptrdiff_t>(a_begin), a_cheek.particles.begin() + static_cast<std::ptrdiff_t>(a_end));
 		if (a_anchor) {
 			Fluid::Particle tip = points.back();
 			tip.position = a_anchor->point;
@@ -1883,6 +1894,14 @@ namespace Lacrima
 		for (const auto& run : _runs) {
 			const auto  held = std::ranges::find_if(a_cheek.anchors, [&](const Fluid::Anchor& a) { return a.particle + 1 == run.end; });
 			const auto* anchor = held != a_cheek.anchors.end() ? &*held : nullptr;
+			if (particles[run.begin].order > 0) {
+				// drops left on a trail are drawn by the trail pass below, plus a bead each
+				for (std::size_t i = run.begin; i < run.end; ++i) {
+					const auto& drop = particles[i];
+					droplets.push_back({ drop.position, Fluid::VolumeRadius(1, volume) * std::cbrt(field.Weight(drop)), drop.velocity, contactOf({ &i, 1 }) });
+				}
+				continue;
+			}
 			if (run.Size() >= 2 || anchor) {
 				if (Rope* rope = AcquireRope(a_cheek)) {
 					PoseRope(a_mount, a_cheek, *rope, run.begin, run.end, anchor, a_settings.trail, a_settings.fade);
@@ -1905,6 +1924,47 @@ namespace Lacrima
 					++ropes;
 				}
 			}
+		}
+		// The trail a tear left behind: the drops it deposited, in the order it left
+		// them, and the bead itself while it still runs, as one rope down the cheek.
+		for (std::size_t begin = 0; begin < particles.size();) {
+			std::size_t end = begin + 1;
+			while (end < particles.size() && particles[end].run == particles[begin].run) {
+				++end;
+			}
+			auto& trail = _trail;
+			trail.clear();
+			Vec3        beadSum{};
+			float       beadLife = 0.0f;
+			std::size_t bead = 0;
+			for (std::size_t i = begin; i < end; ++i) {
+				const auto& particle = particles[i];
+				if (particle.order > 0) {
+					trail.push_back(i);
+				} else if (!particle.asleep) {
+					beadSum += particle.position;
+					beadLife += particle.life;
+					++bead;
+				}
+			}
+			if (trail.size() + (bead ? 1 : 0) >= 2) {
+				std::ranges::sort(trail, [&](std::size_t a_lhs, std::size_t a_rhs) { return particles[a_lhs].order < particles[a_rhs].order; });
+				_ropePoints.clear();
+				for (const auto i : trail) {
+					_ropePoints.push_back(particles[i]);
+				}
+				if (bead) {
+					Fluid::Particle tip = _ropePoints.back();
+					tip.position = beadSum * (1.0f / static_cast<float>(bead));
+					tip.life = beadLife / static_cast<float>(bead);
+					_ropePoints.push_back(tip);
+				}
+				if (Rope* rope = AcquireRope(a_cheek)) {
+					PoseRopeFrom(a_mount, a_cheek, *rope, nullptr, a_settings.trail, a_settings.fade);
+					++ropes;
+				}
+			}
+			begin = end;
 		}
 		for (const auto& droplet : droplets) {
 			if (droplet.radius <= 0.0f) {
