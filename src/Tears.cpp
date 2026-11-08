@@ -1068,10 +1068,10 @@ namespace Lacrima
 			a_cheek.probe = false;
 			const auto&       first = particles.back();
 			const std::size_t nearest = a_cheek.skin.Nearest(first.position);
-			std::string       near = "no patch within 1 cm";
+			std::string       nearby = "no patch within 1 cm";
 			if (nearest != Fluid::kNone) {
 				const auto& patch = patches[nearest];
-				near = std::format("nearest patch {:.1f} mm away, depth {:.1f} mm along its normal ({:.2f}, {:.2f}, {:.2f})",
+				nearby = std::format("nearest patch {:.1f} mm away, depth {:.1f} mm along its normal ({:.2f}, {:.2f}, {:.2f})",
 					Fluid::Length(first.position - patch.position) * 1000.0f, Fluid::Dot(first.position - patch.position, patch.normal) * 1000.0f,
 					patch.normal.x, patch.normal.y, patch.normal.z);
 			}
@@ -1081,17 +1081,17 @@ namespace Lacrima
 			}
 			const RE::NiPoint3 world = ToWorld(a_frame, first.position);
 			logger::info("first step: {} of {} posed patches under the fluid, {} of {} particles touching; newest particle at head-space ({:.3f}, {:.3f}, {:.3f}) m = world ({:.1f}, {:.1f}, {:.1f}); {}; {} anchors",
-				patches.size(), a_cheek.lastPosed, touching, particles.size(), first.position.x, first.position.y, first.position.z, world.x, world.y, world.z, near,
+				patches.size(), a_cheek.lastPosed, touching, particles.size(), first.position.x, first.position.y, first.position.z, world.x, world.y, world.z, nearby,
 				a_cheek.anchors.size());
 			if (!patches.empty()) {
-				Vec3 low = patches.front().position;
-				Vec3 high = low;
+				Vec3 lo = patches.front().position;
+				Vec3 hi = lo;
 				for (const auto& patch : patches) {
-					low = { std::min(low.x, patch.position.x), std::min(low.y, patch.position.y), std::min(low.z, patch.position.z) };
-					high = { std::max(high.x, patch.position.x), std::max(high.y, patch.position.y), std::max(high.z, patch.position.z) };
+					lo = { std::min(lo.x, patch.position.x), std::min(lo.y, patch.position.y), std::min(lo.z, patch.position.z) };
+					hi = { std::max(hi.x, patch.position.x), std::max(hi.y, patch.position.y), std::max(hi.z, patch.position.z) };
 				}
-				logger::info("first step: skin under the fluid spans head-space x [{:.3f}, {:.3f}] y [{:.3f}, {:.3f}] z [{:.3f}, {:.3f}] m", low.x, high.x, low.y,
-					high.y, low.z, high.z);
+				logger::info("first step: skin under the fluid spans head-space x [{:.3f}, {:.3f}] y [{:.3f}, {:.3f}] z [{:.3f}, {:.3f}] m", lo.x, hi.x, lo.y,
+					hi.y, lo.z, hi.z);
 			} else if (a_view && !a_view->patches.empty()) {
 				const Vec3 sample = ToLocal(a_frame, a_view->patches.front().position);
 				logger::info("first step: the posed face is elsewhere; its first patch is at head-space ({:.3f}, {:.3f}, {:.3f}) m = world ({:.1f}, {:.1f}, {:.1f})",
