@@ -37,6 +37,16 @@ To see it working: open the console, click an NPC (or click nothing for the play
 Updating: install the new version over the old one. Your saved settings are kept. No clean save needed.
 
 
+OPTIONAL ADD-ON: VICTIMS CRY IN SEXLAB P+ SCENES
+
+The optional file "Lacrima add-on - SexLab P+ victims cry while penetrated" makes Lacrima react to SexLab on its own. Install it alongside Lacrima. During a SexLab P+ scene, an actor SexLab marks as a victim cries while being penetrated (vaginal, anal or oral) and keeps crying, more quietly, for a while after it stops or the scene ends. Partners who are not victims never cry from it.
+
+- Needs Lacrima 0.1.1 or newer, SexLab P+ and PapyrusUtil. It does not work with classic SexLab.
+- On P+ 2.19 or newer it follows P+'s live penetration detection, so the tears start and stop with what actually happens in the scene. On older P+ it goes by the stage tags.
+- It adds one small ESL-flagged plugin and two scripts.
+- Settings are in Data\SKSE\Plugins\StorageUtilData\LacrimaSexLab.json: on/off, how hard victims cry, how long they keep crying afterwards, whether oral counts, and whether the player and NPCs take part. Edits apply from the next scene.
+
+
 SETTINGS
 
 With SKSE Menu Framework, the Lacrima pages change everything live and save your changes when the menu closes:
