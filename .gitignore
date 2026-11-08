@@ -1,0 +1,22 @@
+# build
+.xmake/
+build/
+vsxmakefiles/
+compile_commands.json
+.vs/
+.cache/
+
+# generated: DLL from xmake, pex + psc mirror from Pyro
+dist/**
+!dist/SKSE/
+!dist/SKSE/Plugins/
+!dist/SKSE/Plugins/Lacrima.toml
+!dist/SKSE/CustomConsole/
+!dist/SKSE/CustomConsole/*.yaml
+!dist/meshes/
+!dist/meshes/**
+!dist/textures/
+!dist/textures/**
+
+Release/
+__pycache__/

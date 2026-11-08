@@ -1,0 +1,112 @@
+# Lacrima
+
+Procedural tears for Skyrim SE/AE. Tears well up at the lower lid, cling, then run
+down the face and follow its shape as the head moves and the expression changes. They
+leave a wet trail that dries up, and a drop that reaches the chin falls off.
+
+Lacrima is a framework: it makes an actor cry when another mod, a script, the console
+or its own settings menu asks it to. On its own it does nothing in game.
+
+## Requirements
+
+- SKSE and Address Library for SKSE Plugins
+- Optional: [SKSE Menu Framework](https://www.nexusmods.com/skyrimspecialedition/mods/120352) for the settings menu
+- Optional: [ConsoleUtil Extended](https://www.nexusmods.com/skyrimspecialedition/mods/133569) for the `tears` console commands
+
+## How it works
+
+Lacrima reads the actor's face and eyes meshes, as the game has posed them this frame,
+expression included, and turns them into a skin surface. Each eye gets a small fluid
+simulation: drops are particles that hold together, cling to the skin, slide down it
+and are carried along when the head moves. The particles are drawn as beads, as wet
+trails, and as drops that fall off the face.
+
+Tears start just below each eye. Where exactly is a setting, from the inner corner
+beside the nose to the outer corner.
+
+## Settings
+
+With SKSE Menu Framework installed, the Lacrima pages (Tears, Look, Physics, Test)
+change everything live and save your changes when the menu closes. Without it, write
+the values you want to change into `Data\SKSE\Plugins\Lacrima_User.toml`, using the
+sections and keys of `Lacrima.toml`, which lists every setting with its default.
+
+## Console
+
+With ConsoleUtil Extended installed. Commands act on the actor selected in the console,
+or on the player when none is selected.
+
+| Command | What it does |
+|---|---|
+| `tears cry 0.7 30` | Cry at intensity 0.7 for 30 seconds (0 seconds = until stopped) |
+| `tears stop` | Stop crying; `tears stop 1` also wipes the face |
+| `tears tear` | Shed a single tear (`tears tear 0` left eye, `1` right, `2` both) |
+| `tears wipe` / `tears wipeall` | Dry this face / every face |
+| `tears nearby 0.7 30 1500` | Every loaded actor within 1500 units of the player cries |
+| `tears status` | What Lacrima found on the head and what the tears are doing |
+| `tears ducts 1` | Mark where tears start (`tears ducts 0` to hide) |
+| `tears count` | How many actors are crying |
+| `tears enable 0` | Turn Lacrima off for this session (`1` on) |
+| `tears reload` | Read the toml files again |
+
+## For mod authors
+
+### Papyrus
+
+```papyrus
+If Lacrima.GetAPIVersion() > 0          ; 0: Lacrima is not installed
+    Lacrima.Cry(akActor, 0.7, 20.0)     ; intensity 0.0-1.0, seconds (<= 0 = until stopped)
+EndIf
+
+Lacrima.StopCrying(akActor)             ; tears on the face dry up
+Lacrima.StopCrying(akActor, true)       ; ... or vanish at once
+Lacrima.ShedTear(akActor)               ; one tear, also when not crying
+Lacrima.WipeTears(akActor)
+Bool  crying = Lacrima.IsCrying(akActor)
+Float left   = Lacrima.GetTimeLeft(akActor)   ; -1 = until stopped
+```
+
+`Cry` on an actor who already cries replaces the intensity and the time left. Calling a
+global function of a script that is not installed only logs an error, so the
+`GetAPIVersion` check is all an optional integration needs.
+
+Lacrima sends `Lacrima_CryStart` (numArg = intensity) and `Lacrima_CryStop` mod events,
+with the actor as the sender, so an expression mod can react to crying it did not start:
+
+```papyrus
+RegisterForModEvent("Lacrima_CryStart", "OnCryStart")
+
+Event OnCryStart(String asEventName, String asUnused, Float afIntensity, Form akSender)
+    Actor crying = akSender as Actor
+EndEvent
+```
+
+### SKSE plugins
+
+`include/API/LacrimaAPI.h` declares the same calls as C exports of `Lacrima.dll`.
+Resolve them at run time with `GetModuleHandleA("Lacrima.dll")` and `GetProcAddress`;
+there is nothing to link. Every call is safe from any thread.
+
+## Building
+
+```
+git clone --recurse-submodules <this repo>
+xmake f -m release
+xmake                  # Lacrima.dll -> dist\SKSE\Plugins
+xmake build papyrus    # scripts -> dist\Scripts, and Release\Lacrima-<version>.zip
+python tools/make_tears.py   # regenerates the tear meshes and textures in dist
+```
+
+Needs Visual Studio 2022 and xmake 3.0 or newer. `PYRO_EXE` and `SKYRIM_GAME_PATH`
+override where Pyro and the game are found.
+
+## Credits
+
+- The fluid simulation, the skin wrap and the mesh generators come from
+  [OStrands](https://gitlab.com/LilRicefield/ostrands) by LeonVanWinkle (Saint),
+  GPL-3.0. See NOTICE.txt.
+- Lacrima by crajjjj.
+
+## License
+
+GNU General Public License v3.0; see LICENSE.

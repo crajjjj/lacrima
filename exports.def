@@ -1,0 +1,12 @@
+LIBRARY	"Lacrima"
+EXPORTS
+SKSEPlugin_Load
+Lacrima_GetVersion
+Lacrima_GetInterfaceVersion
+Lacrima_Cry
+Lacrima_StopCrying
+Lacrima_IsCrying
+Lacrima_GetIntensity
+Lacrima_GetTimeLeft
+Lacrima_ShedTear
+Lacrima_Wipe

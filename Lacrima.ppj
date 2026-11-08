@@ -1,0 +1,34 @@
+<?xml version='1.0'?>
+<PapyrusProject xmlns="PapyrusProject.xsd"
+    Flags="TESV_Papyrus_Flags.flg"
+    Game="sse"
+    Output="dist\Scripts"
+    Optimize="false"
+    Release="false"
+    Zip="true"
+    Package="false"
+    Final="false">
+    <Variables>
+        <Variable Name="ModName" Value="Lacrima" />
+        <Variable Name="ModsFolder" Value="C:\Playground\Skyrim\mods" />
+    </Variables>
+    <Imports>
+        <Import>.\papyrus\Source</Import>
+        <Import>C:\SteamLibrary\steamapps\common\Skyrim Special Edition\Data\Source\Scripts</Import>
+    </Imports>
+    <Folders>
+        <Folder>.\papyrus\Source</Folder>
+    </Folders>
+    <!-- Every pyro run refreshes the installable archive; `xmake build release`
+         rebuilds the DLL first. DLL + config + console harness + scripts + the
+         tear meshes and textures. -->
+    <ZipFiles Output=".\Release">
+        <ZipFile Name="@ModName" RootDir=".\dist" Compression="deflate">
+            <Match In="Scripts">*.pex</Match>
+            <Match In="Scripts\Source">*.psc</Match>
+            <Match In="SKSE">*.*</Match>
+            <Match In="meshes">*.*</Match>
+            <Match In="textures">*.*</Match>
+        </ZipFile>
+    </ZipFiles>
+</PapyrusProject>

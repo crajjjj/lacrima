@@ -1,0 +1,89 @@
+# ConsoleUtil Extended (CUE) command config for the Lacrima test harness.
+# Requires: ConsoleUtil Extended  https://www.nexusmods.com/skyrimspecialedition/mods/133569
+# Drops into Data\SKSE\CustomConsole\ ; maps console subcommands onto the global
+# functions in LacrimaTest.psc, by position: keep each sub's args in the order of
+# the function's parameters. Commands act on the console-selected actor (click one
+# with the console open), or on the player when none is selected.
+#
+# Usage in console:  Lacrima cry 0.8 30     (or the alias)  tears cry 0.8 30
+version: 1
+name: Lacrima
+alias: tears
+script: LacrimaTest
+help: Lacrima tears test harness
+subs:
+  - name: cry
+    func: Cry
+    help: Make the target cry (seconds 0 = until stopped)
+    args:
+      - name: intensity
+        type: float
+        default: 0.7
+        help: 0.0 to 1.0, how often and how heavily the eyes shed
+      - name: seconds
+        type: float
+        default: 30
+        help: How long to cry; 0 cries until stopped
+  - name: stop
+    func: Stop
+    help: Stop crying; the tears on the face dry up (wipe 1 removes them at once)
+    args:
+      - name: wipe
+        type: int
+        default: 0
+        help: 1 removes the tears at once
+  - name: tear
+    func: Tear
+    help: Shed a single tear, even when not crying
+    args:
+      - name: eye
+        type: int
+        default: -1
+        help: 0 left, 1 right, 2 both, -1 random
+  - name: wipe
+    func: Wipe
+    help: Remove the tears on the target's face
+  - name: wipeall
+    func: WipeAll
+    help: Remove the tears on every face
+  - name: status
+    func: Status
+    help: What Lacrima found on the target's head and what its tears are doing (run twice for a new target)
+  - name: count
+    func: Count
+    help: How many actors are crying
+  - name: nearby
+    func: Nearby
+    help: Make every loaded actor near the player cry
+    args:
+      - name: intensity
+        type: float
+        default: 0.7
+        help: 0.0 to 1.0
+      - name: seconds
+        type: float
+        default: 30
+        help: How long to cry; 0 cries until stopped
+      - name: radius
+        type: float
+        default: 1500
+        help: Distance from the player in game units
+  - name: ducts
+    func: Ducts
+    help: Mark where tears start on the target (1 on, 0 off)
+    args:
+      - name: show
+        type: int
+        default: 1
+        help: 1 on, 0 off
+  - name: enable
+    func: Enable
+    help: Turn Lacrima on (1) or off (0) for this session
+    args:
+      - name: enabled
+        type: int
+        default: 1
+        help: 1 on, 0 off
+  - name: reload
+    func: Reload
+    help: Read Lacrima.toml and Lacrima_User.toml again

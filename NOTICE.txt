@@ -1,0 +1,18 @@
+Lacrima by crajjjj, GNU General Public License version 3; see LICENSE.
+
+Lacrima contains code adapted from OStrands by LeonVanWinkle (Saint), also
+GPL-3.0, taken from OStrands 0.8.0 (https://gitlab.com/LilRicefield/ostrands):
+
+- src/fluid/*: the position-based fluid solver, skin lookup grid, clusters and
+  density-field surface, unchanged apart from the namespace.
+- src/GeometryMath.h: the rope frame transport, unchanged apart from the namespace.
+- src/Face.cpp: the skin wrap (vertex decoding, facegen dynamic data, skinning),
+  reduced from OStrands' whole-body wrap to the face and eyes, with tear duct
+  placement added.
+- src/Tears.cpp: the fluid rendering (blobs, ropes, drops), with emitters,
+  reservoirs and ground sampling replaced by tear ducts.
+- src/Hooks.cpp: the frame driver.
+- tools/nifkit.py and tools/make_tears.py: the NIF and DDS writers.
+
+vendor/SKSEMenuFramework/SKSEMenuFramework.h is the client header of SKSE Menu
+Framework, GPL-3.0; see vendor/SKSEMenuFramework/README.txt.
