@@ -15,11 +15,13 @@ or its own settings menu asks it to. On its own it does nothing in game.
 
 ## How it works
 
-Lacrima reads the actor's face and eyes meshes, as the game has posed them this frame,
-expression included, and turns them into a skin surface. Each eye gets a small fluid
-simulation: drops are particles that hold together, cling to the skin, slide down it
-and are carried along when the head moves. The particles are drawn as beads, as wet
-trails, and as drops that fall off the face.
+Lacrima reads the actor's face mesh, as the game has posed it this frame, expression
+included, and turns the skin under the tears into a surface. Each eye gets a small
+fluid simulation that lives in the head's own frame: drops are particles that hold
+together, cling to the skin and slide down it, and because the frame moves with the
+head they ride it without lag however fast the actor moves, while a tear at rest costs
+nothing. The particles are drawn as beads, as wet trails, and as drops that fall off
+the face. Actors far from the camera keep their tears paused until they come closer.
 
 Tears start just below each eye. Where exactly is a setting, from the inner corner
 beside the nose to the outer corner.

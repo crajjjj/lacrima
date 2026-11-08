@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <numbers>
 #include <numeric>
-#include <unordered_map>
 
 namespace Lacrima::Fluid
 {
@@ -17,54 +16,63 @@ namespace Lacrima::Fluid
 			}
 			return a_index;
 		}
+
+		// Scratch shared by the functions below; the fluid runs on the main thread only.
+		std::vector<std::size_t> g_parent;
+		std::vector<std::size_t> g_slot;
+		std::vector<std::size_t> g_owner;
+		std::vector<float>       g_nearest;
+		std::vector<std::size_t> g_middle;
 	}
 
-	std::vector<Cluster> FindClusters(std::span<const Particle> a_particles, std::span<const std::size_t> a_subset, float a_link,
-		CellGrid& a_grid)
+	void FindClusters(std::span<const Particle> a_particles, std::span<const std::size_t> a_subset, float a_link, CellGrid& a_grid,
+		std::vector<Cluster>& a_out)
 	{
-		std::vector<Cluster> result;
 		if (a_subset.empty() || !(a_link > 0.0f)) {
-			return result;
+			a_out.clear();
+			return;
 		}
 		a_grid.Begin(a_link);
 		for (std::size_t k = 0; k < a_subset.size(); ++k) {
 			a_grid.Add(a_particles[a_subset[k]].position, k);
 		}
 		a_grid.End();
-		std::vector<std::size_t> parent(a_subset.size());
+		auto& parent = g_parent;
+		parent.resize(a_subset.size());
 		std::iota(parent.begin(), parent.end(), std::size_t{ 0 });
 		const float limit = a_link * a_link;
 		for (std::size_t k = 0; k < a_subset.size(); ++k) {
 			const Vec3 position = a_particles[a_subset[k]].position;
-			const auto origin = a_grid.KeyOf(position);
-			for (int dx = -1; dx <= 1; ++dx) {
-				for (int dy = -1; dy <= 1; ++dy) {
-					for (int dz = -1; dz <= 1; ++dz) {
-						const auto* cell = a_grid.Find({ origin.x + dx, origin.y + dy, origin.z + dz });
-						if (!cell) {
-							continue;
-						}
-						for (const auto other : *cell) {
-							if (other > k && LengthSquared(a_particles[a_subset[other]].position - position) <= limit) {
-								parent[Root(parent, other)] = Root(parent, k);
-							}
-						}
-					}
+			a_grid.ForEachNear(position, [&](std::size_t a_other) {
+				if (a_other > k && LengthSquared(a_particles[a_subset[a_other]].position - position) <= limit) {
+					parent[Root(parent, a_other)] = Root(parent, k);
 				}
-			}
+			});
 		}
 
-		std::unordered_map<std::size_t, std::size_t> index;
+		auto& slot = g_slot;
+		slot.assign(a_subset.size(), kNone);
+		std::size_t used = 0;
 		for (std::size_t k = 0; k < a_subset.size(); ++k) {
-			const auto [slot, added] = index.try_emplace(Root(parent, k), result.size());
-			if (added) {
-				result.emplace_back();
+			const std::size_t root = Root(parent, k);
+			if (slot[root] == kNone) {
+				slot[root] = used;
+				if (used == a_out.size()) {
+					a_out.emplace_back();
+				}
+				auto& cluster = a_out[used];
+				cluster.members.clear();
+				cluster.center = {};
+				cluster.seed = 0;
+				cluster.extent = 0.0f;
+				++used;
 			}
-			auto& cluster = result[slot->second];
+			auto& cluster = a_out[slot[root]];
 			cluster.center += a_particles[a_subset[k]].position;
 			cluster.members.push_back(a_subset[k]);
 		}
-		for (auto& cluster : result) {
+		a_out.resize(used);
+		for (auto& cluster : a_out) {
 			cluster.center = cluster.center * (1.0f / static_cast<float>(cluster.members.size()));
 			float nearest = std::numeric_limits<float>::max();
 			for (const auto member : cluster.members) {
@@ -76,15 +84,15 @@ namespace Lacrima::Fluid
 				}
 			}
 		}
-		return result;
 	}
 
-	std::vector<Piece> SplitCluster(std::span<const Particle> a_particles, const Cluster& a_cluster, float a_radius,
-		std::span<const std::size_t> a_hints)
+	void SplitCluster(std::span<const Particle> a_particles, const Cluster& a_cluster, float a_radius, std::span<const std::size_t> a_hints,
+		std::vector<Piece>& a_out)
 	{
-		std::vector<Piece> pieces;
-		const auto         position = [&](std::size_t a_index) { return a_particles[a_index].position; };
-		const auto         covered = [&](Vec3 a_point, float a_reach) {
+		auto& pieces = a_out;
+		pieces.clear();
+		const auto position = [&](std::size_t a_index) { return a_particles[a_index].position; };
+		const auto covered = [&](Vec3 a_point, float a_reach) {
 			return std::ranges::any_of(pieces, [&](const Piece& a_piece) { return Length(position(a_piece.seed) - a_point) <= a_reach; });
 		};
 		for (std::size_t h = 0; h < a_hints.size(); ++h) {
@@ -101,7 +109,8 @@ namespace Lacrima::Fluid
 			}
 		}
 
-		std::vector<std::size_t> owner(a_cluster.members.size());
+		auto& owner = g_owner;
+		owner.assign(a_cluster.members.size(), 0);
 		for (std::size_t m = 0; m < a_cluster.members.size(); ++m) {
 			const Vec3 point = position(a_cluster.members[m]);
 			float      best = std::numeric_limits<float>::max();
@@ -115,8 +124,10 @@ namespace Lacrima::Fluid
 			pieces[owner[m]].center += point;
 			++pieces[owner[m]].count;
 		}
-		std::vector<float>       nearest(pieces.size(), std::numeric_limits<float>::max());
-		std::vector<std::size_t> middle(pieces.size());
+		auto& nearest = g_nearest;
+		auto& middle = g_middle;
+		nearest.assign(pieces.size(), std::numeric_limits<float>::max());
+		middle.assign(pieces.size(), 0);
 		for (auto& piece : pieces) {
 			piece.center = piece.center * (1.0f / static_cast<float>(std::max<std::size_t>(piece.count, 1)));
 		}
@@ -136,12 +147,12 @@ namespace Lacrima::Fluid
 			auto& piece = pieces[owner[m]];
 			piece.extent = std::max(piece.extent, Length(position(a_cluster.members[m]) - position(piece.seed)));
 		}
-		return pieces;
 	}
 
-	std::vector<Run> FindRuns(std::span<const Particle> a_particles)
+	void FindRuns(std::span<const Particle> a_particles, std::vector<Run>& a_out)
 	{
-		std::vector<Run> runs;
+		auto& runs = a_out;
+		runs.clear();
 		for (std::size_t i = 0; i < a_particles.size(); ++i) {
 			const auto& particle = a_particles[i];
 			if (particle.bulk || particle.run == 0) {
@@ -153,7 +164,6 @@ namespace Lacrima::Fluid
 				runs.push_back({ i, i + 1 });
 			}
 		}
-		return runs;
 	}
 
 	float VolumeRadius(std::size_t a_count, float a_volume)

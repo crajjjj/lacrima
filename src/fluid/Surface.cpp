@@ -30,24 +30,13 @@ namespace Lacrima::Fluid
 	template <class F>
 	void DensityField::ForNearby(Vec3 a_point, F&& a_visit) const
 	{
-		const auto origin = _grid.KeyOf(a_point);
-		for (int dx = -1; dx <= 1; ++dx) {
-			for (int dy = -1; dy <= 1; ++dy) {
-				for (int dz = -1; dz <= 1; ++dz) {
-					const auto* cell = _grid.Find({ origin.x + dx, origin.y + dy, origin.z + dz });
-					if (!cell) {
-						continue;
-					}
-					for (const auto i : *cell) {
-						const auto  delta = a_point - _particles[i].position;
-						const float distance = LengthSquared(delta);
-						if (distance < _radiusSquared) {
-							a_visit(_particles[i], delta, 1.0f - distance / _radiusSquared);
-						}
-					}
-				}
+		_grid.ForEachNear(a_point, [&](std::size_t a_index) {
+			const auto  delta = a_point - _particles[a_index].position;
+			const float distance = LengthSquared(delta);
+			if (distance < _radiusSquared) {
+				a_visit(_particles[a_index], delta, 1.0f - distance / _radiusSquared);
 			}
-		}
+		});
 	}
 
 	float DensityField::Value(Vec3 a_point) const

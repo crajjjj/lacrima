@@ -9,39 +9,35 @@ namespace Lacrima::Fluid
 {
 	namespace
 	{
-		constexpr float kMaxSpeed = 6.0f;
-		constexpr float kDomain = 1000.0f;
-		constexpr float kFloorFriction = 8.0f;
-		constexpr float kLinkStiffness = 0.6f;
-		constexpr float kLinkBreak = 12.0f;
-		constexpr float kLinkSnap = 6.0f;
-		constexpr float kSleepSpeed = 0.02f;
-		constexpr float kWakeSpeed = 0.08f;
-		constexpr float kSleepTime = 0.4f;
-		constexpr float kSkinGravity = 0.25f;
-		constexpr float kGroundSlide = 0.2f;
-		constexpr float kStickReach = 2.0f;
-		constexpr float kHanging = -0.5f;
-		constexpr float kSeparation = 0.1f;
-		constexpr float kAnchorBreak = 12.0f;
-		constexpr float kAnchorFlow = 15.0f;
-		constexpr float kCreep = 0.035f;
+		constexpr float       kMaxSpeed = 6.0f;
+		constexpr float       kDomain = 1000.0f;
+		constexpr float       kLinkStiffness = 0.6f;
+		constexpr float       kLinkBreak = 12.0f;
+		constexpr float       kLinkSnap = 6.0f;
+		constexpr float       kSleepSpeed = 0.02f;
+		constexpr float       kWakeSpeed = 0.08f;
+		constexpr float       kSleepTime = 0.4f;
+		constexpr float       kSkinGravity = 0.25f;
+		constexpr float       kStickReach = 2.0f;
+		constexpr float       kHanging = -0.5f;
+		constexpr float       kSeparation = 0.1f;
+		constexpr float       kAnchorBreak = 12.0f;
+		constexpr float       kAnchorFlow = 15.0f;
+		constexpr float       kCreep = 0.035f;
 		constexpr std::size_t kMaxLoad = 64;
-		constexpr float kCohesionFloor = 1.0f;
-	}
-
-	std::size_t Solver::CellHash::operator()(Cell a_cell) const noexcept
-	{
-		return (static_cast<std::uint32_t>(a_cell.x) * 73856093u) ^ (static_cast<std::uint32_t>(a_cell.y) * 19349663u) ^
-		       (static_cast<std::uint32_t>(a_cell.z) * 83492791u);
+		constexpr float       kCohesionFloor = 1.0f;
+		// The neighbour list for one solve is built once, with this much slack over the
+		// kernel radius (2 spacings) to cover the drift within the iterations.
+		constexpr float kSearch = 2.5f;
 	}
 
 	bool Solver::Valid(const Parameters& a_parameters)
 	{
 		const auto within = [](float a_value, float a_min, float a_max) { return std::isfinite(a_value) && a_value >= a_min && a_value <= a_max; };
 		return a_parameters.iterations > 0 && a_parameters.iterations <= 16 && within(a_parameters.cohesion, 0.0f, 20.0f) &&
-		       within(a_parameters.viscosity, 0.0f, 100.0f) && within(a_parameters.gravity, 0.0f, 30.0f) &&
-		       within(a_parameters.stretch, 0.0f, 30.0f) && within(a_parameters.friction, 0.0f, 200.0f) && within(a_parameters.grip, 0.0f, 10.0f);
+		       within(a_parameters.viscosity, 0.0f, 100.0f) && within(a_parameters.gravity, 0.0f, 300.0f) &&
+		       within(a_parameters.stretch, 0.0f, 30.0f) && within(a_parameters.friction, 0.0f, 200.0f) && within(a_parameters.grip, 0.0f, 10.0f) &&
+		       IsFinite(a_parameters.down) && std::abs(LengthSquared(a_parameters.down) - 1.0f) < 0.02f;
 	}
 
 	void Solver::Configure(const Parameters& a_parameters)
@@ -52,7 +48,8 @@ namespace Lacrima::Fluid
 	}
 
 	Solver::Solver(float a_spacing, Parameters a_parameters) :
-		_spacing(a_spacing), _radiusSquared(4.0f * a_spacing * a_spacing), _parameters(a_parameters)
+		_spacing(a_spacing), _radiusSquared(4.0f * a_spacing * a_spacing), _searchSquared(kSearch * kSearch * a_spacing * a_spacing),
+		_parameters(a_parameters)
 	{
 		if (!std::isfinite(a_spacing) || a_spacing < 1e-4f || a_spacing > 0.1f || !Valid(a_parameters)) {
 			throw std::invalid_argument("invalid fluid parameters");
@@ -64,13 +61,6 @@ namespace Lacrima::Fluid
 				}
 			}
 		}
-	}
-
-	Solver::Cell Solver::CellOf(Vec3 a_point) const
-	{
-		const float size = 2.0f * _spacing;
-		return { static_cast<int>(std::floor(a_point.x / size)), static_cast<int>(std::floor(a_point.y / size)),
-			static_cast<int>(std::floor(a_point.z / size)) };
 	}
 
 	float Solver::Weight(Vec3 a_delta) const
@@ -85,47 +75,41 @@ namespace Lacrima::Fluid
 		return a_delta * (-6.0f * q * q / (_radiusSquared * _restWeight));
 	}
 
-	void Solver::FindNeighbors(std::span<const Particle> a_particles, bool a_all)
+	void Solver::FindNeighbors(std::span<const Vec3> a_positions, std::span<const Particle> a_particles, float a_radiusSquared, bool a_all)
 	{
-		for (auto& [cell, members] : _grid) {
-			members.clear();
+		const std::size_t count = a_positions.size();
+		_grid.Begin(std::sqrt(a_radiusSquared));
+		for (std::size_t i = 0; i < count; ++i) {
+			_grid.Add(a_positions[i], i);
 		}
-		for (std::size_t i = 0; i < _predicted.size(); ++i) {
-			_grid[CellOf(_predicted[i])].push_back(i);
-		}
-		_neighbors.resize(_predicted.size());
-		for (std::size_t i = 0; i < _predicted.size(); ++i) {
-			auto& neighbors = _neighbors[i];
-			neighbors.clear();
-			if (!a_all && a_particles[i].asleep) {
-				continue;
-			}
-			const auto cell = CellOf(_predicted[i]);
-			for (int z = -1; z <= 1; ++z) {
-				for (int y = -1; y <= 1; ++y) {
-					for (int x = -1; x <= 1; ++x) {
-						const auto found = _grid.find({ cell.x + x, cell.y + y, cell.z + z });
-						if (found == _grid.end()) {
-							continue;
-						}
-						for (const auto j : found->second) {
-							if (i != j && LengthSquared(_predicted[i] - _predicted[j]) < _radiusSquared) {
-								neighbors.push_back(j);
-							}
-						}
+		_grid.End();
+		_neighborStart.resize(count + 1);
+		_neighborStart[0] = 0;
+		_neighborList.clear();
+		for (std::size_t i = 0; i < count; ++i) {
+			if (a_all || !a_particles[i].asleep) {
+				const Vec3 position = a_positions[i];
+				_grid.ForEachNear(position, [&](std::size_t a_other) {
+					if (a_other != i && LengthSquared(position - a_positions[a_other]) < a_radiusSquared) {
+						_neighborList.push_back(static_cast<std::uint32_t>(a_other));
 					}
-				}
+				});
 			}
+			_neighborStart[i + 1] = static_cast<std::uint32_t>(_neighborList.size());
 		}
-		if (_grid.size() > 4 * _predicted.size() + 64) {
-			std::erase_if(_grid, [](const auto& a_entry) { return a_entry.second.empty(); });
-		}
+	}
+
+	std::span<const std::uint32_t> Solver::Neighbors(std::size_t a_index) const
+	{
+		const std::uint32_t start = _neighborStart[a_index];
+		return std::span<const std::uint32_t>(_neighborList).subspan(start, _neighborStart[a_index + 1] - start);
 	}
 
 	void Solver::Collide(std::span<const Particle> a_particles, const Colliders& a_colliders, bool a_pull)
 	{
 		const float margin = 0.5f * _spacing;
 		const float reach = margin + kStickReach * _spacing;
+		const Vec3  up = -_parameters.down;
 		for (std::size_t i = 0; i < _predicted.size(); ++i) {
 			if (a_particles[i].asleep) {
 				continue;
@@ -149,10 +133,10 @@ namespace Lacrima::Fluid
 				const Vec3  offset = point - closest;
 				const float distance = Length(offset);
 				const float limit = capsule.radius + margin;
-				const Vec3  normal = distance > 1e-7f ? offset * (1.0f / distance) : Vec3{ 0.0f, 0.0f, 1.0f };
+				const Vec3  normal = distance > 1e-7f ? offset * (1.0f / distance) : up;
 				if (distance < limit) {
 					point = closest + normal * limit;
-				} else if (a_pull && a_particles[i].touching && distance < capsule.radius + reach && normal.z > kHanging) {
+				} else if (a_pull && a_particles[i].touching && distance < capsule.radius + reach && Dot(normal, up) > kHanging) {
 					point = closest + normal * limit;
 				} else {
 					continue;
@@ -172,7 +156,7 @@ namespace Lacrima::Fluid
 				}
 				const auto& patch = patches[k];
 				const float depth = Dot(point - patch.position, patch.normal);
-				const bool  pulled = a_pull && a_particles[i].touching && depth < reach && patch.normal.z > kHanging;
+				const bool  pulled = a_pull && a_particles[i].touching && depth < reach && Dot(patch.normal, up) > kHanging;
 				if (depth >= margin && !pulled) {
 					break;
 				}
@@ -184,7 +168,7 @@ namespace Lacrima::Fluid
 		}
 	}
 
-	std::optional<Vec3> Solver::Carrier(const Colliders& a_colliders, int a_surface, float a_along, Vec3 a_position)
+	std::optional<Vec3> Solver::Carrier(const Colliders& a_colliders, int a_surface, float a_along)
 	{
 		if (a_surface < 0) {
 			return std::nullopt;
@@ -197,14 +181,10 @@ namespace Lacrima::Fluid
 		if (!a_colliders.skin) {
 			return std::nullopt;
 		}
-		const std::size_t nearest = a_colliders.skin->Nearest(a_position);
-		if (nearest == kNone) {
-			return std::nullopt;
-		}
-		return a_colliders.skin->Patches()[nearest].velocity;
+		return Vec3{};  // the skin stands still in simulation space
 	}
 
-	void Solver::Step(std::span<Particle> a_particles, std::span<Anchor> a_anchors, const Colliders& a_colliders, const Ground& a_ground, float a_seconds)
+	void Solver::Step(std::span<Particle> a_particles, std::span<Anchor> a_anchors, const Colliders& a_colliders, float a_seconds)
 	{
 		if (!std::isfinite(a_seconds) || a_seconds <= 0.0f || a_seconds > 0.05f) {
 			throw std::invalid_argument("invalid fluid step");
@@ -219,6 +199,7 @@ namespace Lacrima::Fluid
 		if (count == 0) {
 			return;
 		}
+		const Vec3 down = _parameters.down;
 		_predicted.resize(count);
 		_velocity.resize(count);
 		_correction.resize(count);
@@ -226,24 +207,22 @@ namespace Lacrima::Fluid
 		_contact.assign(count, -1);
 		_along.resize(count);
 		_normal.resize(count);
-		const float lift = _spacing * 0.5f;
-		_floor.resize(count);
-		_anchored.assign(count, false);
+		_anchored.assign(count, 0);
 		for (const auto& anchor : a_anchors) {
 			if (anchor.rest > 0.0f && anchor.particle < count) {
-				_anchored[anchor.particle] = true;
+				_anchored[anchor.particle] = 1;
 			}
 		}
 		for (std::size_t i = 0; i < count; ++i) {
 			_predicted[i] = a_particles[i].position;
 		}
-		FindNeighbors(a_particles, true);
+		FindNeighbors(_predicted, a_particles, _radiusSquared, true);
 		for (std::size_t i = 0; i < count; ++i) {
 			auto& particle = a_particles[i];
 			if (!particle.asleep) {
 				continue;
 			}
-			const bool stirred = _anchored[i] || std::ranges::any_of(_neighbors[i], [&](std::size_t j) {
+			const bool stirred = _anchored[i] || std::ranges::any_of(Neighbors(i), [&](std::uint32_t j) {
 				return !a_particles[j].asleep && LengthSquared(a_particles[j].velocity) > kWakeSpeed * kWakeSpeed;
 			});
 			if (stirred) {
@@ -253,7 +232,7 @@ namespace Lacrima::Fluid
 		}
 		_weights.assign(count, 0.0f);
 		for (std::size_t i = 0; i < count; ++i) {
-			for (const auto j : _neighbors[i]) {
+			for (const auto j : Neighbors(i)) {
 				_weights[i] += Weight(a_particles[j].position - a_particles[i].position);
 			}
 		}
@@ -262,7 +241,7 @@ namespace Lacrima::Fluid
 				continue;
 			}
 			Vec3 cohesion{};
-			for (const auto j : _neighbors[i]) {
+			for (const auto j : Neighbors(i)) {
 				const auto  delta = a_particles[j].position - a_particles[i].position;
 				const float shared = std::max(0.5f * (_weights[i] + _weights[j]), kCohesionFloor);
 				cohesion += delta * (Weight(delta) / shared);
@@ -271,30 +250,20 @@ namespace Lacrima::Fluid
 			const auto& particle = a_particles[i];
 			Vec3        moving = particle.velocity;
 			if (particle.touching) {
-				if (const auto carrier = Carrier(a_colliders, particle.surface, particle.along, particle.position)) {
+				if (const auto carrier = Carrier(a_colliders, particle.surface, particle.along)) {
 					moving = moving - particle.carried + *carrier;
 				}
 			}
 			const float gravity = particle.touching ? _parameters.gravity * kSkinGravity : _parameters.gravity;
-			Vec3        slide{};
-			if (particle.position.z <= a_ground.Height(particle.position.x, particle.position.y) + lift * 1.05f) {
-				const Vec3 slope = a_ground.Gradient(particle.position.x, particle.position.y);
-				slide = slope * (-_parameters.gravity * kGroundSlide / (1.0f + LengthSquared(slope)));
-			}
-			const auto velocity = moving + (cohesion + slide + Vec3{ 0.0f, 0.0f, -gravity }) * a_seconds;
+			const auto  velocity = moving + (cohesion + down * gravity) * a_seconds;
 			_predicted[i] = a_particles[i].position + LimitLength(velocity, kMaxSpeed) * a_seconds;
-			_floor[i] = a_ground.Height(_predicted[i].x, _predicted[i].y) + lift;
-			_predicted[i].z = std::max(_predicted[i].z, _floor[i]);
-		}
-		for (std::size_t i = 0; i < count; ++i) {
-			if (a_particles[i].asleep) {
-				_floor[i] = a_ground.Height(_predicted[i].x, _predicted[i].y) + lift;
-			}
 		}
 		Collide(a_particles, a_colliders, true);
 
+		// One neighbour list serves the whole solve: the corrections below move a
+		// particle a fraction of a spacing per iteration, within the search slack.
+		FindNeighbors(_predicted, a_particles, _searchSquared, false);
 		for (std::uint32_t iteration = 0; iteration < _parameters.iterations; ++iteration) {
-			FindNeighbors(a_particles, false);
 			for (std::size_t i = 0; i < count; ++i) {
 				if (a_particles[i].asleep) {
 					_lambda[i] = 0.0f;
@@ -303,7 +272,7 @@ namespace Lacrima::Fluid
 				float density = 1.0f;
 				float denominator = 0.01f / (_spacing * _spacing);
 				Vec3  gradients{};
-				for (const auto j : _neighbors[i]) {
+				for (const auto j : Neighbors(i)) {
 					const auto delta = _predicted[i] - _predicted[j];
 					density += Weight(delta);
 					const auto gradient = Gradient(delta);
@@ -319,7 +288,7 @@ namespace Lacrima::Fluid
 					_correction[i] = correction;
 					continue;
 				}
-				for (const auto j : _neighbors[i]) {
+				for (const auto j : Neighbors(i)) {
 					correction += Gradient(_predicted[i] - _predicted[j]) * (_lambda[i] + _lambda[j]);
 				}
 				_correction[i] = LimitLength(correction, 0.25f * _spacing);
@@ -358,9 +327,6 @@ namespace Lacrima::Fluid
 					position = position - LimitLength(delta * ((length - anchor.rest) / length * kLinkStiffness), 0.25f * _spacing);
 				}
 			}
-			for (std::size_t i = 0; i < count; ++i) {
-				_predicted[i].z = std::max(_predicted[i].z, _floor[i]);
-			}
 		}
 
 		const float flow = std::min(1.0f, _parameters.stretch * a_seconds);
@@ -378,9 +344,6 @@ namespace Lacrima::Fluid
 			}
 		}
 		Collide(a_particles, a_colliders, false);
-		for (std::size_t i = 0; i < count; ++i) {
-			_predicted[i].z = std::max(_predicted[i].z, _floor[i]);
-		}
 
 		const float follow = std::min(1.0f, kAnchorFlow * a_seconds);
 		for (auto& anchor : a_anchors) {
@@ -393,7 +356,7 @@ namespace Lacrima::Fluid
 			if (length > anchor.rest) {
 				anchor.rest += (length - anchor.rest) * follow;
 			}
-			if (delta.z < 0.0f) {
+			if (Dot(delta, down) > 0.0f) {
 				std::size_t load = 1;
 				for (std::size_t k = anchor.particle; k > 0 && load < kMaxLoad && a_particles[k - 1].link > 0.0f; --k) {
 					++load;
@@ -408,15 +371,13 @@ namespace Lacrima::Fluid
 		for (std::size_t i = 0; i < count; ++i) {
 			_velocity[i] = a_particles[i].asleep ? Vec3{} : LimitLength((_predicted[i] - a_particles[i].position) * (1.0f / a_seconds), kMaxSpeed);
 		}
-		FindNeighbors(a_particles, false);
 		for (std::size_t i = 0; i < count; ++i) {
 			_weights[i] = 0.0f;
-			for (const auto j : _neighbors[i]) {
+			for (const auto j : Neighbors(i)) {
 				_weights[i] += Weight(_predicted[i] - _predicted[j]);
 			}
 		}
 		const float viscosity = 1.0f - std::exp(-_parameters.viscosity * a_seconds);
-		const float friction = std::exp(-kFloorFriction * a_seconds);
 		for (std::size_t i = 0; i < count; ++i) {
 			auto& particle = a_particles[i];
 			if (particle.asleep) {
@@ -424,35 +385,34 @@ namespace Lacrima::Fluid
 				continue;
 			}
 			Vec3 smoothing{};
-			for (const auto j : _neighbors[i]) {
+			for (const auto j : Neighbors(i)) {
 				const float shared = 1.0f + 0.5f * (_weights[i] + (a_particles[j].asleep ? _weights[i] : _weights[j]));
 				smoothing += (_velocity[j] - _velocity[i]) * (Weight(_predicted[i] - _predicted[j]) / shared);
 			}
 			auto velocity = _velocity[i] + smoothing * viscosity;
+			Vec3 relative = velocity;
 			particle.touching = _contact[i] >= 0;
 			if (particle.touching) {
-				const Vec3  surface = Carrier(a_colliders, _contact[i], _along[i], _predicted[i]).value_or(Vec3{});
-				const Vec3  relative = velocity - surface;
-				const float normal = Dot(relative, _normal[i]);
-				Vec3        sliding = relative - _normal[i] * normal;
+				const Vec3  surface = Carrier(a_colliders, _contact[i], _along[i]).value_or(Vec3{});
+				const Vec3  against = velocity - surface;
+				const float normal = Dot(against, _normal[i]);
+				Vec3        sliding = against - _normal[i] * normal;
 				const float slip = Length(sliding);
 				const float grip = _parameters.grip * a_seconds;
 				sliding = slip > grip ? sliding * ((slip - grip) / slip * std::exp(-_parameters.friction * a_seconds)) : Vec3{};
 				velocity = surface + sliding + _normal[i] * std::clamp(normal, 0.0f, kSeparation);
+				relative = velocity - surface;
 				particle.carried = surface;
 				particle.surface = _contact[i];
 				particle.along = _along[i];
 			} else {
 				particle.surface = -1;
 			}
-			if (_predicted[i].z <= _floor[i] + _spacing * 0.01f) {
-				velocity.z = std::max(velocity.z, 0.0f);
-				velocity.x *= friction;
-				velocity.y *= friction;
-			}
 			particle.position = _predicted[i];
 			particle.velocity = velocity;
-			if (_anchored[i] || particle.touching || LengthSquared(velocity) > kSleepSpeed * kSleepSpeed) {
+			// A tear at rest on the skin sleeps: the skin does not move in this frame,
+			// so nothing is lost by freezing it until something stirs it.
+			if (_anchored[i] || LengthSquared(relative) > kSleepSpeed * kSleepSpeed) {
 				particle.idle = 0.0f;
 			} else if ((particle.idle += a_seconds) > kSleepTime) {
 				particle.asleep = true;

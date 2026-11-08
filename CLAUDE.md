@@ -39,22 +39,41 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   does not simulate.
 - **Face** (`Face.cpp`): finds the actor's face and eyes head-part geometry by the head
   part record's editor ID (the name the game gives that geometry), reads the vertices
-  (facegen dynamic data when present, so expressions move the surface), dedupes them
-  on a 0.25-unit voxel and skins them every frame into `Patch`es with velocities. Eye
-  centers come from the eyes mesh split by the mesh-space midline; mesh space has Z up
-  and the face looking along +Y or -Y (decided from where the eyes sit). Each duct is
-  the face vertex nearest a point below and in front of the eye, so it follows the
-  skin from then on.
-- **Tears** (`Tears.cpp`): one `Crier` per actor, one `Cheek` per eye. A cheek is a
-  fluid domain in meters (70 units per meter) with its origin 400 units below the
-  duct, recentred as the actor moves. A tear is a run of linked particles emitted at
-  the duct and anchored there while it wells, then released. `Fluid::Solver` steps at
-  120 Hz against the face patches near the particles. Particles that fall free get
-  their life cut to `[physics] fall`. Drawing is OStrands' blob / rope / drop pass.
+  (facegen dynamic data when present, so expressions move the surface) and dedupes the
+  face's on a 0.25-unit voxel. The eyes only place the ducts: their centers come from
+  the eyes mesh split by the mesh-space midline (mesh space has Z up and the face
+  looking along +Y or -Y, decided from where the eyes sit); the eyeball is not a
+  collision surface, it sits a millimetre behind the lid skin and would steal the
+  nearest-patch pick. Each duct is the face vertex nearest a point below and in front
+  of the eye. Per frame `Of(actor, ..., region)` skins only the points whose bind
+  position can land in the caller's world-space region (the box is taken into each
+  joint's skin space and tested on the point's heaviest joint) plus the points within
+  6 units of a duct, and reports `morphing` when the expression moved any of them
+  since the last frame.
+- **Tears** (`Tears.cpp`): one `Crier` per actor, one `Cheek` per eye. Everything is
+  simulated and drawn in **head space**: the head bone's axes and origin, in metres
+  (`Frame`: 70 x the bone's scale world units per metre; world down and `9.81 / scale`
+  are rotated into it each frame). The skin stands still there, so a tear at rest
+  **sleeps** (the solver's sleep, which a world-space fluid on a moving body never
+  reaches) and costs nothing until `Wake` stirs it: an expression moved the skin
+  (`View::morphing`), the head tilted 15 degrees from where the tears settled, a hand
+  came within reach, or an anchor / moving neighbour touched it. The tear nodes hang
+  under the head bone with identity transforms, so the engine carries them between
+  updates, and a cheek whose tears all sleep skips the solver and the draw
+  (`Cheek::dirty`). No recentring, no speed caps to outrun, no cell clears. A tear is
+  a run of linked particles emitted at the duct and anchored there while it wells,
+  then released. `Fluid::Solver` steps at 120 Hz against the face patches near the
+  awake particles, with one neighbour list per step (2.5 spacings of slack) on a
+  sorted flat `CellGrid`. Particles that fall free get their life cut to
+  `[physics] fall`. An actor beyond `[tears] max_distance` from the camera, or whose
+  3D is app-culled (the player in first person), is **frozen**: no emission, no
+  solver, no draw; trail life still ticks. Drawing is OStrands' blob / rope / drop pass
+  on persistent scratch buffers.
 - **Hands** (`Tears::PoseHands`): palm + thumb/index/middle/ring finger capsules from
-  the skeleton's hand and finger bones, with velocities, passed to the solver as
-  colliders (so a hand smears tears) when `[wipe] hands` is on; a particle touching
-  one has its life cut to `[wipe] absorb`. `WipeWithHand` plays an idle (default
+  the skeleton's hand and finger bones, in head space with velocities relative to the
+  head, passed to the solver as colliders (so a hand smears tears) when `[wipe] hands`
+  is on; a particle within a capsule's reach has its life cut to `[wipe] absorb`, and
+  a sleeping one is woken first. `WipeWithHand` plays an idle (default
   `IdleWipeBrow`, Skyrim.esm 0977EC) through `AIProcess::PlayIdle` and arms
   `Crier::wipeArm`; `Gesture` dries the face (`DryFace`) when any hand capsule comes
   within `[wipe] reach` of a duct, or when the arm runs out. The brow wipe passes the

@@ -8,11 +8,13 @@
 
 namespace Lacrima::Fluid
 {
+	// A point on a surface the fluid collides with. Surfaces are static in
+	// simulation space (the tears live in the head's own frame), so a patch carries
+	// no velocity.
 	struct Patch
 	{
 		Vec3 position;
 		Vec3 normal;
-		Vec3 velocity;
 	};
 
 	class Skin

@@ -19,6 +19,7 @@ duct_below = 0.9       # how far below the middle of the eye, in eye sizes
 both_eyes = true       # false: one eye, picked at random each time crying starts
 max_actors = 6         # actors crying at once; the oldest stops past this
 max_particles = 160    # fluid on one cheek at most
+max_distance = 3000    # game units from the camera; farther actors' tears pause where they are (trails still dry)
 
 [look]
 size = 1.0             # drop size; real tears are about 1, bigger reads better from afar

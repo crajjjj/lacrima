@@ -7,13 +7,17 @@ Lacrima contains code adapted from OStrands by LeonVanWinkle (Saint), also
 GPL-3.0, taken from OStrands 0.8.0 (https://gitlab.com/LilRicefield/ostrands):
 
 - src/fluid/*: the position-based fluid solver, skin lookup grid, clusters and
-  density-field surface, unchanged apart from the namespace.
+  density-field surface. The solver is adapted to a frame that moves with the head:
+  gravity is a vector, the ground heightfield is gone, a sorted cell grid replaces
+  the hash maps, one neighbour search serves a whole solve, and fluid at rest on a
+  surface sleeps. Clusters and surface are unchanged apart from the namespace and
+  caller-owned output buffers.
 - src/GeometryMath.h: the rope frame transport, unchanged apart from the namespace.
 - src/Face.cpp: the skin wrap (vertex decoding, facegen dynamic data, skinning),
-  reduced from OStrands' whole-body wrap to the face and eyes, with tear duct
-  placement added.
+  reduced from OStrands' whole-body wrap to the face, posed only where the fluid is,
+  with tear duct placement added.
 - src/Tears.cpp: the fluid rendering (blobs, ropes, drops), with emitters,
-  reservoirs and ground sampling replaced by tear ducts.
+  reservoirs and ground sampling replaced by tear ducts, in the head bone's frame.
 - src/Hooks.cpp: the frame driver.
 - tools/nifkit.py and tools/make_tears.py: the NIF and DDS writers.
 

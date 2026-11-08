@@ -2,15 +2,15 @@
 
 // The skin-wrap code (vertex decoding, facegen dynamic data, skinning) is adapted
 // from OStrands' Body.cpp by LeonVanWinkle (Saint), GPL-3.0. OStrands wraps the
-// whole body; Lacrima wraps only the face and the eyes, at a finer voxel, and
-// finds the tear ducts on it.
+// whole body every frame; Lacrima reads the face and the eyes once, at a finer
+// voxel, finds the tear ducts on the face, and then poses each frame only the skin
+// near the fluid and around the ducts.
 
 namespace Lacrima::Face
 {
 	namespace
 	{
 		constexpr float         kWrapVoxel = 0.25f;
-		constexpr float         kMaxSpeed = 500.0f;
 		constexpr float         kForget = 10.0f;
 		constexpr float         kRecheck = 2.0f;
 		constexpr std::uint32_t kVertexBudget = 200000;
@@ -22,7 +22,15 @@ namespace Lacrima::Face
 		constexpr std::size_t   kMinFacePoints = 200;
 		constexpr std::size_t   kMinEyePoints = 8;
 		constexpr std::size_t   kNone = static_cast<std::size_t>(-1);
-		constexpr const char*   kHeadBone = "NPC Head [Head]";
+		// Skin within this of a duct (bind units) is posed every frame, so a welling
+		// tear always has the lid under it, whatever the region says.
+		constexpr float kDuctReach = 6.0f;
+		// Slack around the region once it is in a joint's own space (bind units):
+		// covers the blend between joints and the margin the fluid asks for anyway.
+		constexpr float kRegionSlack = 2.0f;
+		// A posed point that moved this much in bind space since last frame means
+		// the expression is moving the skin (0.3 mm).
+		constexpr float kMorphStep = 0.02f;
 
 		struct Joint
 		{
@@ -36,6 +44,7 @@ namespace Lacrima::Face
 			RE::NiPoint3                 normal;
 			std::array<std::uint16_t, 4> joints{};
 			std::array<float, 4>         weights{};
+			std::uint8_t                 dominant{ 0 };
 		};
 
 		struct Dynamic
@@ -60,17 +69,25 @@ namespace Lacrima::Face
 			bool         valid{ false };
 		};
 
+		struct Box
+		{
+			RE::NiPoint3 low;
+			RE::NiPoint3 high;
+		};
+
 		struct Head
 		{
 			RE::NiPointer<RE::NiAVObject>                       root;
 			std::vector<std::pair<const void*, std::uint32_t>> signature;
 			std::vector<Joint>                                  joints;
 			std::vector<Point>                                  points;
-			std::size_t                                         facePoints{ 0 };
 			std::vector<Dynamic>                                dynamics;
+			std::vector<RE::NiPoint3>                           rest;
 			std::vector<Patch>                                  patches;
-			std::vector<RE::NiPoint3>                           previous;
-			bool                                                moving{ false };
+			std::vector<std::uint32_t>                          candidates;
+			std::vector<std::uint32_t>                          aroundDucts;
+			std::vector<std::uint64_t>                          stamp;
+			std::vector<Box>                                    boxes;
 			std::array<EyeShape, kEyes>                         eyes{};
 			float                                               forward{ 1.0f };
 			std::array<std::size_t, kEyes>                      duct{ kNone, kNone };
@@ -78,12 +95,14 @@ namespace Lacrima::Face
 			float                                               ductPosition{ -1.0f };
 			float                                               ductBelow{ -1.0f };
 			float                                               scale{ 1.0f };
+			bool                                                morphing{ false };
 			std::string                                         faceName;
 			std::string                                         eyesName;
 			std::string                                         report;
 			std::vector<RE::NiTransform>                        world;
-			std::vector<float>                                  scales;
 			std::uint64_t                                       frame{ 0 };
+			bool                                                regionPosed{ false };
+			Region                                              region{};
 			float                                               seen{ 0.0f };
 			float                                               checked{ 0.0f };
 			bool                                                ok{ false };
@@ -91,7 +110,6 @@ namespace Lacrima::Face
 
 		std::unordered_map<std::uint32_t, Head> heads;
 		std::uint64_t                           frame{ 1 };
-		float                                   elapsed{ 0.0f };
 		float                                   clock{ 0.0f };
 
 		float Half(std::uint16_t a_value)
@@ -355,6 +373,7 @@ namespace Lacrima::Face
 				}
 				Point point{ position, normal, {}, {} };
 				float total = 0.0f;
+				float heaviest = 0.0f;
 				for (std::size_t j = 0; j < 4; ++j) {
 					const std::uint8_t bone = a_mesh.bones[v][j];
 					const float        weight = a_mesh.weights[v][j];
@@ -362,6 +381,10 @@ namespace Lacrima::Face
 						point.joints[j] = static_cast<std::uint16_t>(base + bone);
 						point.weights[j] = weight;
 						total += weight;
+						if (weight > heaviest) {
+							heaviest = weight;
+							point.dominant = static_cast<std::uint8_t>(j);
+						}
 					}
 				}
 				if (!(total > 0.0f)) {
@@ -397,7 +420,7 @@ namespace Lacrima::Face
 				const float        r = eye.radius;
 				const RE::NiPoint3 target = eye.center + RE::NiPoint3{ out * r * kDuctSide * (2.0f * a_position - 1.0f), a_head.forward * r * kDuctFront, -r * a_below };
 				float              best = std::numeric_limits<float>::max();
-				for (std::size_t k = 0; k < a_head.facePoints; ++k) {
+				for (std::size_t k = 0; k < a_head.points.size(); ++k) {
 					const auto& point = a_head.points[k];
 					if (point.normal.y * a_head.forward < kFacingFloor) {
 						continue;
@@ -409,6 +432,21 @@ namespace Lacrima::Face
 					}
 				}
 			}
+			// The skin around the ducts is posed every frame, whatever the fluid asks.
+			a_head.aroundDucts.clear();
+			for (const auto d : a_head.duct) {
+				if (d == kNone) {
+					continue;
+				}
+				const RE::NiPoint3 center = a_head.points[d].position;
+				for (std::size_t k = 0; k < a_head.points.size(); ++k) {
+					if (a_head.points[k].position.GetSquaredDistance(center) < kDuctReach * kDuctReach) {
+						a_head.aroundDucts.push_back(static_cast<std::uint32_t>(k));
+					}
+				}
+			}
+			std::ranges::sort(a_head.aroundDucts);
+			a_head.aroundDucts.erase(std::ranges::unique(a_head.aroundDucts).begin(), a_head.aroundDucts.end());
 		}
 
 		void Build(RE::Actor* a_actor, Head& a_head)
@@ -416,10 +454,11 @@ namespace Lacrima::Face
 			a_head.joints.clear();
 			a_head.points.clear();
 			a_head.dynamics.clear();
+			a_head.rest.clear();
 			a_head.patches.clear();
-			a_head.previous.clear();
-			a_head.moving = false;
-			a_head.facePoints = 0;
+			a_head.candidates.clear();
+			a_head.aroundDucts.clear();
+			a_head.stamp.clear();
 			a_head.eyes = {};
 			a_head.duct = { kNone, kNone };
 			a_head.ok = false;
@@ -453,6 +492,7 @@ namespace Lacrima::Face
 			}
 
 			// Eyes, in mesh space: one mesh holds both, split by side of the midline.
+			// They only place the ducts; the eyeball is not a surface tears run on.
 			std::array<RE::NiPoint3, kEyes> sum{};
 			std::array<std::size_t, kEyes>  count{};
 			for (const auto& position : eyeMesh.positions) {
@@ -503,41 +543,43 @@ namespace Lacrima::Face
 
 			const std::size_t facePoints = Add(a_head, face, faceMesh,
 				[&](const RE::NiPoint3& a_position, const RE::NiPoint3& a_normal) { return a_normal.Dot(a_position - centroid) > 0.0f; });
-			a_head.facePoints = facePoints;
-			const std::size_t eyePoints = Add(a_head, eyes, eyeMesh, [&](const RE::NiPoint3& a_position, const RE::NiPoint3& a_normal) {
-				const auto& side = sides[a_position.x >= 0.0f ? 1 : 0];
-				return a_normal.Dot(a_position - side.center) > 0.0f;
-			});
 			if (facePoints < kMinFacePoints) {
 				a_head.report = std::format("only {} usable face points", facePoints);
 				return;
 			}
-			a_head.report = std::format("face {} points{}, eyes {} points{}", facePoints, faceMesh.dynamic ? " (animated)" : "", eyePoints,
-				eyeMesh.dynamic ? " (animated)" : "");
+			a_head.report = std::format("face {} points{}, eyes {} vertices{}", facePoints, faceMesh.dynamic ? " (animated)" : "",
+				eyeMesh.positions.size(), eyeMesh.dynamic ? " (animated)" : "");
 			a_head.ok = true;
 			a_head.ductPosition = -1.0f;
 		}
 
-		void Track(Head& a_head)
+		// Poses one wrap point with the joints as they stand this frame.
+		void SkinPoint(const Head& a_head, const Point& a_point, RE::NiPoint3& a_position, RE::NiPoint3& a_normal, float& a_scale)
 		{
-			const bool moving = a_head.moving && a_head.previous.size() == a_head.patches.size() && elapsed > 0.0f;
-			a_head.previous.resize(a_head.patches.size());
-			for (std::size_t k = 0; k < a_head.patches.size(); ++k) {
-				auto& patch = a_head.patches[k];
-				patch.velocity = {};
-				if (moving) {
-					const RE::NiPoint3 velocity = (patch.position - a_head.previous[k]) / elapsed;
-					if (velocity.Length() <= kMaxSpeed) {
-						patch.velocity = velocity;
-					}
+			RE::NiPoint3 position;
+			RE::NiPoint3 normal;
+			float        scale = 0.0f;
+			for (std::size_t j = 0; j < 4; ++j) {
+				const float weight = a_point.weights[j];
+				if (weight <= 0.0f) {
+					continue;
 				}
-				a_head.previous[k] = patch.position;
+				const auto& transform = a_head.world[a_point.joints[j]];
+				position += (transform * a_point.position) * weight;
+				normal += (transform.rotate * a_point.normal) * weight;
+				scale += transform.scale * weight;
 			}
-			a_head.moving = true;
+			a_position = position;
+			a_normal = Unit(normal, a_point.normal);
+			a_scale = scale;
 		}
 
-		void Pose(Head& a_head)
+		void Pose(Head& a_head, const Region* a_region)
 		{
+			auto&      points = a_head.points;
+			const bool compare = a_head.rest.size() == points.size();
+
+			// The facegen dynamic data is the face's current shape, expression included.
 			for (auto& dynamic : a_head.dynamics) {
 				auto* shape = dynamic.geometry ? dynamic.geometry->AsDynamicTriShape() : nullptr;
 				auto* skin = shape ? shape->GetGeometryRuntimeData().skinInstance.get() : nullptr;
@@ -554,9 +596,10 @@ namespace Lacrima::Face
 				for (const auto& [point, vertex] : dynamic.points) {
 					std::array<float, 3> xyz{};
 					std::memcpy(xyz.data(), source + static_cast<std::size_t>(vertex) * kDynamicStride, sizeof(xyz));
-					a_head.points[point].position = { xyz[0], xyz[1], xyz[2] };
+					points[point].position = { xyz[0], xyz[1], xyz[2] };
 				}
 			}
+
 			auto& world = a_head.world;
 			world.assign(a_head.joints.size(), RE::NiTransform{});
 			for (std::size_t j = 0; j < a_head.joints.size(); ++j) {
@@ -565,44 +608,102 @@ namespace Lacrima::Face
 					world[j] = joint.bone->world * joint.skinToBone;
 				}
 			}
-			a_head.patches.resize(a_head.points.size());
-			auto& scales = a_head.scales;
-			scales.assign(a_head.points.size(), 1.0f);
-			for (std::size_t k = 0; k < a_head.points.size(); ++k) {
-				const auto&  point = a_head.points[k];
-				RE::NiPoint3 position;
-				RE::NiPoint3 normal;
-				float        scale = 0.0f;
-				for (std::size_t j = 0; j < 4; ++j) {
-					const float weight = point.weights[j];
-					if (weight <= 0.0f) {
+
+			// Which points to pose: the ones around the ducts, and the ones whose
+			// bind position can land in the region. The region is taken into each
+			// joint's own space, so the test on a point is a box test on its bind
+			// position under its heaviest joint; nearly every face point is weighted
+			// to the head bone alone, and the slack covers the rest.
+			auto& candidates = a_head.candidates;
+			candidates.clear();
+			auto& stamp = a_head.stamp;
+			if (stamp.size() != points.size()) {
+				stamp.assign(points.size(), 0);
+			}
+			for (const auto k : a_head.aroundDucts) {
+				stamp[k] = frame;
+				candidates.push_back(k);
+			}
+			if (a_region) {
+				auto& boxes = a_head.boxes;
+				boxes.resize(world.size());
+				const std::array<RE::NiPoint3, 8> corners{
+					RE::NiPoint3{ a_region->low.x, a_region->low.y, a_region->low.z },
+					RE::NiPoint3{ a_region->high.x, a_region->low.y, a_region->low.z },
+					RE::NiPoint3{ a_region->low.x, a_region->high.y, a_region->low.z },
+					RE::NiPoint3{ a_region->high.x, a_region->high.y, a_region->low.z },
+					RE::NiPoint3{ a_region->low.x, a_region->low.y, a_region->high.z },
+					RE::NiPoint3{ a_region->high.x, a_region->low.y, a_region->high.z },
+					RE::NiPoint3{ a_region->low.x, a_region->high.y, a_region->high.z },
+					RE::NiPoint3{ a_region->high.x, a_region->high.y, a_region->high.z },
+				};
+				for (std::size_t j = 0; j < world.size(); ++j) {
+					const RE::NiTransform inverse = world[j].Invert();
+					Box                   box{ inverse * corners[0], inverse * corners[0] };
+					for (std::size_t c = 1; c < corners.size(); ++c) {
+						const RE::NiPoint3 p = inverse * corners[c];
+						box.low = { std::min(box.low.x, p.x), std::min(box.low.y, p.y), std::min(box.low.z, p.z) };
+						box.high = { std::max(box.high.x, p.x), std::max(box.high.y, p.y), std::max(box.high.z, p.z) };
+					}
+					const float slack = kRegionSlack / std::max(world[j].scale, 1e-3f);
+					box.low -= RE::NiPoint3{ slack, slack, slack };
+					box.high += RE::NiPoint3{ slack, slack, slack };
+					boxes[j] = box;
+				}
+				for (std::size_t k = 0; k < points.size(); ++k) {
+					if (stamp[k] == frame) {
 						continue;
 					}
-					const auto& transform = world[point.joints[j]];
-					position += (transform * point.position) * weight;
-					normal += (transform.rotate * point.normal) * weight;
-					scale += transform.scale * weight;
+					const auto& point = points[k];
+					const auto& box = boxes[point.joints[point.dominant]];
+					const auto& p = point.position;
+					if (p.x >= box.low.x && p.y >= box.low.y && p.z >= box.low.z && p.x <= box.high.x && p.y <= box.high.y && p.z <= box.high.z) {
+						candidates.push_back(static_cast<std::uint32_t>(k));
+					}
 				}
-				a_head.patches[k].position = position;
-				a_head.patches[k].normal = Unit(normal, point.normal);
-				scales[k] = scale;
 			}
-			Track(a_head);
+
+			auto& patches = a_head.patches;
+			patches.resize(candidates.size());
+			float scale = 1.0f;
+			for (std::size_t i = 0; i < candidates.size(); ++i) {
+				SkinPoint(a_head, points[candidates[i]], patches[i].position, patches[i].normal, scale);
+			}
+
+			// Did the expression move the posed skin since last frame? Only the dynamic
+			// points can have moved, so only they are tracked.
+			a_head.morphing = false;
+			if (compare) {
+				for (const auto k : candidates) {
+					if (points[k].position.GetSquaredDistance(a_head.rest[k]) > kMorphStep * kMorphStep) {
+						a_head.morphing = true;
+						break;
+					}
+				}
+				for (const auto& dynamic : a_head.dynamics) {
+					for (const auto& [point, vertex] : dynamic.points) {
+						a_head.rest[point] = points[point].position;
+					}
+				}
+			} else {
+				a_head.rest.resize(points.size());
+				for (std::size_t k = 0; k < points.size(); ++k) {
+					a_head.rest[k] = points[k].position;
+				}
+			}
 
 			for (std::size_t e = 0; e < kEyes; ++e) {
 				auto& duct = a_head.ducts[e];
 				duct = {};
 				const std::size_t k = a_head.duct[e];
-				if (k == kNone || k >= a_head.patches.size()) {
+				if (k == kNone || k >= points.size()) {
 					continue;
 				}
-				const auto&        patch = a_head.patches[k];
 				const RE::NiPoint3 gravity{ 0.0f, 0.0f, -1.0f };
-				duct.point = patch.position;
-				duct.normal = patch.normal;
-				duct.down = Unit(gravity - patch.normal * gravity.Dot(patch.normal), gravity);
+				SkinPoint(a_head, points[k], duct.point, duct.normal, scale);
+				duct.down = Unit(gravity - duct.normal * gravity.Dot(duct.normal), gravity);
 				duct.valid = true;
-				a_head.scale = scales[k];
+				a_head.scale = scale;
 			}
 		}
 
@@ -642,19 +743,26 @@ namespace Lacrima::Face
 			}
 			return &head;
 		}
+
+		bool SameRegion(const Head& a_head, const Region* a_region)
+		{
+			if (!a_region) {
+				return !a_head.regionPosed;
+			}
+			return a_head.regionPosed && a_head.region.low == a_region->low && a_head.region.high == a_region->high;
+		}
 	}
 
 	void BeginFrame(float a_delta)
 	{
 		++frame;
-		elapsed = a_delta;
 		clock += a_delta;
 		std::erase_if(heads, [](const auto& a_entry) {
 			return clock - a_entry.second.seen > kForget || !a_entry.second.root || !a_entry.second.root->parent;
 		});
 	}
 
-	std::optional<View> Of(RE::Actor* a_actor, float a_ductPosition, float a_ductBelow)
+	std::optional<View> Of(RE::Actor* a_actor, float a_ductPosition, float a_ductBelow, const Region* a_region)
 	{
 		auto* head = HeadOf(a_actor);
 		if (!head || !head->ok) {
@@ -663,11 +771,15 @@ namespace Lacrima::Face
 		if (head->ductPosition != a_ductPosition || head->ductBelow != a_ductBelow) {
 			PlaceDucts(*head, a_ductPosition, a_ductBelow);
 		}
-		if (head->frame != frame) {
+		if (head->frame != frame || !SameRegion(*head, a_region)) {
 			head->frame = frame;
-			Pose(*head);
+			head->regionPosed = a_region != nullptr;
+			if (a_region) {
+				head->region = *a_region;
+			}
+			Pose(*head, a_region);
 		}
-		return View{ head->patches, head->ducts, head->scale };
+		return View{ head->patches, head->ducts, head->scale, head->morphing };
 	}
 
 	std::string Describe(RE::Actor* a_actor, float a_ductPosition, float a_ductBelow)

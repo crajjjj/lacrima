@@ -25,6 +25,7 @@ namespace Lacrima
 		bool  bothEyes{ true };
 		int   maxActors{ 6 };
 		int   maxParticles{ 160 };
+		float maxDistance{ 3000.0f };
 
 		float size{ 1.0f };
 		float trail{ 0.8f };

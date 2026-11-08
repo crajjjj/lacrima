@@ -41,6 +41,8 @@ namespace Lacrima
 				"How many actors can cry at the same time. The oldest stops when a new one starts past the limit." },
 			Field{ "tears", "max_particles", &Settings::maxParticles, 20, 600, "Tears", "Particles per eye", "%d",
 				"Cap on the fluid on one cheek. Older trails stop growing past it." },
+			Field{ "tears", "max_distance", &Settings::maxDistance, 500.0f, 20000.0f, "Tears", "Simulate within", "%.0f units",
+				"Tears on an actor farther than this from the camera pause where they are until the actor comes closer; the trails still dry up." },
 
 			Field{ "look", "size", &Settings::size, 0.5f, 3.0f, "Look", "Tear size", "%.2f",
 				"Scales every drop. Real tears are about 1; bigger reads better from a distance." },

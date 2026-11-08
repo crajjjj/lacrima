@@ -1,12 +1,11 @@
 #pragma once
 
-#include "fluid/Ground.h"
+#include "fluid/Grid.h"
 #include "fluid/Particle.h"
 #include "fluid/Skin.h"
 
 #include <optional>
 #include <span>
-#include <unordered_map>
 #include <vector>
 
 namespace Lacrima::Fluid
@@ -17,6 +16,7 @@ namespace Lacrima::Fluid
 		float         cohesion{ 4.0f };
 		float         viscosity{ 40.0f };
 		float         gravity{ 9.81f };
+		Vec3          down{ 0.0f, 0.0f, -1.0f };  // unit direction gravity pulls in, in simulation space
 		float         stretch{ 3.0f };
 		float         friction{ 30.0f };
 		float         grip{ 0.6f };
@@ -52,6 +52,9 @@ namespace Lacrima::Fluid
 		const Skin*              skin{ nullptr };
 	};
 
+	// Position-based fluid in a frame where the skin stands still: a particle at
+	// rest on it falls asleep and costs nothing until a neighbour, an anchor or the
+	// caller (Wake) stirs it. Capsules move and carry what touches them.
 	class Solver
 	{
 	public:
@@ -60,43 +63,33 @@ namespace Lacrima::Fluid
 		static bool Valid(const Parameters& a_parameters);
 		void        Configure(const Parameters& a_parameters);
 
-		void  Step(std::span<Particle> a_particles, std::span<Anchor> a_anchors, const Colliders& a_colliders, const Ground& a_ground, float a_seconds);
+		void  Step(std::span<Particle> a_particles, std::span<Anchor> a_anchors, const Colliders& a_colliders, float a_seconds);
 		float Spacing() const { return _spacing; }
 
 	private:
-		struct Cell
-		{
-			int  x, y, z;
-			bool operator==(const Cell&) const = default;
-		};
-
-		struct CellHash
-		{
-			std::size_t operator()(Cell a_cell) const noexcept;
-		};
-
-		Cell  CellOf(Vec3 a_point) const;
 		float Weight(Vec3 a_delta) const;
 		Vec3  Gradient(Vec3 a_delta) const;
-		void  FindNeighbors(std::span<const Particle> a_particles, bool a_all);
+		void  FindNeighbors(std::span<const Vec3> a_positions, std::span<const Particle> a_particles, float a_radiusSquared, bool a_all);
+		std::span<const std::uint32_t> Neighbors(std::size_t a_index) const;
 		void  Collide(std::span<const Particle> a_particles, const Colliders& a_colliders, bool a_pull);
-		static std::optional<Vec3> Carrier(const Colliders& a_colliders, int a_surface, float a_along, Vec3 a_position);
+		static std::optional<Vec3> Carrier(const Colliders& a_colliders, int a_surface, float a_along);
 
-		float                                                _spacing;
-		float                                                _radiusSquared;
-		float                                                _restWeight{};
-		Parameters                                           _parameters;
-		std::vector<Vec3>                                    _predicted;
-		std::vector<Vec3>                                    _velocity;
-		std::vector<Vec3>                                    _correction;
-		std::vector<float>                                   _lambda;
-		std::vector<bool>                                    _anchored;
-		std::vector<float>                                   _floor;
-		std::vector<float>                                   _weights;
-		std::vector<int>                                     _contact;
-		std::vector<float>                                   _along;
-		std::vector<Vec3>                                    _normal;
-		std::vector<std::vector<std::size_t>>                _neighbors;
-		std::unordered_map<Cell, std::vector<std::size_t>, CellHash> _grid;
+		float                      _spacing;
+		float                      _radiusSquared;
+		float                      _searchSquared;
+		float                      _restWeight{};
+		Parameters                 _parameters;
+		std::vector<Vec3>          _predicted;
+		std::vector<Vec3>          _velocity;
+		std::vector<Vec3>          _correction;
+		std::vector<float>         _lambda;
+		std::vector<std::uint8_t>  _anchored;
+		std::vector<float>         _weights;
+		std::vector<int>           _contact;
+		std::vector<float>         _along;
+		std::vector<Vec3>          _normal;
+		std::vector<std::uint32_t> _neighborStart;
+		std::vector<std::uint32_t> _neighborList;
+		CellGrid                   _grid;
 	};
 }
