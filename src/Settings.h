@@ -48,6 +48,7 @@ namespace Lacrima
 		float gestureWait{ 3.5f };
 
 		bool showDucts{ false };
+		bool mountWorld{ false };
 
 		static std::unique_lock<std::recursive_mutex> Lock();
 		static Settings&                              Get();

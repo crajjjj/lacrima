@@ -79,6 +79,14 @@ subs:
         type: int
         default: 1
         help: 1 on, 0 off
+  - name: mount
+    func: Mount
+    help: A/B for invisible tears - 1 draws them in world space under the cell node (the 0.1.0 way), 0 under the head bone
+    args:
+      - name: world
+        type: int
+        default: 1
+        help: 1 world space, 0 head bone
   - name: enable
     func: Enable
     help: Turn Lacrima on (1) or off (0) for this session

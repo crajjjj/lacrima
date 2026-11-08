@@ -37,7 +37,7 @@ namespace Lacrima
 		constexpr float       kWellSpeed = 0.02f;
 		constexpr float       kFallSpeed = 0.25f;
 		constexpr float       kRamp = 1.5f;
-		constexpr float       kMarkerRadius = 0.4f;
+		constexpr float       kMarkerRadius = 1.5f;  // units; big on purpose, it is a "do the meshes show at all" probe
 		constexpr float       kGravity = 9.81f;
 		constexpr float       kMinScale = 0.05f;
 		// Sleeping tears wake when the head has tilted this far (cos 15 degrees) from
@@ -653,7 +653,8 @@ namespace Lacrima
 				crier.handPrevious.clear();
 			}
 			Gesture(crier, spots, view ? view->scale : crier.frame.scale, settings, a_delta);
-			const auto hands = settings.hands ? std::span<const Fluid::Capsule>(crier.hands) : std::span<const Fluid::Capsule>{};
+			const auto  hands = settings.hands ? std::span<const Fluid::Capsule>(crier.hands) : std::span<const Fluid::Capsule>{};
+			const Mount mount{ settings.mountWorld, &crier.frame };
 			for (std::size_t e = 0; e < Face::kEyes; ++e) {
 				auto&       cheek = crier.cheeks[e];
 				const Spot* spot = spots[e] ? &*spots[e] : nullptr;
@@ -684,8 +685,8 @@ namespace Lacrima
 					}
 					continue;
 				}
-				if (Attach(cheek, crier, root)) {
-					Draw(cheek, crier.frame, settings, marker ? spot : nullptr);
+				if (Attach(cheek, crier, root, mount.world)) {
+					Draw(cheek, mount, settings, marker ? spot : nullptr);
 				}
 			}
 
@@ -912,6 +913,7 @@ namespace Lacrima
 			}
 			newest = particles.size();
 			particles.push_back(particle);
+			++a_cheek.emitted;
 			a_cheek.dirty = true;
 		}
 		const auto held = std::ranges::find_if(a_cheek.anchors, [&](const Fluid::Anchor& a) { return a.owner == a_cheek.id; });
@@ -1000,6 +1002,7 @@ namespace Lacrima
 		if (!awake) {
 			// every tear rests on the skin; nothing to step
 			a_cheek.accumulator = 0.0f;
+			a_cheek.lastSteps = 0;
 			return;
 		}
 		a_cheek.accumulator = std::min(a_cheek.accumulator + a_delta, kMaxSteps * kStep);
@@ -1032,6 +1035,9 @@ namespace Lacrima
 		if (steps > 0) {
 			a_cheek.dirty = true;
 		}
+		a_cheek.lastPosed = a_view ? a_view->patches.size() : 0;
+		a_cheek.lastPatches = patches.size();
+		a_cheek.lastSteps = steps;
 		std::erase_if(a_cheek.anchors, [](const Fluid::Anchor& a_anchor) { return a_anchor.rest <= 0.0f; });
 	}
 
@@ -1049,9 +1055,11 @@ namespace Lacrima
 			particle.life -= a_delta;
 			if (!particle.touching && Fluid::Dot(particle.velocity, a_frame.down) > kFallSpeed && particle.life > a_settings.fall) {
 				particle.life = a_settings.fall;
+				++a_cheek.cutFalling;
 			}
 			if (particle.life > a_settings.absorb && !a_cheek.capsules.empty() && touched(particle.position)) {
 				particle.life = a_settings.absorb;
+				++a_cheek.cutByHand;
 			}
 			expired = expired || particle.life <= 0.0f;
 		}
@@ -1076,6 +1084,7 @@ namespace Lacrima
 			previousKept = true;
 		}
 		particles.resize(write);
+		a_cheek.expired += static_cast<std::uint32_t>(remap.size() - write);
 		for (auto& blob : a_cheek.blobs) {
 			if (blob.live) {
 				blob.seed = blob.seed < remap.size() ? remap[blob.seed] : Fluid::kNone;
@@ -1185,11 +1194,13 @@ namespace Lacrima
 
 	// ----------------------------------------------------------------- rendering
 
-	bool Tears::Attach(Cheek& a_cheek, const Crier& a_crier, RE::NiAVObject* a_root)
+	bool Tears::Attach(Cheek& a_cheek, const Crier& a_crier, RE::NiAVObject* a_root, bool a_world)
 	{
 		// The tears hang under the head bone, so the engine carries them with the
-		// head; their nodes are posed in head space and need no world transform.
-		RE::NiNode* parent = a_crier.head ? a_crier.head.get() : a_root->AsNode();
+		// head; their nodes are posed in head space and need no world transform. The
+		// world mount (A/B) hangs them under the cell node with the inverse of its
+		// transform, so their nodes are posed in world units, as 0.1.0 did.
+		RE::NiNode* parent = a_world ? a_root->parent : (a_crier.head ? a_crier.head.get() : a_root->AsNode());
 		if (!parent) {
 			return false;
 		}
@@ -1211,7 +1222,7 @@ namespace Lacrima
 			parent->AttachChild(a_cheek.root.get(), true);
 			a_cheek.dirty = true;
 		}
-		a_cheek.root->local = RE::NiTransform{};
+		a_cheek.root->local = a_world ? parent->world.Invert() : RE::NiTransform{};
 		a_cheek.root->SetAppCulled(a_root->GetAppCulled());
 		return true;
 	}
@@ -1445,18 +1456,33 @@ namespace Lacrima
 		return &a_cheek.ropes.back();
 	}
 
-	void Tears::PoseBlob(Blob& a_blob)
+	RE::NiPoint3 Tears::Mount::Point(Vec3 a_point) const
+	{
+		return world ? ToWorld(*frame, a_point) : ToBone(a_point);
+	}
+
+	Vec3 Tears::Mount::Direction(Vec3 a_direction) const
+	{
+		return world ? ToVec(frame->rotate * ToPoint(a_direction)) : a_direction;
+	}
+
+	float Tears::Mount::Radius(float a_radius) const
+	{
+		return a_radius * (world ? frame->unit : kUnitsPerMeter);
+	}
+
+	void Tears::PoseBlob(const Mount& a_mount, Blob& a_blob)
 	{
 		for (std::size_t i = 0; i < a_blob.bones.size(); ++i) {
 			RE::NiTransform world;
-			world.translate = ToBone(a_blob.surface[i].position);
-			world.rotate = ArcRotation(_directions[i], a_blob.surface[i].normal);
+			world.translate = a_mount.Point(a_blob.surface[i].position);
+			world.rotate = ArcRotation(_directions[i], a_mount.Direction(a_blob.surface[i].normal));
 			a_blob.bones[i]->local = world;
 		}
 		a_blob.root->SetAppCulled(false);
 	}
 
-	void Tears::PoseDrop(Blob& a_blob, Vec3 a_center, float a_radius, Vec3 a_up, Vec3 a_velocity, std::optional<Vec3> a_contact)
+	void Tears::PoseDrop(const Mount& a_mount, Blob& a_blob, Vec3 a_center, float a_radius, Vec3 a_up, Vec3 a_velocity, std::optional<Vec3> a_contact)
 	{
 		const float flying = a_contact ? 0.0f : std::max(Fluid::Length(a_velocity) - kStreakStart, 0.0f);
 		const float stretch = 1.0f + std::min(flying * kStreak, kMaxStretch - 1.0f);
@@ -1469,16 +1495,16 @@ namespace Lacrima
 			const Vec3      offset = Stretch(Stretch(direction, along, stretch), normal, squash);
 			const Vec3      facing = Fluid::Normalize(Stretch(Stretch(direction, along, 1.0f / stretch), normal, 1.0f / squash), direction);
 			RE::NiTransform world;
-			world.translate = ToBone(center + offset * a_radius);
-			world.rotate = ArcRotation(direction, facing);
+			world.translate = a_mount.Point(center + offset * a_radius);
+			world.rotate = ArcRotation(direction, a_mount.Direction(facing));
 			a_blob.bones[i]->local = world;
 		}
 		a_blob.live = false;
 		a_blob.root->SetAppCulled(false);
 	}
 
-	void Tears::PoseRope(Cheek& a_cheek, Rope& a_rope, std::size_t a_begin, std::size_t a_end, const Fluid::Anchor* a_anchor, float a_width,
-		float a_fade)
+	void Tears::PoseRope(const Mount& a_mount, Cheek& a_cheek, Rope& a_rope, std::size_t a_begin, std::size_t a_end, const Fluid::Anchor* a_anchor,
+		float a_width, float a_fade)
 	{
 		const float spacing = a_cheek.spacing;
 		const float volume = spacing * spacing * spacing;
@@ -1535,8 +1561,8 @@ namespace Lacrima
 			} else if (b == 1 || (b + 2 == kRopeBones && !a_anchor)) {
 				radius *= 0.85f;
 			}
-			positions[b] = ToBone(point);
-			radii[b] = radius * kUnitsPerMeter;
+			positions[b] = a_mount.Point(point);
+			radii[b] = a_mount.Radius(radius);
 		}
 		Bend(a_rope, positions, radii);
 	}
@@ -1554,7 +1580,7 @@ namespace Lacrima
 		a_rope.root->SetAppCulled(false);
 	}
 
-	void Tears::Draw(Cheek& a_cheek, const Frame& a_frame, const Settings& a_settings, const Spot* a_marker)
+	void Tears::Draw(Cheek& a_cheek, const Mount& a_mount, const Settings& a_settings, const Spot* a_marker)
 	{
 		auto& meshes = MeshesFor();
 		if (meshes.failed) {
@@ -1562,7 +1588,7 @@ namespace Lacrima
 		}
 		auto&      particles = a_cheek.particles;
 		const bool restyled = a_cheek.opacity != a_settings.opacity || a_cheek.shine != a_settings.shine || a_cheek.gloss != a_settings.gloss;
-		if (!a_cheek.dirty && !restyled && !a_marker) {
+		if (!a_mount.world && !a_cheek.dirty && !restyled && !a_marker) {
 			// Nothing moved since the last draw, and the nodes hang under the head
 			// bone, so they are already where the tears are. Only a trail thinning
 			// out as it dries still needs redrawing.
@@ -1577,7 +1603,7 @@ namespace Lacrima
 				return;
 			}
 		}
-		const Vec3  up = -a_frame.down;
+		const Vec3  up = -a_mount.frame->down;
 		const float spacing = a_cheek.spacing;
 		const float volume = spacing * spacing * spacing;
 		const float kernel = 2.0f * spacing;
@@ -1688,11 +1714,14 @@ namespace Lacrima
 				const bool warm = blob->live && blob->surface.size() == _directions.size();
 				if (settled && warm && piece.hint != Fluid::kNone) {
 					blob->seed = piece.seed;
+					if (a_mount.world) {
+						PoseBlob(a_mount, *blob);  // world coordinates move with the head even when the tear does not
+					}
 					continue;
 				}
 				const auto previous = warm ? std::span<const Fluid::SurfacePoint>(blob->surface) : std::span<const Fluid::SurfacePoint>{};
 				if (!Fluid::WrapSurface(field, particles[piece.seed].position, piece.extent + kernel, kThreshold, _directions, previous, _scratch)) {
-					PoseDrop(*blob, piece.center, Fluid::VolumeRadius(piece.count, volume), up);
+					PoseDrop(a_mount, *blob, piece.center, Fluid::VolumeRadius(piece.count, volume), up);
 					continue;
 				}
 				if (warm) {
@@ -1708,7 +1737,7 @@ namespace Lacrima
 				}
 				blob->seed = piece.seed;
 				blob->live = true;
-				PoseBlob(*blob);
+				PoseBlob(a_mount, *blob);
 			}
 		}
 		for (auto& hinted : hints) {
@@ -1727,7 +1756,7 @@ namespace Lacrima
 			const auto* anchor = held != a_cheek.anchors.end() ? &*held : nullptr;
 			if (run.Size() >= 2 || anchor) {
 				if (Rope* rope = AcquireRope(a_cheek)) {
-					PoseRope(a_cheek, *rope, run.begin, run.end, anchor, a_settings.trail, a_settings.fade);
+					PoseRope(a_mount, a_cheek, *rope, run.begin, run.end, anchor, a_settings.trail, a_settings.fade);
 					++ropes;
 				}
 				continue;
@@ -1743,7 +1772,7 @@ namespace Lacrima
 		for (const auto& anchor : a_cheek.anchors) {
 			if (anchor.particle < particles.size() && particles[anchor.particle].bulk) {
 				if (Rope* rope = AcquireRope(a_cheek)) {
-					PoseRope(a_cheek, *rope, anchor.particle, anchor.particle + 1, &anchor, a_settings.trail, a_settings.fade);
+					PoseRope(a_mount, a_cheek, *rope, anchor.particle, anchor.particle + 1, &anchor, a_settings.trail, a_settings.fade);
 					++ropes;
 				}
 			}
@@ -1753,12 +1782,12 @@ namespace Lacrima
 				continue;
 			}
 			if (Blob* blob = AcquireBlob(a_cheek)) {
-				PoseDrop(*blob, droplet.center, droplet.radius, up, droplet.velocity, droplet.contact);
+				PoseDrop(a_mount, *blob, droplet.center, droplet.radius, up, droplet.velocity, droplet.contact);
 			}
 		}
 		if (a_marker) {
 			if (Blob* blob = AcquireBlob(a_cheek)) {
-				PoseDrop(*blob, a_marker->point, kMarkerRadius / a_frame.unit, up);
+				PoseDrop(a_mount, *blob, a_marker->point, kMarkerRadius / a_mount.frame->unit, up);
 			}
 		}
 
@@ -1809,9 +1838,12 @@ namespace Lacrima
 				for (const auto& particle : cheek.particles) {
 					asleep += particle.asleep ? 1 : 0;
 				}
-				text += std::format("{} cheek: {} particles ({} at rest), {} trails, {} drops{}. ", kNames[e], cheek.particles.size(), asleep,
-					cheek.shownRopes, cheek.shownBlobs, cheek.sheds ? "" : ", not shedding");
+				text += std::format("{} cheek: {} particles ({} at rest), {} trails, {} drops{}; so far {} emitted, {} cut falling, {} taken by a hand, "
+				                    "{} expired; skin under the fluid {} of {} posed, {} steps. ",
+					kNames[e], cheek.particles.size(), asleep, cheek.shownRopes, cheek.shownBlobs, cheek.sheds ? "" : ", not shedding", cheek.emitted,
+					cheek.cutFalling, cheek.cutByHand, cheek.expired, cheek.lastPatches, cheek.lastPosed, cheek.lastSteps);
 			}
+			text += a_settings.mountWorld ? "Drawn in world space under the cell node (mount_world). " : "Drawn under the head bone. ";
 			if (a_crier->frozen) {
 				text += "Paused: out of sight or too far from the camera. ";
 			}

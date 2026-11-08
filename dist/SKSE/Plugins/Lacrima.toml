@@ -46,3 +46,4 @@ gesture_wait = 3.5     # seconds a wipe gesture waits for the hand before drying
 
 [debug]
 show_ducts = false     # mark where tears start on the console-selected actor, or the player
+mount_world = false    # A/B: draw the tears in world space under the cell node, as 0.1.0 did, instead of under the head bone

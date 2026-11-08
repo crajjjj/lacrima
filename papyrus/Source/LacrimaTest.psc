@@ -6,6 +6,7 @@ Returned strings print to the console; they must never contain a percent sign.}
 
 Function NearbyNative(Float afRadius, Float afIntensity, Float afSeconds) global native
 Function ShowDuctsNative(Bool abShow) global native
+Function MountWorldNative(Bool abWorld) global native
 Function WipeAllNative() global native
 Int Function CryingCountNative() global native
 
@@ -106,6 +107,15 @@ String Function Ducts(Int show) global
 		Return "Tear starts are marked on the selected actor, or on the player."
 	EndIf
 	Return "Tear start markers off."
+EndFunction
+
+; Params in YAML order: world
+String Function Mount(Int world) global
+	MountWorldNative(world != 0)
+	If world != 0
+		Return "Tears are now drawn in world space under the cell node (the 0.1.0 way)."
+	EndIf
+	Return "Tears are now drawn under the head bone."
 EndFunction
 
 ; Params in YAML order: enabled

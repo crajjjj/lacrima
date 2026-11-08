@@ -95,6 +95,12 @@ namespace Lacrima::Papyrus
 			Settings::Get().showDucts = a_show;
 		}
 
+		void MountWorldNative(RE::StaticFunctionTag*, bool a_world)
+		{
+			auto guard = Settings::Lock();
+			Settings::Get().mountWorld = a_world;
+		}
+
 		void WipeAllNative(RE::StaticFunctionTag*)
 		{
 			Tears::Get().WipeAll();
@@ -124,6 +130,7 @@ namespace Lacrima::Papyrus
 
 		a_vm->RegisterFunction("NearbyNative"sv, kTestScript, NearbyNative);
 		a_vm->RegisterFunction("ShowDuctsNative"sv, kTestScript, ShowDuctsNative);
+		a_vm->RegisterFunction("MountWorldNative"sv, kTestScript, MountWorldNative);
 		a_vm->RegisterFunction("WipeAllNative"sv, kTestScript, WipeAllNative);
 		a_vm->RegisterFunction("CryingCountNative"sv, kTestScript, CryingCountNative, true);
 		logger::info("Papyrus API version {} registered", kAPIVersion);

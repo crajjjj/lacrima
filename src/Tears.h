@@ -113,6 +113,20 @@ namespace Lacrima
 			Fluid::Vec3 down;
 		};
 
+		// Where the tear nodes hang and what their transforms are expressed in:
+		// under the head bone in head-bone units (the default), or under the cell
+		// node in world units as 0.1.0 did ([debug] mount_world, `tears mount 1`),
+		// kept as an A/B for "the tears do not show".
+		struct Mount
+		{
+			bool         world{ false };
+			const Frame* frame{ nullptr };
+
+			RE::NiPoint3 Point(Fluid::Vec3 a_point) const;
+			Fluid::Vec3  Direction(Fluid::Vec3 a_direction) const;
+			float        Radius(float a_radius) const;
+		};
+
 		struct Droplet
 		{
 			Fluid::Vec3                center;
@@ -157,6 +171,15 @@ namespace Lacrima
 
 			std::size_t shownBlobs{ 0 };
 			std::size_t shownRopes{ 0 };
+
+			// Lifetime counters for the status line: what happened to the particles.
+			std::uint32_t emitted{ 0 };
+			std::uint32_t cutFalling{ 0 };
+			std::uint32_t cutByHand{ 0 };
+			std::uint32_t expired{ 0 };
+			std::size_t   lastPosed{ 0 };    // face patches the face wrap posed last frame
+			std::size_t   lastPatches{ 0 };  // of those, under this cheek's fluid
+			int           lastSteps{ 0 };
 		};
 
 		struct Crier
@@ -210,8 +233,8 @@ namespace Lacrima
 			float a_delta);
 		void DryFace(Crier& a_crier);
 		void Expire(Cheek& a_cheek, const Frame& a_frame, const Settings& a_settings, float a_delta);
-		bool Attach(Cheek& a_cheek, const Crier& a_crier, RE::NiAVObject* a_root);
-		void Draw(Cheek& a_cheek, const Frame& a_frame, const Settings& a_settings, const Spot* a_marker);
+		bool Attach(Cheek& a_cheek, const Crier& a_crier, RE::NiAVObject* a_root, bool a_world);
+		void Draw(Cheek& a_cheek, const Mount& a_mount, const Settings& a_settings, const Spot* a_marker);
 		void Clear(Cheek& a_cheek);
 		void Release(Cheek& a_cheek);
 		bool Idle(const Crier& a_crier) const;
@@ -225,11 +248,11 @@ namespace Lacrima
 		Rope*   AcquireRope(Cheek& a_cheek);
 		void    Shade(RE::NiAVObject* a_root, const Settings& a_settings);
 		void    Reshade(Cheek& a_cheek, const Settings& a_settings);
-		void    PoseBlob(Blob& a_blob);
-		void    PoseDrop(Blob& a_blob, Fluid::Vec3 a_center, float a_radius, Fluid::Vec3 a_up, Fluid::Vec3 a_velocity = {},
+		void    PoseBlob(const Mount& a_mount, Blob& a_blob);
+		void    PoseDrop(const Mount& a_mount, Blob& a_blob, Fluid::Vec3 a_center, float a_radius, Fluid::Vec3 a_up, Fluid::Vec3 a_velocity = {},
 			   std::optional<Fluid::Vec3> a_contact = std::nullopt);
-		void    PoseRope(Cheek& a_cheek, Rope& a_rope, std::size_t a_begin, std::size_t a_end, const Fluid::Anchor* a_anchor, float a_width,
-			   float a_fade);
+		void    PoseRope(const Mount& a_mount, Cheek& a_cheek, Rope& a_rope, std::size_t a_begin, std::size_t a_end, const Fluid::Anchor* a_anchor,
+			   float a_width, float a_fade);
 		void    Bend(Rope& a_rope, const std::array<RE::NiPoint3, kRopeBones>& a_positions, const std::array<float, kRopeBones>& a_radii);
 
 		static Fluid::Vec3  ToLocal(const Frame& a_frame, const RE::NiPoint3& a_point);
