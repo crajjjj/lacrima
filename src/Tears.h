@@ -29,6 +29,9 @@ namespace Lacrima
 		void Stop(RE::ActorHandle a_actor, bool a_wipe);
 		void Shed(RE::ActorHandle a_actor, int a_eye);
 		void Wipe(RE::ActorHandle a_actor);
+		// Plays a_idle (the vanilla brow wipe when null) and dries the face when a hand
+		// reaches the eyes, or when the gesture runs out of time.
+		void WipeWithHand(RE::ActorHandle a_actor, RE::TESIdleForm* a_idle);
 		void WipeAll();
 		void CryNearby(float a_radius, float a_intensity, float a_seconds);
 
@@ -51,7 +54,8 @@ namespace Lacrima
 				kShed,
 				kWipe,
 				kWipeAll,
-				kNearby
+				kNearby,
+				kHandWipe
 			};
 
 			Kind            kind{ Kind::kCry };
@@ -61,6 +65,17 @@ namespace Lacrima
 			int             eye{ -1 };
 			bool            wipe{ false };
 			float           radius{ 0.0f };
+			RE::TESIdleForm* idle{ nullptr };
+		};
+
+		// A piece of a hand (palm or finger bone), in world units.
+		struct Bone
+		{
+			RE::NiPoint3 a;
+			RE::NiPoint3 b;
+			float        radius{ 0.0f };
+			RE::NiPoint3 velocityA;
+			RE::NiPoint3 velocityB;
 		};
 
 		struct Blob
@@ -92,6 +107,7 @@ namespace Lacrima
 			std::vector<Fluid::Particle>   particles;
 			std::vector<Fluid::Anchor>     anchors;
 			std::unique_ptr<Fluid::Solver> solver;
+			std::vector<Fluid::Capsule>    capsules;
 			float                          spacing{ 0.0f };
 			Fluid::Skin                    skin;
 			Fluid::Ground                  ground{ 1.0f };
@@ -128,6 +144,11 @@ namespace Lacrima
 			bool                       forever{ false };
 			bool                       crying{ false };
 			bool                       watched{ false };
+			float                      wipeArm{ 0.0f };
+			RE::NiPointer<RE::NiAVObject>              handRoot;
+			std::vector<RE::NiPointer<RE::NiAVObject>> handBones;
+			std::vector<Bone>                          hands;
+			std::vector<RE::NiPoint3>                  handPrevious;
 			std::array<Cheek, Face::kEyes> cheeks;
 		};
 
@@ -147,7 +168,11 @@ namespace Lacrima
 		bool Place(Cheek& a_cheek, RE::Actor* a_actor, const Face::Duct& a_duct, const Settings& a_settings);
 		void Emit(Crier& a_crier, Cheek& a_cheek, const Face::Duct& a_duct, const Settings& a_settings, float a_delta);
 		void StartTear(Cheek& a_cheek, float a_strength, const Settings& a_settings);
-		void Simulate(Cheek& a_cheek, const std::optional<Face::View>& a_view, const Settings& a_settings, float a_delta);
+		void Simulate(Cheek& a_cheek, const std::optional<Face::View>& a_view, std::span<const Bone> a_hands, const Settings& a_settings,
+			float a_delta);
+		void PoseHands(Crier& a_crier, RE::Actor* a_actor, float a_delta);
+		void Gesture(Crier& a_crier, const std::optional<Face::View>& a_view, const Settings& a_settings, float a_delta);
+		void DryFace(Crier& a_crier);
 		void Expire(Cheek& a_cheek, const Settings& a_settings, float a_delta);
 		bool Attach(Cheek& a_cheek, RE::Actor* a_actor);
 		void Draw(Cheek& a_cheek, const Settings& a_settings, const Face::Duct* a_marker);

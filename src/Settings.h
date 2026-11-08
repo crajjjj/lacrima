@@ -41,6 +41,11 @@ namespace Lacrima
 		float stretch{ 3.0f };
 		float fall{ 0.6f };
 
+		bool  hands{ true };
+		float absorb{ 0.15f };
+		float reach{ 7.0f };
+		float gestureWait{ 3.5f };
+
 		bool showDucts{ false };
 
 		static std::unique_lock<std::recursive_mutex> Lock();

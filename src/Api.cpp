@@ -37,6 +37,11 @@ void Lacrima_StopCrying(RE::Actor* actor, bool wipe)
 	Lacrima::Tears::Get().Stop(HandleOf(actor), wipe);
 }
 
+void Lacrima_WipeTearsWithHand(RE::Actor* actor, RE::TESIdleForm* idle)
+{
+	Lacrima::Tears::Get().WipeWithHand(HandleOf(actor), idle);
+}
+
 bool Lacrima_IsCrying(RE::Actor* actor)
 {
 	return actor && Lacrima::Tears::Get().Query(actor->GetHandle()).crying;

@@ -69,6 +69,15 @@ namespace Lacrima
 			Field{ "physics", "fall", &Settings::fall, 0.1f, 3.0f, "Physics", "Falling drop life", "%.2f s",
 				"Seconds a drop that falls off the face stays visible." },
 
+			Field{ "wipe", "hands", &Settings::hands, 0, 1, "Wipe", "Hands wipe tears", nullptr,
+				"A crying actor's own hand takes away the tears it touches, in any animation that brings it to the face." },
+			Field{ "wipe", "absorb", &Settings::absorb, 0.02f, 2.0f, "Wipe", "Wipe speed", "%.2f s",
+				"Seconds a tear touched by a hand lasts before it is gone." },
+			Field{ "wipe", "reach", &Settings::reach, 1.0f, 20.0f, "Wipe", "Gesture reach", "%.1f units",
+				"In a wipe gesture, how close the hand must come to the eyes to dry the face." },
+			Field{ "wipe", "gesture_wait", &Settings::gestureWait, 0.5f, 10.0f, "Wipe", "Gesture wait", "%.1f s",
+				"How long a wipe gesture waits for the hand to reach the face before it dries it anyway." },
+
 			Field{ "debug", "show_ducts", &Settings::showDucts, 0, 1, "Test", "Show tear starts", nullptr,
 				"Marks where tears start on the console-selected actor, or on the player." },
 		};

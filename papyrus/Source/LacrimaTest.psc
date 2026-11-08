@@ -66,6 +66,14 @@ String Function Wipe() global
 	Return Who() + " has a dry face."
 EndFunction
 
+String Function WipeHand() global
+	If !Loaded()
+		Return "Lacrima.dll is not loaded."
+	EndIf
+	Lacrima.WipeTearsWithHand(Target())
+	Return Who() + " wipes the tears away."
+EndFunction
+
 String Function WipeAll() global
 	WipeAllNative()
 	Return "Every face is dry."

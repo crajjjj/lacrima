@@ -40,6 +40,11 @@ namespace Lacrima::Papyrus
 			Tears::Get().Wipe(HandleOf(a_actor));
 		}
 
+		void WipeTearsWithHand(RE::StaticFunctionTag*, RE::Actor* a_actor, RE::TESIdleForm* a_idle)
+		{
+			Tears::Get().WipeWithHand(HandleOf(a_actor), a_idle);
+		}
+
 		bool IsCrying(RE::StaticFunctionTag*, RE::Actor* a_actor)
 		{
 			return a_actor && Tears::Get().Query(a_actor->GetHandle()).crying;
@@ -108,6 +113,7 @@ namespace Lacrima::Papyrus
 		a_vm->RegisterFunction("StopCrying"sv, kScript, StopCrying);
 		a_vm->RegisterFunction("ShedTear"sv, kScript, ShedTear);
 		a_vm->RegisterFunction("WipeTears"sv, kScript, WipeTears);
+		a_vm->RegisterFunction("WipeTearsWithHand"sv, kScript, WipeTearsWithHand);
 		a_vm->RegisterFunction("IsCrying"sv, kScript, IsCrying, true);
 		a_vm->RegisterFunction("GetIntensity"sv, kScript, GetIntensity, true);
 		a_vm->RegisterFunction("GetTimeLeft"sv, kScript, GetTimeLeft, true);

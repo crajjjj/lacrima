@@ -5,6 +5,7 @@
 namespace RE
 {
 	class Actor;
+	class TESIdleForm;
 }
 
 // ======================================================================================
@@ -48,6 +49,11 @@ namespace RE
 // - ShedTear sheds one tear even from an actor who is not crying. eye: 0 left,
 //   1 right, 2 both, anything else one at random.
 // - Wipe removes the tears on the face without changing whether the actor cries.
+// - WipeTearsWithHand plays idle (the vanilla brow wipe, Skyrim.esm 0977EC, when null)
+//   and dries the face once a hand comes near the eyes, or after a few seconds if it
+//   never does. An idle that cannot play (the actor is busy) dries the face at once.
+// - Independently of any gesture, a crying actor's own hands take away the tears they
+//   touch, in any animation, unless the player turned that off.
 // - Lacrima sends the mod events Lacrima_CryStart (numArg = intensity) and
 //   Lacrima_CryStop, with the actor as the sender, when crying starts and stops.
 //
@@ -70,4 +76,5 @@ float Lacrima_GetIntensity(RE::Actor* actor);
 float Lacrima_GetTimeLeft(RE::Actor* actor);
 void  Lacrima_ShedTear(RE::Actor* actor, std::int32_t eye);
 void  Lacrima_Wipe(RE::Actor* actor);
+void  Lacrima_WipeTearsWithHand(RE::Actor* actor, RE::TESIdleForm* idle);
 }

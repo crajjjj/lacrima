@@ -134,6 +134,13 @@ namespace Lacrima::Menu
 			RenderPage("Physics");
 		}
 
+		void __stdcall RenderWipe()
+		{
+			Text("Hands take tears away: a crying actor's own hand absorbs the tears it touches, and a wipe gesture dries the face.");
+			Ui::Separator();
+			RenderPage("Wipe");
+		}
+
 		void __stdcall RenderTest()
 		{
 			RenderPage("Test");
@@ -155,6 +162,9 @@ namespace Lacrima::Menu
 			Ui::SameLine();
 			if (Ui::Button("Wipe the player's face")) {
 				Tears::Get().Wipe(Player());
+			}
+			if (Ui::Button("Player wipes with a hand")) {
+				Tears::Get().WipeWithHand(Player(), nullptr);
 			}
 			Ui::SliderFloat("Nearby radius", &g_testRadius, 100.0f, 5000.0f, "%.0f units");
 			if (Ui::Button("Nearby actors cry")) {
@@ -214,6 +224,7 @@ namespace Lacrima::Menu
 		SKSEMenuFramework::AddSectionItem("Tears", &RenderTears);
 		SKSEMenuFramework::AddSectionItem("Look", &RenderLook);
 		SKSEMenuFramework::AddSectionItem("Physics", &RenderPhysics);
+		SKSEMenuFramework::AddSectionItem("Wipe", &RenderWipe);
 		SKSEMenuFramework::AddSectionItem("Test", &RenderTest);
 		SKSEMenuFramework::AddEvent(&OnEvent, 0.0f);  // lives as long as the game
 		logger::info("menu: registered");

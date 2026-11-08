@@ -51,6 +51,15 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   the duct and anchored there while it wells, then released. `Fluid::Solver` steps at
   120 Hz against the face patches near the particles. Particles that fall free get
   their life cut to `[physics] fall`. Drawing is OStrands' blob / rope / drop pass.
+- **Hands** (`Tears::PoseHands`): palm + thumb/index/middle/ring finger capsules from
+  the skeleton's hand and finger bones, with velocities, passed to the solver as
+  colliders (so a hand smears tears) when `[wipe] hands` is on; a particle touching
+  one has its life cut to `[wipe] absorb`. `WipeWithHand` plays an idle (default
+  `IdleWipeBrow`, Skyrim.esm 0977EC) through `AIProcess::PlayIdle` and arms
+  `Crier::wipeArm`; `Gesture` dries the face (`DryFace`) when any hand capsule comes
+  within `[wipe] reach` of a duct, or when the arm runs out. The brow wipe passes the
+  forehead, not the eyes, which is why reach is generous; a real eye-wipe idle can be
+  passed by the caller.
 - **Settings** (`Settings.cpp`): one field table drives the toml reader, the user-file
   writer and the menu pages. `Lacrima.toml` holds the shipped defaults;
   `Lacrima_User.toml` holds only what the player changed (written by the menu).

@@ -37,5 +37,11 @@ cohesion = 2.5         # how strongly a tear holds together as a bead
 stretch = 3.0          # how easily a running tear stretches into a trail
 fall = 0.6             # seconds a drop that falls off the face stays visible
 
+[wipe]
+hands = true           # a crying actor's own hand takes away the tears it touches, in any animation
+absorb = 0.15          # seconds a tear touched by a hand lasts
+reach = 7.0            # in a wipe gesture, how close the hand must come to the eyes (game units)
+gesture_wait = 3.5     # seconds a wipe gesture waits for the hand before drying the face anyway
+
 [debug]
 show_ducts = false     # mark where tears start on the console-selected actor, or the player

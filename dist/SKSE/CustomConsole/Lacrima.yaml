@@ -43,6 +43,9 @@ subs:
   - name: wipe
     func: Wipe
     help: Remove the tears on the target's face
+  - name: wipehand
+    func: WipeHand
+    help: Wipe the tears away with a hand gesture (the vanilla brow wipe)
   - name: wipeall
     func: WipeAll
     help: Remove the tears on every face

@@ -29,6 +29,13 @@ Function ShedTear(Actor akActor, Int aiEye = -1) global native
 ; Removes the tears on the face at once, without changing whether the actor cries.
 Function WipeTears(Actor akActor) global native
 
+; Wipes the tears away by hand: plays akIdle (the vanilla brow wipe when None) and
+; dries the face when a hand comes near the eyes, or after a few seconds if it never
+; does. An idle that cannot play (the actor is busy, in furniture, in a scene) dries
+; the face at once. Crying goes on; the next tear just takes a moment longer.
+; Pass your own Idle for an animation that wipes the eyes properly.
+Function WipeTearsWithHand(Actor akActor, Idle akIdle = None) global native
+
 Bool Function IsCrying(Actor akActor) global native
 
 ; The intensity Cry set; 0.0 when not crying.

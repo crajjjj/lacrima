@@ -24,6 +24,11 @@ trails, and as drops that fall off the face.
 Tears start just below each eye. Where exactly is a setting, from the inner corner
 beside the nose to the outer corner.
 
+Hands take tears away. A crying actor's own fingers and palms absorb the tears they
+touch, in any animation that brings a hand to the face. `WipeTearsWithHand` plays a
+wipe gesture (the vanilla brow wipe unless you pass another idle) and dries the face
+once the hand comes near the eyes.
+
 ## Settings
 
 With SKSE Menu Framework installed, the Lacrima pages (Tears, Look, Physics, Test)
@@ -41,7 +46,8 @@ or on the player when none is selected.
 | `tears cry 0.7 30` | Cry at intensity 0.7 for 30 seconds (0 seconds = until stopped) |
 | `tears stop` | Stop crying; `tears stop 1` also wipes the face |
 | `tears tear` | Shed a single tear (`tears tear 0` left eye, `1` right, `2` both) |
-| `tears wipe` / `tears wipeall` | Dry this face / every face |
+| `tears wipe` / `tears wipeall` | Dry this face / every face, at once |
+| `tears wipehand` | Wipe the tears away with a hand gesture |
 | `tears nearby 0.7 30 1500` | Every loaded actor within 1500 units of the player cries |
 | `tears status` | What Lacrima found on the head and what the tears are doing |
 | `tears ducts 1` | Mark where tears start (`tears ducts 0` to hide) |
@@ -61,7 +67,9 @@ EndIf
 Lacrima.StopCrying(akActor)             ; tears on the face dry up
 Lacrima.StopCrying(akActor, true)       ; ... or vanish at once
 Lacrima.ShedTear(akActor)               ; one tear, also when not crying
-Lacrima.WipeTears(akActor)
+Lacrima.WipeTears(akActor)                    ; at once
+Lacrima.WipeTearsWithHand(akActor)            ; with the brow-wipe gesture
+Lacrima.WipeTearsWithHand(akActor, myEyeWipeIdle)
 Bool  crying = Lacrima.IsCrying(akActor)
 Float left   = Lacrima.GetTimeLeft(akActor)   ; -1 = until stopped
 ```
