@@ -55,5 +55,8 @@ namespace Lacrima::Face
 	// One line about what was found on the actor's head, for the status command.
 	std::string Describe(RE::Actor* a_actor, float a_ductPosition, float a_ductBelow);
 
+	// The name of the bone both head parts are measured against.
+	constexpr const char* kHeadBone = "NPC Head [Head]";
+
 	void Reset();
 }

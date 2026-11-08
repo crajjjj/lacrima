@@ -88,8 +88,13 @@ namespace Lacrima::Face
 			std::vector<std::uint32_t>                          aroundDucts;
 			std::vector<std::uint64_t>                          stamp;
 			std::vector<Box>                                    boxes;
-			std::array<EyeShape, kEyes>                         eyes{};
+			std::array<EyeShape, kEyes>                         eyes{};  // in head-bone space
 			float                                               forward{ 1.0f };
+			// The face mesh's own space is not the eyes mesh's (a vanilla eyes part is
+			// authored around the head bone, a face part around the skeleton root), so
+			// ducts are placed in head-bone space and mapped back into the face's.
+			RE::NiTransform                                     faceToBone;
+			RE::NiTransform                                     boneToFace;
 			std::array<std::size_t, kEyes>                      duct{ kNone, kNone };
 			std::array<Duct, kEyes>                             ducts{};
 			float                                               ductPosition{ -1.0f };
@@ -300,6 +305,27 @@ namespace Lacrima::Face
 			return geometry && VerticesOf(geometry) > 0 ? geometry : nullptr;
 		}
 
+		// The transform from a head part's mesh space into the head bone's space: the
+		// skin-to-bone transform its skin carries for that bone (bone 0 when the head
+		// bone is not among its bones). Identity when the mesh has no skin data.
+		RE::NiTransform ToHeadBone(RE::BSGeometry* a_geometry)
+		{
+			auto* skin = a_geometry ? a_geometry->GetGeometryRuntimeData().skinInstance.get() : nullptr;
+			if (!skin || !skin->skinData || !skin->bones || skin->skinData->GetBoneCount() == 0) {
+				return RE::NiTransform{};
+			}
+			const std::uint32_t bones = skin->skinData->GetBoneCount();
+			std::uint32_t       which = 0;
+			for (std::uint32_t i = 0; i < bones; ++i) {
+				const auto* bone = skin->bones[i];
+				if (bone && bone->name.c_str() && std::string_view(bone->name.c_str()) == kHeadBone) {
+					which = i;
+					break;
+				}
+			}
+			return skin->skinData->GetBoneDataSkinToBone(which);
+		}
+
 		// Head parts are named after their records on every head the game builds;
 		// this name guess is only for a head that somehow is not.
 		RE::BSGeometry* Guess(RE::NiAVObject* a_root, bool a_eyes)
@@ -418,11 +444,13 @@ namespace Lacrima::Face
 				}
 				const float        out = eye.center.x >= 0.0f ? 1.0f : -1.0f;
 				const float        r = eye.radius;
-				const RE::NiPoint3 target = eye.center + RE::NiPoint3{ out * r * kDuctSide * (2.0f * a_position - 1.0f), a_head.forward * r * kDuctFront, -r * a_below };
+				const RE::NiPoint3 inBone = eye.center + RE::NiPoint3{ out * r * kDuctSide * (2.0f * a_position - 1.0f), a_head.forward * r * kDuctFront, -r * a_below };
+				const RE::NiPoint3 target = a_head.boneToFace * inBone;
+				const RE::NiPoint3 facing = a_head.boneToFace.rotate * RE::NiPoint3{ 0.0f, a_head.forward, 0.0f };
 				float              best = std::numeric_limits<float>::max();
 				for (std::size_t k = 0; k < a_head.points.size(); ++k) {
 					const auto& point = a_head.points[k];
-					if (point.normal.y * a_head.forward < kFacingFloor) {
+					if (point.normal.Dot(facing) < kFacingFloor) {
 						continue;
 					}
 					const float distance = point.position.GetSquaredDistance(target);
@@ -435,10 +463,11 @@ namespace Lacrima::Face
 			for (std::size_t e = 0; e < kEyes; ++e) {
 				const auto& eye = a_head.eyes[e];
 				if (a_head.duct[e] != kNone) {
-					const auto& d = a_head.points[a_head.duct[e]];
-					logger::info("{} eye in mesh space: centre ({:.2f}, {:.2f}, {:.2f}), radius {:.2f}; duct vertex ({:.2f}, {:.2f}, {:.2f}), normal ({:.2f}, {:.2f}, {:.2f}); face forward {:+.0f}y",
-						e == kLeft ? "left" : "right", eye.center.x, eye.center.y, eye.center.z, eye.radius, d.position.x, d.position.y, d.position.z,
-						d.normal.x, d.normal.y, d.normal.z, a_head.forward);
+					const auto&        d = a_head.points[a_head.duct[e]];
+					const RE::NiPoint3 inBone = a_head.faceToBone * d.position;
+					logger::info("{} eye in head-bone space: centre ({:.2f}, {:.2f}, {:.2f}), radius {:.2f}; duct ({:.2f}, {:.2f}, {:.2f}), {:.2f} below the eye centre; face forward {:+.0f}y",
+						e == kLeft ? "left" : "right", eye.center.x, eye.center.y, eye.center.z, eye.radius, inBone.x, inBone.y, inBone.z,
+						eye.center.z - inBone.z, a_head.forward);
 				}
 			}
 			// The skin around the ducts is posed every frame, whatever the fluid asks.
@@ -500,11 +529,24 @@ namespace Lacrima::Face
 				return;
 			}
 
-			// Eyes, in mesh space: one mesh holds both, split by side of the midline.
-			// They only place the ducts; the eyeball is not a surface tears run on.
+			// Each head part is authored in its own space (a vanilla eyes part around
+			// the head bone, a face part around the skeleton root); the skin-to-bone
+			// transforms of the head bone take both into head-bone space, where the
+			// eyes are measured and the ducts aimed.
+			a_head.faceToBone = ToHeadBone(face);
+			a_head.boneToFace = a_head.faceToBone.Invert();
+			const RE::NiTransform eyesToBone = ToHeadBone(eyes);
+
+			// Eyes: one mesh holds both, split by side of the midline. They only place
+			// the ducts; the eyeball is not a surface tears run on.
+			std::vector<RE::NiPoint3> eyePoints;
+			eyePoints.reserve(eyeMesh.positions.size());
+			for (const auto& position : eyeMesh.positions) {
+				eyePoints.push_back(eyesToBone * position);
+			}
 			std::array<RE::NiPoint3, kEyes> sum{};
 			std::array<std::size_t, kEyes>  count{};
-			for (const auto& position : eyeMesh.positions) {
+			for (const auto& position : eyePoints) {
 				const std::size_t side = position.x >= 0.0f ? 1 : 0;
 				sum[side] += position;
 				++count[side];
@@ -516,7 +558,7 @@ namespace Lacrima::Face
 				}
 				sides[s].center = sum[s] / static_cast<float>(count[s]);
 				float spread = 0.0f;
-				for (const auto& position : eyeMesh.positions) {
+				for (const auto& position : eyePoints) {
 					if ((position.x >= 0.0f ? 1u : 0u) == s) {
 						spread += position.GetDistance(sides[s].center);
 					}
@@ -529,16 +571,17 @@ namespace Lacrima::Face
 				return;
 			}
 
-			// The face looks along +Y or -Y in mesh space: the eyes sit in front of
-			// the middle of the head. Right = forward x up, so with forward +Y the
+			// The face looks along +Y or -Y in head-bone space: the eyes sit in front
+			// of the middle of the head. Right = forward x up, so with forward +Y the
 			// actor's right eye is on +X.
 			RE::NiPoint3 centroid;
 			for (const auto& position : faceMesh.positions) {
 				centroid += position;
 			}
 			centroid = centroid / static_cast<float>(std::max<std::size_t>(faceMesh.positions.size(), 1));
-			RE::NiPoint3 eyesMiddle;
-			int          valid = 0;
+			const RE::NiPoint3 centroidInBone = a_head.faceToBone * centroid;
+			RE::NiPoint3       eyesMiddle;
+			int                valid = 0;
 			for (const auto& side : sides) {
 				if (side.valid) {
 					eyesMiddle += side.center;
@@ -546,7 +589,7 @@ namespace Lacrima::Face
 				}
 			}
 			eyesMiddle = eyesMiddle / static_cast<float>(valid);
-			a_head.forward = eyesMiddle.y >= centroid.y ? 1.0f : -1.0f;
+			a_head.forward = eyesMiddle.y >= centroidInBone.y ? 1.0f : -1.0f;
 			a_head.eyes[kRight] = a_head.forward > 0.0f ? sides[1] : sides[0];
 			a_head.eyes[kLeft] = a_head.forward > 0.0f ? sides[0] : sides[1];
 
