@@ -158,6 +158,7 @@ namespace Lacrima
 			Fluid::Vec3                    restDown;        // where down was when the sleeping tears settled
 			bool                           rested{ false };
 			bool                           dirty{ true };   // the fluid changed since the last draw
+			bool                           probe{ false };  // debug: log the first solver step of the tear that just started
 
 			bool          sheds{ true };
 			bool          welling{ false };

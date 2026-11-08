@@ -888,8 +888,12 @@ namespace Lacrima
 				return;
 			}
 			if (a_settings.debugLog) {
-				logger::info("{}: a tear of {} drops starts at head-space ({:.3f}, {:.3f}, {:.3f}) m", NameOf(a_crier.actor.get().get()), a_cheek.left,
-					a_spot.point.x, a_spot.point.y, a_spot.point.z);
+				const auto& frame = a_crier.frame;
+				logger::info("{}: a tear of {} drops starts at head-space ({:.3f}, {:.3f}, {:.3f}) m, normal ({:.2f}, {:.2f}, {:.2f}), down ({:.2f}, {:.2f}, {:.2f}); "
+				             "frame scale {:.3f}, unit {:.1f}, gravity down ({:.2f}, {:.2f}, {:.2f})",
+					NameOf(a_crier.actor.get().get()), a_cheek.left, a_spot.point.x, a_spot.point.y, a_spot.point.z, a_spot.normal.x, a_spot.normal.y,
+					a_spot.normal.z, a_spot.down.x, a_spot.down.y, a_spot.down.z, frame.scale, frame.unit, frame.down.x, frame.down.y, frame.down.z);
+				a_cheek.probe = true;
 			}
 		}
 
@@ -1057,6 +1061,42 @@ namespace Lacrima
 		std::erase_if(a_cheek.anchors, [](const Fluid::Anchor& a_anchor) { return a_anchor.rest <= 0.0f; });
 		if (steps > 0) {
 			Deposit(a_cheek, a_frame, a_settings);
+		}
+		if (a_cheek.probe && steps > 0) {
+			// One line per tear about its first solver step: is the face where the
+			// particles are, and did they land on it?
+			a_cheek.probe = false;
+			const auto&       first = particles.back();
+			const std::size_t nearest = a_cheek.skin.Nearest(first.position);
+			std::string       near = "no patch within 1 cm";
+			if (nearest != Fluid::kNone) {
+				const auto& patch = patches[nearest];
+				near = std::format("nearest patch {:.1f} mm away, depth {:.1f} mm along its normal ({:.2f}, {:.2f}, {:.2f})",
+					Fluid::Length(first.position - patch.position) * 1000.0f, Fluid::Dot(first.position - patch.position, patch.normal) * 1000.0f,
+					patch.normal.x, patch.normal.y, patch.normal.z);
+			}
+			std::size_t touching = 0;
+			for (const auto& particle : particles) {
+				touching += particle.touching ? 1 : 0;
+			}
+			const RE::NiPoint3 world = ToWorld(a_frame, first.position);
+			logger::info("first step: {} of {} posed patches under the fluid, {} of {} particles touching; newest particle at head-space ({:.3f}, {:.3f}, {:.3f}) m = world ({:.1f}, {:.1f}, {:.1f}); {}; {} anchors",
+				patches.size(), a_cheek.lastPosed, touching, particles.size(), first.position.x, first.position.y, first.position.z, world.x, world.y, world.z, near,
+				a_cheek.anchors.size());
+			if (!patches.empty()) {
+				Vec3 low = patches.front().position;
+				Vec3 high = low;
+				for (const auto& patch : patches) {
+					low = { std::min(low.x, patch.position.x), std::min(low.y, patch.position.y), std::min(low.z, patch.position.z) };
+					high = { std::max(high.x, patch.position.x), std::max(high.y, patch.position.y), std::max(high.z, patch.position.z) };
+				}
+				logger::info("first step: skin under the fluid spans head-space x [{:.3f}, {:.3f}] y [{:.3f}, {:.3f}] z [{:.3f}, {:.3f}] m", low.x, high.x, low.y,
+					high.y, low.z, high.z);
+			} else if (a_view && !a_view->patches.empty()) {
+				const Vec3 sample = ToLocal(a_frame, a_view->patches.front().position);
+				logger::info("first step: the posed face is elsewhere; its first patch is at head-space ({:.3f}, {:.3f}, {:.3f}) m = world ({:.1f}, {:.1f}, {:.1f})",
+					sample.x, sample.y, sample.z, a_view->patches.front().position.x, a_view->patches.front().position.y, a_view->patches.front().position.z);
+			}
 		}
 	}
 
