@@ -116,10 +116,13 @@ namespace Lacrima
 		// One eye's ducts, one per stream; a stream whose duct was not found is empty.
 		using Spots = std::array<std::optional<Spot>, Face::kMaxStreams>;
 
-		// Where the tear nodes hang and what their transforms are expressed in:
-		// under the head bone in head-bone units (the default), or under the cell
-		// node in world units as 0.1.0 did ([debug] mount_world, `tears mount 1`),
-		// kept as an A/B for "the tears do not show".
+		// Where the tear nodes hang and what their transforms are expressed in: under
+		// the cell node in world units as 0.1.0 did (the shipped default, [debug]
+		// mount_world, `tears mount 1`), or under the head bone in head-bone units
+		// (`tears mount 0`). The head-bone mount is the cheaper one: the engine carries
+		// the tears with the head, so a cheek whose tears all sleep skips Draw. The
+		// world mount re-poses every bead each frame and hides the tears while the
+		// actor is frozen (first person, far away).
 		struct Mount
 		{
 			bool         world{ false };
@@ -228,13 +231,16 @@ namespace Lacrima
 		void                        Bones(Crier& a_crier, RE::NiAVObject* a_root);
 		void                        Locate(Crier& a_crier, RE::NiAVObject* a_root);
 		bool                        Frozen(RE::NiAVObject* a_root, const Settings& a_settings) const;
-		std::optional<Face::Region> RegionOf(const Crier& a_crier) const;
+		// The world-space box around the actor's tears, grown by a_margin metres:
+		// around the awake ones only (where the face must be posed), or around all
+		// of them (where an expression moving the skin must wake them).
+		std::optional<Face::Region> Bounds(const Crier& a_crier, bool a_awakeOnly, float a_margin) const;
 		static Spot                 SpotOf(const Frame& a_frame, const Face::Duct& a_duct);
 
 		bool Prepare(Cheek& a_cheek, const Settings& a_settings);
 		void Emit(Crier& a_crier, Cheek& a_cheek, const Spots& a_spots, const Settings& a_settings, float a_delta);
 		void StartTear(Cheek& a_cheek, float a_strength, const Settings& a_settings);
-		void Wake(Cheek& a_cheek, const Frame& a_frame, bool a_morphing, std::span<const Fluid::Capsule> a_hands);
+		bool Wake(Cheek& a_cheek, const Frame& a_frame, bool a_morphing, std::span<const Fluid::Capsule> a_hands);
 		void Deposit(Cheek& a_cheek, const Frame& a_frame, const Settings& a_settings);
 		void Simulate(Cheek& a_cheek, const Frame& a_frame, const std::optional<Face::View>& a_view, std::span<const Fluid::Capsule> a_hands,
 			const Settings& a_settings, float a_delta);

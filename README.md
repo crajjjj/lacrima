@@ -23,8 +23,11 @@ head they ride it without lag however fast the actor moves, while a tear at rest
 nothing. The particles are drawn as beads, as wet trails, and as drops that fall off
 the face. Actors far from the camera keep their tears paused until they come closer.
 
-Tears start just below each eye. Where exactly is a setting, from the inner corner
-beside the nose to the outer corner.
+Tears start just below each eye, from one or more points along the lower lid
+(`streams`), anywhere from the inner corner beside the nose to the outer corner. A tear
+wells on the lid, runs as a small bead and leaves a thin wet streak behind it; a drop
+that reaches the underside of the chin clings there for a moment before it falls. While
+an actor cries, their eyes glisten.
 
 Hands take tears away. A crying actor's own fingers and palms absorb the tears they
 touch, in any animation that brings a hand to the face. `WipeTearsWithHand` plays a
@@ -53,6 +56,7 @@ or on the player when none is selected.
 | `tears nearby 0.7 30 1500` | Every loaded actor within 1500 units of the player cries |
 | `tears status` | What Lacrima found on the head and what the tears are doing |
 | `tears ducts 1` | Mark where tears start (`tears ducts 0` to hide) |
+| `tears mount 0` | Hang the tears under the head bone, the cheaper way (`tears mount 1`, the default, draws them in world space) |
 | `tears count` | How many actors are crying |
 | `tears enable 0` | Turn Lacrima off for this session (`1` on) |
 | `tears reload` | Read the toml files again |

@@ -34,6 +34,8 @@ namespace Lacrima
 		constexpr float       kSquash = 0.45f;
 		constexpr float       kSkinCell = 0.03f;  // the skin lookup finds a patch within half of this: a vanilla head's cheek has 1 cm gaps
 		constexpr float       kSkinMargin = 0.06f;
+		constexpr float       kWatchMargin = 0.006f;  // metres around the tears where an expression moving the skin wakes them
+		constexpr float       kTipGrace = 0.15f;      // seconds off the skin after which a piece of the bead no longer ends the trail
 		constexpr float       kWellSpeed = 0.02f;
 		constexpr float       kFallSpeed = 0.25f;
 		// A particle must be off every surface this long before falling counts: free
@@ -519,6 +521,7 @@ namespace Lacrima
 			}
 			_criers.clear();
 			_order.clear();
+			Face::Reset();  // puts back eyes left glistening; BeginFrame, which would lapse them, does not run while off
 			{
 				std::scoped_lock guard(_lock);
 				_states.clear();
@@ -636,6 +639,10 @@ namespace Lacrima
 					Expire(cheek, crier.frame, settings, a_delta);
 					if (cheek.particles.empty() && cheek.root) {
 						Release(cheek);
+					} else if (cheek.root) {
+						// Under the cell node nothing hides the tears with the actor (first
+						// person) or carries them along; Attach shows them again.
+						cheek.root->SetAppCulled(true);
 					}
 				}
 				if (Idle(crier)) {
@@ -647,8 +654,9 @@ namespace Lacrima
 				continue;
 			}
 
-			const auto region = RegionOf(crier);
-			const auto view = Face::Of(actor.get(), PlacementOf(settings), region ? &*region : nullptr);
+			auto       region = Bounds(crier, true, kSkinMargin);
+			const auto underTears = Bounds(crier, false, kWatchMargin);
+			auto       view = Face::Of(actor.get(), PlacementOf(settings), region ? &*region : nullptr, underTears ? &*underTears : nullptr);
 			std::array<Spots, Face::kEyes> spots{};
 			if (view) {
 				for (std::size_t e = 0; e < Face::kEyes; ++e) {
@@ -668,6 +676,16 @@ namespace Lacrima
 			Gesture(crier, spots, view ? view->scale : crier.frame.scale, settings, a_delta);
 			const auto  hands = settings.hands ? std::span<const Fluid::Capsule>(crier.hands) : std::span<const Fluid::Capsule>{};
 			const Mount mount{ settings.mountWorld, &crier.frame };
+			// Wake before the face is final: tears that wake need skin under them in the
+			// same step, and with every tear asleep only the ducts' surroundings were posed.
+			bool woke = false;
+			for (auto& cheek : crier.cheeks) {
+				woke = Wake(cheek, crier.frame, view && view->morphing, hands) || woke;
+			}
+			if (woke && view) {
+				region = Bounds(crier, true, kSkinMargin);
+				view = Face::Of(actor.get(), PlacementOf(settings), region ? &*region : nullptr, underTears ? &*underTears : nullptr);
+			}
 			for (std::size_t e = 0; e < Face::kEyes; ++e) {
 				auto&      cheek = crier.cheeks[e];
 				const bool any = std::ranges::any_of(spots[e], [](const std::optional<Spot>& a_spot) { return a_spot.has_value(); });
@@ -684,7 +702,6 @@ namespace Lacrima
 					cheek.dirty = true;
 				}
 				try {
-					Wake(cheek, crier.frame, view && view->morphing, hands);
 					Simulate(cheek, crier.frame, view, hands, settings, a_delta);
 					Expire(cheek, crier.frame, settings, a_delta);
 				} catch (const std::exception& error) {
@@ -803,7 +820,7 @@ namespace Lacrima
 		return eye && eye->world.translate.GetDistance(a_root->world.translate) > a_settings.maxDistance;
 	}
 
-	std::optional<Face::Region> Tears::RegionOf(const Crier& a_crier) const
+	std::optional<Face::Region> Tears::Bounds(const Crier& a_crier, bool a_awakeOnly, float a_margin) const
 	{
 		// Where the face must be posed: around every tear, as long as any tear is
 		// awake. Sleeping tears do not collide, so a face with only those needs no
@@ -824,11 +841,11 @@ namespace Lacrima
 				}
 			}
 		}
-		if (!awake) {
+		if (!any || (a_awakeOnly && !awake)) {
 			return std::nullopt;
 		}
-		low = low - Vec3{ kSkinMargin, kSkinMargin, kSkinMargin };
-		high = high + Vec3{ kSkinMargin, kSkinMargin, kSkinMargin };
+		low = low - Vec3{ a_margin, a_margin, a_margin };
+		high = high + Vec3{ a_margin, a_margin, a_margin };
 		Face::Region region{ ToWorld(a_crier.frame, low), ToWorld(a_crier.frame, low) };
 		for (int c = 1; c < 8; ++c) {
 			const Vec3         corner{ c & 1 ? high.x : low.x, c & 2 ? high.y : low.y, c & 4 ? high.z : low.z };
@@ -1002,8 +1019,9 @@ namespace Lacrima
 
 	// ---------------------------------------------------------------- simulation
 
-	void Tears::Wake(Cheek& a_cheek, const Frame& a_frame, bool a_morphing, std::span<const Fluid::Capsule> a_hands)
+	bool Tears::Wake(Cheek& a_cheek, const Frame& a_frame, bool a_morphing, std::span<const Fluid::Capsule> a_hands)
 	{
+		bool woke = false;
 		if (!a_cheek.rested) {
 			a_cheek.restDown = a_frame.down;
 			a_cheek.rested = true;
@@ -1026,6 +1044,7 @@ namespace Lacrima
 				particle.asleep = false;
 				particle.idle = 0.0f;
 				a_cheek.dirty = true;
+				woke = true;
 			} else {
 				asleep = true;
 			}
@@ -1033,6 +1052,7 @@ namespace Lacrima
 		if (!asleep) {
 			a_cheek.restDown = a_frame.down;
 		}
+		return woke;
 	}
 
 	void Tears::Simulate(Cheek& a_cheek, const Frame& a_frame, const std::optional<Face::View>& a_view, std::span<const Fluid::Capsule> a_hands,
@@ -1376,6 +1396,10 @@ namespace Lacrima
 			}
 			parent->AttachChild(a_cheek.root.get(), true);
 			a_cheek.dirty = true;
+			// Bead bones posed in the other mount's units: no bead may keep its pose.
+			for (auto& blob : a_cheek.blobs) {
+				blob.live = false;
+			}
 			if (Settings::Snapshot().debugLog) {
 				const char* name = parent->name.c_str();
 				logger::info("tear root attached under \"{}\" ({} mount), actor 3D {}culled", name && *name ? name : "(unnamed)",
@@ -1986,8 +2010,9 @@ namespace Lacrima
 				const auto& particle = particles[i];
 				if (particle.order > 0) {
 					trail.push_back(i);
-				} else {
-					// what is left of the bead, running or come to rest
+				} else if (particle.touching || particle.airborne < kTipGrace) {
+					// what is left of the bead on the skin, running or come to rest; a
+					// piece falling off the face is drawn as a drop, not as rope through the air
 					beadSum += particle.position;
 					beadLife += particle.life;
 					++bead;

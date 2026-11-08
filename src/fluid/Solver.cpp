@@ -431,8 +431,10 @@ namespace Lacrima::Fluid
 			particle.position = _predicted[i];
 			particle.velocity = velocity;
 			// A tear at rest on the skin sleeps: the skin does not move in this frame,
-			// so nothing is lost by freezing it until something stirs it.
-			if (_anchored[i] || LengthSquared(relative) > kSleepSpeed * kSleepSpeed) {
+			// so nothing is lost by freezing it until something stirs it. A drop
+			// clinging to skin that faces down stays awake, or its cling would never
+			// run out and it would hang under the chin for good.
+			if (_anchored[i] || particle.hang > 0.0f || LengthSquared(relative) > kSleepSpeed * kSleepSpeed) {
 				particle.idle = 0.0f;
 			} else if ((particle.idle += a_seconds) > kSleepTime) {
 				particle.asleep = true;

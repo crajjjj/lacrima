@@ -42,8 +42,8 @@ namespace Lacrima::Face
 		std::span<const Patch> patches;
 		Ducts                  ducts;  // [eye][stream]; streams past the configured count are invalid
 		float                  scale{ 1.0f };
-		// The skin in the patches moved this frame under an expression (facegen
-		// morphs), so fluid resting on it must be stirred.
+		// The skin inside the watch region moved this frame under an expression
+		// (facegen morphs), so fluid resting on it must be stirred.
 		bool morphing{ false };
 	};
 
@@ -66,15 +66,19 @@ namespace Lacrima::Face
 	// The actor's face, posed for this frame; nullopt when the actor has no loaded
 	// face or eyes that Lacrima can read. Only the skin that can fall inside
 	// a_region, plus the skin around the ducts, is posed; null poses the ducts'
-	// surroundings only. Main thread only.
-	std::optional<View> Of(RE::Actor* a_actor, const Placement& a_placement, const Region* a_region);
+	// surroundings only. View::morphing reports an expression moving the skin
+	// inside a_watch (the tears themselves, tight), which needs no posing; null
+	// watches nothing. Main thread only.
+	std::optional<View> Of(RE::Actor* a_actor, const Placement& a_placement, const Region* a_region, const Region* a_watch = nullptr);
 
 	// One line about what was found on the actor's head, for the status command.
 	std::string Describe(RE::Actor* a_actor, const Placement& a_placement);
 
 	// Wet eyes: scales the eyes' reflection and highlight by a_factor (1 restores
 	// them). Call every frame while it should hold; it lapses on its own half a
-	// second after the last call, and the original values are put back.
+	// second after the last call, and the original values are put back. The first
+	// call gives the actor's eyes their own copy of the eye material, which the
+	// game otherwise shares between every actor wearing the same eyes.
 	void Glisten(RE::Actor* a_actor, float a_factor);
 
 	// The name of the bone both head parts are measured against.

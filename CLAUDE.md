@@ -40,35 +40,62 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
 - **Face** (`Face.cpp`): finds the actor's face and eyes head-part geometry by the head
   part record's editor ID (the name the game gives that geometry), reads the vertices
   (facegen dynamic data when present, so expressions move the surface) and dedupes the
-  face's on a 0.25-unit voxel. The eyes only place the ducts: their centers come from
-  the eyes mesh split by the mesh-space midline (mesh space has Z up and the face
-  looking along +Y or -Y, decided from where the eyes sit); the eyeball is not a
-  collision surface, it sits a millimetre behind the lid skin and would steal the
-  nearest-patch pick. Each duct is the face vertex nearest a point below and in front
-  of the eye. Per frame `Of(actor, ..., region)` skins only the points whose bind
-  position can land in the caller's world-space region (the box is taken into each
-  joint's skin space and tested on the point's heaviest joint) plus the points within
-  6 units of a duct, and reports `morphing` when the expression moved any of them
-  since the last frame.
+  face's on a 0.25-unit voxel. **Head parts do not share a mesh space**: a vanilla
+  eyes part is authored around the head bone (eye centres at z 3), a face part around
+  the skeleton root (eyes at z 124). Both are taken into head-bone space through the
+  skin-to-bone transform each skin holds for `NPC Head [Head]` (`ToHeadBone`) before
+  anything is measured; comparing the raw spaces put every duct at the bottom of the
+  neck. The eyes only place the ducts (centres from the eyes mesh split by the
+  midline, forward +Y or -Y from where the eyes sit); the eyeball is not a collision
+  surface, it sits a millimetre behind the lid skin and would steal the nearest-patch
+  pick. `Placement` gives `streams` (1 to 4) start points per eye spread along the
+  lower lid; each duct is the face vertex nearest its target, mapped back into face
+  space. Per frame `Of(actor, placement, region, watch)` skins only the points whose
+  bind position can land in `region` (the box is taken into each joint's skin space
+  and tested on the point's heaviest joint) plus the points within 2.5 units of a
+  duct, and reports `morphing` when an expression moved a point inside `watch` (the
+  tears themselves, tight, tested in bind space without posing), so a blink does not
+  stir a trail lower on the cheek. `Glisten` (wet eyes, `[look] eye_shine`) first
+  gives the actor's eyes their own copy of the eye material (copy, then
+  `SetMaterial(copy, true)`; the game shares one material between every actor with
+  the same eyes), scales its reflection and highlight, and lapses half a second after
+  the last call.
 - **Tears** (`Tears.cpp`): one `Crier` per actor, one `Cheek` per eye. Everything is
   simulated and drawn in **head space**: the head bone's axes and origin, in metres
   (`Frame`: 70 x the bone's scale world units per metre; world down and `9.81 / scale`
   are rotated into it each frame). The skin stands still there, so a tear at rest
   **sleeps** (the solver's sleep, which a world-space fluid on a moving body never
-  reaches) and costs nothing until `Wake` stirs it: an expression moved the skin
-  (`View::morphing`), the head tilted 15 degrees from where the tears settled, a hand
-  came within reach, or an anchor / moving neighbour touched it. The tear nodes hang
-  under the head bone with identity transforms, so the engine carries them between
-  updates, and a cheek whose tears all sleep skips the solver and the draw
-  (`Cheek::dirty`). No recentring, no speed caps to outrun, no cell clears. A tear is
-  a run of linked particles emitted at the duct and anchored there while it wells,
-  then released. `Fluid::Solver` steps at 120 Hz against the face patches near the
-  awake particles, with one neighbour list per step (2.5 spacings of slack) on a
-  sorted flat `CellGrid`. Particles that fall free get their life cut to
-  `[physics] fall`. An actor beyond `[tears] max_distance` from the camera, or whose
-  3D is app-culled (the player in first person), is **frozen**: no emission, no
-  solver, no draw; trail life still ticks. Drawing is OStrands' blob / rope / drop pass
-  on persistent scratch buffers.
+  reaches) and costs nothing until `Wake` stirs it: an expression moved the skin under
+  it (`View::morphing`), the head tilted 15 degrees from where the tears settled, a
+  hand came within reach, or an anchor / moving neighbour touched it. `Wake` runs
+  before the face is final, so woken tears get skin under them in the same step. No
+  recentring, no speed caps to outrun, no cell clears. A tear is a run of linked
+  particles born touching the lid at one of its eye's streams, each anchored to the
+  seat while it wells, then released. Adhesion per particle falls with the fluid
+  around it, so a bead runs while a lone drop sticks; a running tear leaves its
+  hindmost drop asleep every `[physics] trail_step` (`Deposit`), and the trail rope is
+  drawn from the lid through those deposits to what is left of the bead on the skin.
+  On skin that faces down a drop clings for `[physics] cling` seconds (and stays
+  awake meanwhile) before it falls. `Fluid::Solver` steps at 120 Hz against the face
+  patches near the awake particles, with one neighbour list per step (2.5 spacings of
+  slack) on a sorted flat `CellGrid`; only patches a particle is in front of collide
+  (the inner eyelid sits a millimetre behind the skin), and the stick-pull keeps
+  reaching a particle for 0.15 s after it loses the skin. A particle off the skin for
+  0.2 s that moves down fast gets its life cut to `[physics] fall`. An actor beyond
+  `[tears] max_distance` from the camera, or whose 3D is app-culled (the player in
+  first person), is **frozen**: no emission, no solver, no draw, its tears hidden;
+  trail life still ticks.
+- **Mounts.** The shipped default (`[debug] mount_world = true`, `tears mount 1`) hangs
+  each cheek's tear root under the cell node with the inverse of its transform and
+  poses the nodes in world units, as 0.1.0 did; it is the mount seen working in game.
+  `tears mount 0` hangs the root under the head bone with identity transforms, so the
+  engine carries the tears and a cheek whose tears all sleep skips the draw
+  (`Cheek::dirty`); a mount switch re-poses every bead. Drawing is OStrands' blob /
+  rope / drop pass on persistent scratch buffers. The tear meshes use a plain
+  `NiSkinInstance`: the engine hides a dismember partition whenever an equipped item
+  covers its slot (TNG uses slot 52). The material is an environment-mapped,
+  translucent lighting shader without depth write, with a faint glow of its own
+  (`[look] glow`) so a streak reads as a light wet line from any angle.
 - **Hands** (`Tears::PoseHands`): palm + thumb/index/middle/ring finger capsules from
   the skeleton's hand and finger bones, in head space with velocities relative to the
   head, passed to the solver as colliders (so a hand smears tears) when `[wipe] hands`

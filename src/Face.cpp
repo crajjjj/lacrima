@@ -24,7 +24,11 @@ namespace Lacrima::Face
 		constexpr std::size_t   kNone = static_cast<std::size_t>(-1);
 		// Skin within this of a duct (bind units) is posed every frame, so a welling
 		// tear always has the lid under it, whatever the region says.
-		constexpr float kDuctReach = 6.0f;
+		constexpr float kDuctReach = 2.5f;
+		// Slack around the watch region in a joint's own space (bind units): skin
+		// this close to a tear counts as under it when an expression moves it. Tight,
+		// so a blink moving the lid does not stir a trail lower on the cheek.
+		constexpr float kWatchSlack = 0.5f;
 		// Slack around the region once it is in a joint's own space (bind units):
 		// covers the blend between joints and the margin the fluid asks for anyway.
 		constexpr float kRegionSlack = 2.0f;
@@ -88,6 +92,7 @@ namespace Lacrima::Face
 			std::vector<std::uint32_t>                          aroundDucts;
 			std::vector<std::uint64_t>                          stamp;
 			std::vector<Box>                                    boxes;
+			std::vector<Box>                                    watchBoxes;
 			std::array<EyeShape, kEyes>                         eyes{};  // in head-bone space
 			float                                               forward{ 1.0f };
 			Placement                                           placement{ -1.0f, -1.0f, 0, -1.0f };
@@ -106,6 +111,7 @@ namespace Lacrima::Face
 			RE::NiPointer<RE::BSGeometry>                       eyesGeometry;
 			float                                               eyeEnv{ -1.0f };    // the eyes material's own values, restored after glistening
 			float                                               eyeSpec{ -1.0f };
+			bool                                                eyeOwned{ false };  // eyesGeometry has its own copy of the eye material
 			bool                                                glistening{ false };
 			float                                               glistenUntil{ 0.0f };
 			std::vector<RE::NiTransform>                        world;
@@ -129,6 +135,32 @@ namespace Lacrima::Face
 			}
 			auto* material = static_cast<RE::BSLightingShaderMaterialBase*>(shader->GetBaseMaterial());
 			return material && material->GetFeature() == RE::BSShaderMaterial::Feature::kEye ? static_cast<RE::BSLightingShaderMaterialEye*>(material) : nullptr;
+		}
+
+		// The game shares a material between every shader property that uses the
+		// same one, so the eyes of every actor with these eyes would glisten. Before
+		// the first change this actor's eyes get a copy of their own: the usual
+		// copy-then-SetMaterial, after which the temporary copy is freed.
+		RE::BSLightingShaderMaterialEye* OwnEyeMaterial(Head& a_head)
+		{
+			auto* eye = EyeMaterial(a_head);
+			if (a_head.eyeOwned || !eye) {
+				return eye;
+			}
+			auto* geometry = a_head.eyesGeometry.get();
+			auto* shader = netimmerse_cast<RE::BSLightingShaderProperty*>(geometry->GetGeometryRuntimeData().shaderProperty.get());
+			auto* copy = shader ? static_cast<RE::BSLightingShaderMaterialBase*>(eye->Create()) : nullptr;
+			if (!copy) {
+				return nullptr;
+			}
+			copy->CopyMembers(eye);
+			shader->SetMaterial(copy, true);
+			shader->SetupGeometry(geometry);
+			shader->FinishSetupGeometry(geometry);
+			copy->~BSLightingShaderMaterialBase();
+			RE::free(copy);
+			a_head.eyeOwned = true;
+			return EyeMaterial(a_head);
 		}
 
 		// Puts the eyes' own reflection and highlight back.
@@ -525,6 +557,7 @@ namespace Lacrima::Face
 		{
 			Dull(a_head);
 			a_head.eyesGeometry.reset();
+			a_head.eyeOwned = false;
 			a_head.joints.clear();
 			a_head.points.clear();
 			a_head.dynamics.clear();
@@ -665,7 +698,44 @@ namespace Lacrima::Face
 			a_scale = scale;
 		}
 
-		void Pose(Head& a_head, const Region* a_region)
+		// A world-space box taken into each joint's own skin space, grown by a_slack
+		// world units: a point lies in the box when its bind position, under its
+		// heaviest joint, lies in that joint's box.
+		void JointBoxes(const std::vector<RE::NiTransform>& a_world, const Region& a_region, float a_slack, std::vector<Box>& a_out)
+		{
+			a_out.resize(a_world.size());
+			const std::array<RE::NiPoint3, 8> corners{
+				RE::NiPoint3{ a_region.low.x, a_region.low.y, a_region.low.z },
+				RE::NiPoint3{ a_region.high.x, a_region.low.y, a_region.low.z },
+				RE::NiPoint3{ a_region.low.x, a_region.high.y, a_region.low.z },
+				RE::NiPoint3{ a_region.high.x, a_region.high.y, a_region.low.z },
+				RE::NiPoint3{ a_region.low.x, a_region.low.y, a_region.high.z },
+				RE::NiPoint3{ a_region.high.x, a_region.low.y, a_region.high.z },
+				RE::NiPoint3{ a_region.low.x, a_region.high.y, a_region.high.z },
+				RE::NiPoint3{ a_region.high.x, a_region.high.y, a_region.high.z },
+			};
+			for (std::size_t j = 0; j < a_world.size(); ++j) {
+				const RE::NiTransform inverse = a_world[j].Invert();
+				Box                   box{ inverse * corners[0], inverse * corners[0] };
+				for (std::size_t c = 1; c < corners.size(); ++c) {
+					const RE::NiPoint3 p = inverse * corners[c];
+					box.low = { std::min(box.low.x, p.x), std::min(box.low.y, p.y), std::min(box.low.z, p.z) };
+					box.high = { std::max(box.high.x, p.x), std::max(box.high.y, p.y), std::max(box.high.z, p.z) };
+				}
+				const float slack = a_slack / std::max(a_world[j].scale, 1e-3f);
+				box.low -= RE::NiPoint3{ slack, slack, slack };
+				box.high += RE::NiPoint3{ slack, slack, slack };
+				a_out[j] = box;
+			}
+		}
+
+		bool Inside(const Box& a_box, const RE::NiPoint3& a_point)
+		{
+			return a_point.x >= a_box.low.x && a_point.y >= a_box.low.y && a_point.z >= a_box.low.z && a_point.x <= a_box.high.x &&
+			       a_point.y <= a_box.high.y && a_point.z <= a_box.high.z;
+		}
+
+		void Pose(Head& a_head, const Region* a_region, const Region* a_watch)
 		{
 			auto&      points = a_head.points;
 			const bool compare = a_head.rest.size() == points.size();
@@ -716,39 +786,13 @@ namespace Lacrima::Face
 				candidates.push_back(k);
 			}
 			if (a_region) {
-				auto& boxes = a_head.boxes;
-				boxes.resize(world.size());
-				const std::array<RE::NiPoint3, 8> corners{
-					RE::NiPoint3{ a_region->low.x, a_region->low.y, a_region->low.z },
-					RE::NiPoint3{ a_region->high.x, a_region->low.y, a_region->low.z },
-					RE::NiPoint3{ a_region->low.x, a_region->high.y, a_region->low.z },
-					RE::NiPoint3{ a_region->high.x, a_region->high.y, a_region->low.z },
-					RE::NiPoint3{ a_region->low.x, a_region->low.y, a_region->high.z },
-					RE::NiPoint3{ a_region->high.x, a_region->low.y, a_region->high.z },
-					RE::NiPoint3{ a_region->low.x, a_region->high.y, a_region->high.z },
-					RE::NiPoint3{ a_region->high.x, a_region->high.y, a_region->high.z },
-				};
-				for (std::size_t j = 0; j < world.size(); ++j) {
-					const RE::NiTransform inverse = world[j].Invert();
-					Box                   box{ inverse * corners[0], inverse * corners[0] };
-					for (std::size_t c = 1; c < corners.size(); ++c) {
-						const RE::NiPoint3 p = inverse * corners[c];
-						box.low = { std::min(box.low.x, p.x), std::min(box.low.y, p.y), std::min(box.low.z, p.z) };
-						box.high = { std::max(box.high.x, p.x), std::max(box.high.y, p.y), std::max(box.high.z, p.z) };
-					}
-					const float slack = kRegionSlack / std::max(world[j].scale, 1e-3f);
-					box.low -= RE::NiPoint3{ slack, slack, slack };
-					box.high += RE::NiPoint3{ slack, slack, slack };
-					boxes[j] = box;
-				}
+				JointBoxes(world, *a_region, kRegionSlack, a_head.boxes);
 				for (std::size_t k = 0; k < points.size(); ++k) {
 					if (stamp[k] == frame) {
 						continue;
 					}
 					const auto& point = points[k];
-					const auto& box = boxes[point.joints[point.dominant]];
-					const auto& p = point.position;
-					if (p.x >= box.low.x && p.y >= box.low.y && p.z >= box.low.z && p.x <= box.high.x && p.y <= box.high.y && p.z <= box.high.z) {
+					if (Inside(a_head.boxes[point.joints[point.dominant]], point.position)) {
 						candidates.push_back(static_cast<std::uint32_t>(k));
 					}
 				}
@@ -761,14 +805,26 @@ namespace Lacrima::Face
 				SkinPoint(a_head, points[candidates[i]], patches[i].position, patches[i].normal, scale);
 			}
 
-			// Did the expression move the posed skin since last frame? Only the dynamic
-			// points can have moved, so only they are tracked.
+			// Did an expression move the skin under the tears since last frame? Only the
+			// dynamic points can move, so only they are tested, in bind space, which
+			// needs no posing; the watch box is the tears themselves, so a blink that
+			// moves the lids does not stir a trail further down the cheek.
 			a_head.morphing = false;
 			if (compare) {
-				for (const auto k : candidates) {
-					if (points[k].position.GetSquaredDistance(a_head.rest[k]) > kMorphStep * kMorphStep) {
-						a_head.morphing = true;
-						break;
+				if (a_watch) {
+					JointBoxes(world, *a_watch, kWatchSlack, a_head.watchBoxes);
+					for (const auto& dynamic : a_head.dynamics) {
+						for (const auto& [point, vertex] : dynamic.points) {
+							const auto& p = points[point];
+							if (p.position.GetSquaredDistance(a_head.rest[point]) > kMorphStep * kMorphStep &&
+								Inside(a_head.watchBoxes[p.joints[p.dominant]], p.position)) {
+								a_head.morphing = true;
+								break;
+							}
+						}
+						if (a_head.morphing) {
+							break;
+						}
 					}
 				}
 				for (const auto& dynamic : a_head.dynamics) {
@@ -813,6 +869,7 @@ namespace Lacrima::Face
 				return &head;
 			}
 			if (fresh) {
+				Dull(head);  // the eyes material may outlive the old 3D
 				head = Head{};
 				head.root.reset(root);
 				head.seen = clock;
@@ -870,7 +927,7 @@ namespace Lacrima::Face
 			Dull(*head);
 			return;
 		}
-		auto* eye = EyeMaterial(*head);
+		auto* eye = OwnEyeMaterial(*head);
 		if (!eye) {
 			return;
 		}
@@ -884,7 +941,7 @@ namespace Lacrima::Face
 		head->glistenUntil = clock + 0.5f;
 	}
 
-	std::optional<View> Of(RE::Actor* a_actor, const Placement& a_placement, const Region* a_region)
+	std::optional<View> Of(RE::Actor* a_actor, const Placement& a_placement, const Region* a_region, const Region* a_watch)
 	{
 		auto* head = HeadOf(a_actor);
 		if (!head || !head->ok) {
@@ -894,12 +951,16 @@ namespace Lacrima::Face
 			PlaceDucts(*head, a_placement);
 		}
 		if (head->frame != frame || !SameRegion(*head, a_region)) {
+			// A second pose in one frame (a wider region after tears woke) sees no new
+			// motion, since the first already took the rest positions; keep its verdict.
+			const bool morphed = head->frame == frame && head->morphing;
 			head->frame = frame;
 			head->regionPosed = a_region != nullptr;
 			if (a_region) {
 				head->region = *a_region;
 			}
-			Pose(*head, a_region);
+			Pose(*head, a_region, a_watch);
+			head->morphing = head->morphing || morphed;
 		}
 		return View{ head->patches, head->ducts, head->scale, head->morphing };
 	}

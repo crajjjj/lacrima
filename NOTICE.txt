@@ -10,8 +10,10 @@ GPL-3.0, taken from OStrands 0.8.0 (https://gitlab.com/LilRicefield/ostrands):
   density-field surface. The solver is adapted to a frame that moves with the head:
   gravity is a vector, the ground heightfield is gone, a sorted cell grid replaces
   the hash maps, one neighbour search serves a whole solve, and fluid at rest on a
-  surface sleeps. Clusters and surface are unchanged apart from the namespace and
-  caller-owned output buffers.
+  surface sleeps. Skin contact takes front faces only, keeps reaching a particle
+  briefly after it loses the skin, and holds a drop under a surface that faces down
+  for a while; adhesion falls with the fluid around a particle. Clusters and surface
+  are unchanged apart from the namespace and caller-owned output buffers.
 - src/GeometryMath.h: the rope frame transport, unchanged apart from the namespace.
 - src/Face.cpp: the skin wrap (vertex decoding, facegen dynamic data, skinning),
   reduced from OStrands' whole-body wrap to the face, posed only where the fluid is,
