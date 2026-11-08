@@ -7,7 +7,7 @@
 
 [general]
 enabled = true
-debug_log = false      # face, duct and fluid details in Lacrima.log
+debug_log = true       # face, duct and fluid details in Lacrima.log (on in this diagnostic build; a status line every 10 s while anyone cries)
 
 [tears]
 rate = 12.0            # tears per minute from each eye at full intensity
@@ -46,5 +46,5 @@ reach = 7.0            # in a wipe gesture, how close the hand must come to the 
 gesture_wait = 3.5     # seconds a wipe gesture waits for the hand before drying the face anyway
 
 [debug]
-show_ducts = false     # mark where tears start on the console-selected actor, or the player
+show_ducts = true      # mark where tears start on the console-selected actor, or the player (on in this diagnostic build: two beads under the eyes)
 mount_world = true     # true: draw the tears in world space under the cell node (the proven way); false: under the head bone (cheaper, being validated)

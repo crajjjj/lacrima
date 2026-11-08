@@ -14,7 +14,7 @@ namespace Lacrima
 	struct Settings
 	{
 		bool enabled{ true };
-		bool debugLog{ false };
+		bool debugLog{ true };
 
 		float rate{ 12.0f };
 		int   drop{ 6 };
@@ -48,7 +48,7 @@ namespace Lacrima
 		float reach{ 7.0f };
 		float gestureWait{ 3.5f };
 
-		bool showDucts{ false };
+		bool showDucts{ true };
 		bool mountWorld{ true };
 
 		static std::unique_lock<std::recursive_mutex> Lock();

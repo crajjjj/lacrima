@@ -712,11 +712,11 @@ namespace Lacrima
 			if (_statTime >= 10.0f) {
 				_statTime = 0.0f;
 				for (const auto& [key, crier] : _criers) {
+					if (!crier->crying && !crier->watched) {
+						continue;
+					}
 					const auto actor = crier->actor.get();
-					logger::info("{}: intensity {:.2f}, left cheek {} particles / {} ropes / {} drops, right cheek {} / {} / {}{}", NameOf(actor.get()),
-						crier->intensity, crier->cheeks[0].particles.size(), crier->cheeks[0].shownRopes, crier->cheeks[0].shownBlobs,
-						crier->cheeks[1].particles.size(), crier->cheeks[1].shownRopes, crier->cheeks[1].shownBlobs,
-						crier->frozen ? ", paused out of sight" : "");
+					logger::info("{}", Describe(actor.get(), crier.get(), settings));
 				}
 			}
 		}
@@ -886,6 +886,10 @@ namespace Lacrima
 			}
 			if (!a_cheek.welling) {
 				return;
+			}
+			if (a_settings.debugLog) {
+				logger::info("{}: a tear of {} drops starts at head-space ({:.3f}, {:.3f}, {:.3f}) m", NameOf(a_crier.actor.get().get()), a_cheek.left,
+					a_spot.point.x, a_spot.point.y, a_spot.point.z);
 			}
 		}
 
@@ -1272,10 +1276,17 @@ namespace Lacrima
 				return false;
 			}
 			a_cheek.root->name = "LacrimaTears";
-			// The selective-update flags let the skeleton's own per-frame update reach
-			// this subtree, so settled tears that skip Draw still ride the head.
-			a_cheek.root->GetFlags().set(RE::NiAVObject::Flag::kAlwaysDraw, RE::NiAVObject::Flag::kSelectiveUpdate,
-				RE::NiAVObject::Flag::kSelectiveUpdateTransforms, RE::NiAVObject::Flag::kSelectiveUpdateController);
+			a_cheek.root->GetFlags().set(RE::NiAVObject::Flag::kAlwaysDraw);
+		}
+		// Under the head bone the selective-update flags let the skeleton's own
+		// per-frame update reach this subtree, so settled tears that skip Draw still
+		// ride the head. Under the cell node the root stays as plain as 0.1.0's.
+		if (a_world) {
+			a_cheek.root->GetFlags().reset(RE::NiAVObject::Flag::kSelectiveUpdate, RE::NiAVObject::Flag::kSelectiveUpdateTransforms,
+				RE::NiAVObject::Flag::kSelectiveUpdateController);
+		} else {
+			a_cheek.root->GetFlags().set(RE::NiAVObject::Flag::kSelectiveUpdate, RE::NiAVObject::Flag::kSelectiveUpdateTransforms,
+				RE::NiAVObject::Flag::kSelectiveUpdateController);
 		}
 		if (a_cheek.root->parent != parent) {
 			if (a_cheek.root->parent) {
@@ -1283,6 +1294,11 @@ namespace Lacrima
 			}
 			parent->AttachChild(a_cheek.root.get(), true);
 			a_cheek.dirty = true;
+			if (Settings::Snapshot().debugLog) {
+				const char* name = parent->name.c_str();
+				logger::info("tear root attached under \"{}\" ({} mount), actor 3D {}culled", name && *name ? name : "(unnamed)",
+					a_world ? "world" : "head bone", a_root->GetAppCulled() ? "" : "not ");
+			}
 		}
 		a_cheek.root->local = a_world ? parent->world.Invert() : RE::NiTransform{};
 		a_cheek.root->SetAppCulled(a_root->GetAppCulled());
