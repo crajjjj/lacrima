@@ -432,6 +432,15 @@ namespace Lacrima::Face
 					}
 				}
 			}
+			for (std::size_t e = 0; e < kEyes; ++e) {
+				const auto& eye = a_head.eyes[e];
+				if (a_head.duct[e] != kNone) {
+					const auto& d = a_head.points[a_head.duct[e]];
+					logger::info("{} eye in mesh space: centre ({:.2f}, {:.2f}, {:.2f}), radius {:.2f}; duct vertex ({:.2f}, {:.2f}, {:.2f}), normal ({:.2f}, {:.2f}, {:.2f}); face forward {:+.0f}y",
+						e == kLeft ? "left" : "right", eye.center.x, eye.center.y, eye.center.z, eye.radius, d.position.x, d.position.y, d.position.z,
+						d.normal.x, d.normal.y, d.normal.z, a_head.forward);
+				}
+			}
 			// The skin around the ducts is posed every frame, whatever the fluid asks.
 			a_head.aroundDucts.clear();
 			for (const auto d : a_head.duct) {

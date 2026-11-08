@@ -748,6 +748,17 @@ namespace Lacrima
 		a_crier.skeleton.reset(a_root);
 		auto* head = a_root->GetObjectByName(kHeadBone);
 		a_crier.head.reset(head ? head->AsNode() : nullptr);
+		if (Settings::Snapshot().debugLog) {
+			const auto& r = a_root->world.translate;
+			if (head) {
+				const auto& h = head->world.translate;
+				const char* parent = head->parent && head->parent->name.c_str() ? head->parent->name.c_str() : "?";
+				logger::info("head bone \"{}\" under \"{}\" at world ({:.1f}, {:.1f}, {:.1f}), scale {:.3f}; actor 3D root at ({:.1f}, {:.1f}, {:.1f}); head is {:.1f} units above the root",
+					kHeadBone, parent, h.x, h.y, h.z, head->world.scale, r.x, r.y, r.z, h.z - r.z);
+			} else {
+				logger::info("no \"{}\" under the actor 3D root at ({:.1f}, {:.1f}, {:.1f})", kHeadBone, r.x, r.y, r.z);
+			}
+		}
 		a_crier.handBones.clear();
 		for (const char* name : kHandBones) {
 			a_crier.handBones.emplace_back(a_root->GetObjectByName(name));

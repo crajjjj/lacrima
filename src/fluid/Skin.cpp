@@ -79,7 +79,7 @@ namespace Lacrima::Fluid
 		}
 	}
 
-	std::size_t Skin::Nearest(Vec3 a_point) const
+	std::size_t Skin::Nearest(Vec3 a_point, float a_maxBehind) const
 	{
 		if (_order.empty()) {
 			return kNone;
@@ -114,8 +114,9 @@ namespace Lacrima::Fluid
 					const std::size_t cell = (static_cast<std::size_t>(z) * _ny + static_cast<std::size_t>(y)) * _nx + static_cast<std::size_t>(x);
 					for (std::uint32_t i = _start[cell]; i < _start[cell + 1]; ++i) {
 						const std::uint32_t k = _order[i];
-						const float         distance = LengthSquared(_patches[k].position - a_point);
-						if (distance < best) {
+						const Vec3          offset = a_point - _patches[k].position;
+						const float         distance = LengthSquared(offset);
+						if (distance < best && Dot(offset, _patches[k].normal) >= -a_maxBehind) {
 							best = distance;
 							found = k;
 						}

@@ -25,7 +25,10 @@ namespace Lacrima::Fluid
 
 		std::vector<Patch>&       Patches() { return _patches; }
 		const std::vector<Patch>& Patches() const { return _patches; }
-		std::size_t               Nearest(Vec3 a_point) const;
+		// The nearest patch within half a cell that faces a_point: a patch the point
+		// lies more than a_maxBehind behind (against its normal) belongs to another
+		// surface, such as the inside of an eyelid, and is skipped.
+		std::size_t Nearest(Vec3 a_point, float a_maxBehind = 1.0e30f) const;
 
 	private:
 		bool Locate(Vec3 a_point, int& a_x, int& a_y, int& a_z) const;

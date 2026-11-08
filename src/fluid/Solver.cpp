@@ -153,7 +153,10 @@ namespace Lacrima::Fluid
 			}
 			const auto& patches = a_colliders.skin->Patches();
 			for (int pass = 0; pass < 2; ++pass) {
-				const std::size_t k = a_colliders.skin->Nearest(point);
+				// Only a patch that faces the particle may push or pull it: a real face has
+				// back faces a millimetre behind the skin (the inside of an eyelid), and
+				// taking the nearest patch regardless pushed tears through the lid.
+				const std::size_t k = a_colliders.skin->Nearest(point, margin);
 				if (k == kNone) {
 					break;
 				}
