@@ -90,15 +90,14 @@ namespace Lacrima::Face
 			std::vector<Box>                                    boxes;
 			std::array<EyeShape, kEyes>                         eyes{};  // in head-bone space
 			float                                               forward{ 1.0f };
+			Placement                                           placement{ -1.0f, -1.0f, 0, -1.0f };
 			// The face mesh's own space is not the eyes mesh's (a vanilla eyes part is
 			// authored around the head bone, a face part around the skeleton root), so
 			// ducts are placed in head-bone space and mapped back into the face's.
 			RE::NiTransform                                     faceToBone;
 			RE::NiTransform                                     boneToFace;
-			std::array<std::size_t, kEyes>                      duct{ kNone, kNone };
-			std::array<Duct, kEyes>                             ducts{};
-			float                                               ductPosition{ -1.0f };
-			float                                               ductBelow{ -1.0f };
+			std::array<std::array<std::size_t, kMaxStreams>, kEyes> duct{ { { kNone, kNone, kNone, kNone }, { kNone, kNone, kNone, kNone } } };
+			Ducts                                               ducts{};
 			float                                               scale{ 1.0f };
 			bool                                                morphing{ false };
 			std::string                                         faceName;
@@ -432,54 +431,61 @@ namespace Lacrima::Face
 			return kept;
 		}
 
-		void PlaceDucts(Head& a_head, float a_position, float a_below)
+		void PlaceDucts(Head& a_head, const Placement& a_placement)
 		{
-			a_head.ductPosition = a_position;
-			a_head.ductBelow = a_below;
+			a_head.placement = a_placement;
+			const int    streams = std::clamp(a_placement.streams, 1, static_cast<int>(kMaxStreams));
+			const auto   facing = a_head.boneToFace.rotate * RE::NiPoint3{ 0.0f, a_head.forward, 0.0f };
 			for (std::size_t e = 0; e < kEyes; ++e) {
-				a_head.duct[e] = kNone;
+				a_head.duct[e].fill(kNone);
 				const auto& eye = a_head.eyes[e];
 				if (!eye.valid) {
 					continue;
 				}
-				const float        out = eye.center.x >= 0.0f ? 1.0f : -1.0f;
-				const float        r = eye.radius;
-				const RE::NiPoint3 inBone = eye.center + RE::NiPoint3{ out * r * kDuctSide * (2.0f * a_position - 1.0f), a_head.forward * r * kDuctFront, -r * a_below };
-				const RE::NiPoint3 target = a_head.boneToFace * inBone;
-				const RE::NiPoint3 facing = a_head.boneToFace.rotate * RE::NiPoint3{ 0.0f, a_head.forward, 0.0f };
-				float              best = std::numeric_limits<float>::max();
-				for (std::size_t k = 0; k < a_head.points.size(); ++k) {
-					const auto& point = a_head.points[k];
-					if (point.normal.Dot(facing) < kFacingFloor) {
-						continue;
-					}
-					const float distance = point.position.GetSquaredDistance(target);
-					if (distance < best) {
-						best = distance;
-						a_head.duct[e] = k;
+				const float out = eye.center.x >= 0.0f ? 1.0f : -1.0f;
+				const float r = eye.radius;
+				for (int s = 0; s < streams; ++s) {
+					// streams sit evenly across a_spread of the lid, centred on a_position
+					const float along = streams == 1 ? a_placement.position :
+					                                   std::clamp(a_placement.position + a_placement.spread * (static_cast<float>(s) / static_cast<float>(streams - 1) - 0.5f), 0.0f, 1.0f);
+					const RE::NiPoint3 inBone = eye.center + RE::NiPoint3{ out * r * kDuctSide * (2.0f * along - 1.0f), a_head.forward * r * kDuctFront, -r * a_placement.below };
+					const RE::NiPoint3 target = a_head.boneToFace * inBone;
+					float              best = std::numeric_limits<float>::max();
+					for (std::size_t k = 0; k < a_head.points.size(); ++k) {
+						const auto& point = a_head.points[k];
+						if (point.normal.Dot(facing) < kFacingFloor) {
+							continue;
+						}
+						const float distance = point.position.GetSquaredDistance(target);
+						if (distance < best) {
+							best = distance;
+							a_head.duct[e][static_cast<std::size_t>(s)] = k;
+						}
 					}
 				}
 			}
 			for (std::size_t e = 0; e < kEyes; ++e) {
 				const auto& eye = a_head.eyes[e];
-				if (a_head.duct[e] != kNone) {
-					const auto&        d = a_head.points[a_head.duct[e]];
+				if (a_head.duct[e][0] != kNone) {
+					const auto&        d = a_head.points[a_head.duct[e][0]];
 					const RE::NiPoint3 inBone = a_head.faceToBone * d.position;
-					logger::info("{} eye in head-bone space: centre ({:.2f}, {:.2f}, {:.2f}), radius {:.2f}; duct ({:.2f}, {:.2f}, {:.2f}), {:.2f} below the eye centre; face forward {:+.0f}y",
+					logger::info("{} eye in head-bone space: centre ({:.2f}, {:.2f}, {:.2f}), radius {:.2f}; first duct ({:.2f}, {:.2f}, {:.2f}), {:.2f} below the eye centre, {} stream(s); face forward {:+.0f}y",
 						e == kLeft ? "left" : "right", eye.center.x, eye.center.y, eye.center.z, eye.radius, inBone.x, inBone.y, inBone.z,
-						eye.center.z - inBone.z, a_head.forward);
+						eye.center.z - inBone.z, streams, a_head.forward);
 				}
 			}
 			// The skin around the ducts is posed every frame, whatever the fluid asks.
 			a_head.aroundDucts.clear();
-			for (const auto d : a_head.duct) {
-				if (d == kNone) {
-					continue;
-				}
-				const RE::NiPoint3 center = a_head.points[d].position;
-				for (std::size_t k = 0; k < a_head.points.size(); ++k) {
-					if (a_head.points[k].position.GetSquaredDistance(center) < kDuctReach * kDuctReach) {
-						a_head.aroundDucts.push_back(static_cast<std::uint32_t>(k));
+			for (const auto& perEye : a_head.duct) {
+				for (const auto d : perEye) {
+					if (d == kNone) {
+						continue;
+					}
+					const RE::NiPoint3 center = a_head.points[d].position;
+					for (std::size_t k = 0; k < a_head.points.size(); ++k) {
+						if (a_head.points[k].position.GetSquaredDistance(center) < kDuctReach * kDuctReach) {
+							a_head.aroundDucts.push_back(static_cast<std::uint32_t>(k));
+						}
 					}
 				}
 			}
@@ -498,7 +504,9 @@ namespace Lacrima::Face
 			a_head.aroundDucts.clear();
 			a_head.stamp.clear();
 			a_head.eyes = {};
-			a_head.duct = { kNone, kNone };
+			for (auto& perEye : a_head.duct) {
+				perEye.fill(kNone);
+			}
 			a_head.ok = false;
 			a_head.faceName.clear();
 			a_head.eyesName.clear();
@@ -602,7 +610,7 @@ namespace Lacrima::Face
 			a_head.report = std::format("face {} points{}, eyes {} vertices{}", facePoints, faceMesh.dynamic ? " (animated)" : "",
 				eyeMesh.positions.size(), eyeMesh.dynamic ? " (animated)" : "");
 			a_head.ok = true;
-			a_head.ductPosition = -1.0f;
+			a_head.placement = Placement{ -1.0f, -1.0f, 0, -1.0f };
 		}
 
 		// Poses one wrap point with the joints as they stand this frame.
@@ -745,17 +753,19 @@ namespace Lacrima::Face
 			}
 
 			for (std::size_t e = 0; e < kEyes; ++e) {
-				auto& duct = a_head.ducts[e];
-				duct = {};
-				const std::size_t k = a_head.duct[e];
-				if (k == kNone || k >= points.size()) {
-					continue;
+				for (std::size_t s = 0; s < kMaxStreams; ++s) {
+					auto& duct = a_head.ducts[e][s];
+					duct = {};
+					const std::size_t k = a_head.duct[e][s];
+					if (k == kNone || k >= points.size()) {
+						continue;
+					}
+					const RE::NiPoint3 gravity{ 0.0f, 0.0f, -1.0f };
+					SkinPoint(a_head, points[k], duct.point, duct.normal, scale);
+					duct.down = Unit(gravity - duct.normal * gravity.Dot(duct.normal), gravity);
+					duct.valid = true;
+					a_head.scale = scale;
 				}
-				const RE::NiPoint3 gravity{ 0.0f, 0.0f, -1.0f };
-				SkinPoint(a_head, points[k], duct.point, duct.normal, scale);
-				duct.down = Unit(gravity - duct.normal * gravity.Dot(duct.normal), gravity);
-				duct.valid = true;
-				a_head.scale = scale;
 			}
 		}
 
@@ -814,14 +824,14 @@ namespace Lacrima::Face
 		});
 	}
 
-	std::optional<View> Of(RE::Actor* a_actor, float a_ductPosition, float a_ductBelow, const Region* a_region)
+	std::optional<View> Of(RE::Actor* a_actor, const Placement& a_placement, const Region* a_region)
 	{
 		auto* head = HeadOf(a_actor);
 		if (!head || !head->ok) {
 			return std::nullopt;
 		}
-		if (head->ductPosition != a_ductPosition || head->ductBelow != a_ductBelow) {
-			PlaceDucts(*head, a_ductPosition, a_ductBelow);
+		if (head->placement != a_placement) {
+			PlaceDucts(*head, a_placement);
 		}
 		if (head->frame != frame || !SameRegion(*head, a_region)) {
 			head->frame = frame;
@@ -834,7 +844,7 @@ namespace Lacrima::Face
 		return View{ head->patches, head->ducts, head->scale, head->morphing };
 	}
 
-	std::string Describe(RE::Actor* a_actor, float a_ductPosition, float a_ductBelow)
+	std::string Describe(RE::Actor* a_actor, const Placement& a_placement)
 	{
 		auto* head = HeadOf(a_actor);
 		if (!head) {
@@ -843,12 +853,14 @@ namespace Lacrima::Face
 		if (!head->ok) {
 			return head->report;
 		}
-		if (head->ductPosition != a_ductPosition || head->ductBelow != a_ductBelow) {
-			PlaceDucts(*head, a_ductPosition, a_ductBelow);
+		if (head->placement != a_placement) {
+			PlaceDucts(*head, a_placement);
 		}
-		const auto duct = [&](std::size_t a_eye) { return head->duct[a_eye] != kNone ? "found" : "missing"; };
-		return std::format("face {}, eyes {}; {}; left duct {}, right duct {}", head->faceName, head->eyesName, head->report, duct(kLeft),
-			duct(kRight));
+		const auto ducts = [&](std::size_t a_eye) {
+			return std::ranges::count_if(head->duct[a_eye], [](std::size_t a_index) { return a_index != kNone; });
+		};
+		return std::format("face {}, eyes {}; {}; left ducts {}, right ducts {} (of {} streams)", head->faceName, head->eyesName, head->report,
+			ducts(kLeft), ducts(kRight), std::clamp(a_placement.streams, 1, static_cast<int>(kMaxStreams)));
 	}
 
 	void Reset()

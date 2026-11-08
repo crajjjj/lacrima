@@ -22,6 +22,8 @@ namespace Lacrima
 		float hold{ 0.8f };
 		float ductPosition{ 0.3f };
 		float ductBelow{ 0.9f };
+		int   streams{ 2 };
+		float streamSpread{ 0.6f };
 		bool  bothEyes{ true };
 		int   maxActors{ 6 };
 		int   maxParticles{ 160 };

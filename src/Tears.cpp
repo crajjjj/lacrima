@@ -152,6 +152,11 @@ namespace Lacrima
 			return a_text;
 		}
 
+		Face::Placement PlacementOf(const Settings& a_settings)
+		{
+			return { a_settings.ductPosition, a_settings.ductBelow, a_settings.streams, a_settings.streamSpread };
+		}
+
 		float SegmentDistance(Vec3 a_point, Vec3 a_from, Vec3 a_to)
 		{
 			const Vec3  span = a_to - a_from;
@@ -469,7 +474,7 @@ namespace Lacrima
 					if (!actor || actor->IsDead() || !actor->Get3D(false) || actor->GetPosition().GetDistance(center) > a_request.radius) {
 						continue;
 					}
-					if (!Face::Of(actor.get(), a_settings.ductPosition, a_settings.ductBelow, nullptr)) {
+					if (!Face::Of(actor.get(), PlacementOf(a_settings), nullptr)) {
 						continue;
 					}
 					if (auto* crier = CrierFor(handle, a_settings, true, false)) {
@@ -640,12 +645,14 @@ namespace Lacrima
 			}
 
 			const auto region = RegionOf(crier);
-			const auto view = Face::Of(actor.get(), settings.ductPosition, settings.ductBelow, region ? &*region : nullptr);
-			std::array<std::optional<Spot>, Face::kEyes> spots;
+			const auto view = Face::Of(actor.get(), PlacementOf(settings), region ? &*region : nullptr);
+			std::array<Spots, Face::kEyes> spots{};
 			if (view) {
 				for (std::size_t e = 0; e < Face::kEyes; ++e) {
-					if (view->ducts[e].valid) {
-						spots[e] = SpotOf(crier.frame, view->ducts[e]);
+					for (std::size_t s = 0; s < Face::kMaxStreams; ++s) {
+						if (view->ducts[e][s].valid) {
+							spots[e][s] = SpotOf(crier.frame, view->ducts[e][s]);
+						}
 					}
 				}
 			}
@@ -659,13 +666,13 @@ namespace Lacrima
 			const auto  hands = settings.hands ? std::span<const Fluid::Capsule>(crier.hands) : std::span<const Fluid::Capsule>{};
 			const Mount mount{ settings.mountWorld, &crier.frame };
 			for (std::size_t e = 0; e < Face::kEyes; ++e) {
-				auto&       cheek = crier.cheeks[e];
-				const Spot* spot = spots[e] ? &*spots[e] : nullptr;
+				auto&      cheek = crier.cheeks[e];
+				const bool any = std::ranges::any_of(spots[e], [](const std::optional<Spot>& a_spot) { return a_spot.has_value(); });
 				if (!Prepare(cheek, settings)) {
 					continue;
 				}
-				if (spot) {
-					Emit(crier, cheek, *spot, settings, a_delta);
+				if (any) {
+					Emit(crier, cheek, spots[e], settings, a_delta);
 				} else if (cheek.welling || cheek.queued > 0) {
 					std::erase_if(cheek.anchors, [&](const Fluid::Anchor& a_anchor) { return a_anchor.owner == cheek.id; });
 					cheek.welling = false;
@@ -681,7 +688,7 @@ namespace Lacrima
 					logger::error("{}: tears on one cheek cleared: {}", NameOf(actor.get()), error.what());
 					Clear(cheek);
 				}
-				const bool marker = crier.watched && spot;
+				const bool marker = crier.watched && any;
 				if (cheek.particles.empty() && !marker) {
 					if (cheek.root) {
 						Release(cheek);
@@ -689,7 +696,7 @@ namespace Lacrima
 					continue;
 				}
 				if (Attach(cheek, crier, root, mount.world)) {
-					Draw(cheek, mount, settings, marker ? spot : nullptr);
+					Draw(cheek, mount, settings, marker ? &spots[e] : nullptr);
 				}
 			}
 
@@ -878,6 +885,9 @@ namespace Lacrima
 		std::uniform_real_distribution<float> unit(0.0f, 1.0f);
 		const float                           size = static_cast<float>(a_settings.drop) * (0.5f + 0.5f * a_strength) * (0.75f + 0.5f * unit(_rng));
 		a_cheek.run = ++_nextRun;
+		// each tear picks one of the eye's streams
+		const int streams = std::clamp(a_settings.streams, 1, static_cast<int>(Face::kMaxStreams));
+		a_cheek.stream = streams > 1 ? std::uniform_int_distribution<int>(0, streams - 1)(_rng) : 0;
 		a_cheek.left = std::max(2, static_cast<int>(std::lround(size)));
 		a_cheek.interval = a_settings.well / static_cast<float>(a_cheek.left);
 		a_cheek.slot = 0.0f;
@@ -885,9 +895,10 @@ namespace Lacrima
 		a_cheek.welling = true;
 	}
 
-	void Tears::Emit(Crier& a_crier, Cheek& a_cheek, const Spot& a_spot, const Settings& a_settings, float a_delta)
+	void Tears::Emit(Crier& a_crier, Cheek& a_cheek, const Spots& a_spots, const Settings& a_settings, float a_delta)
 	{
 		std::uniform_real_distribution<float> unit(0.0f, 1.0f);
+		const bool                            started = !a_cheek.welling;
 		if (!a_cheek.welling) {
 			if (a_cheek.queued > 0) {
 				--a_cheek.queued;
@@ -898,6 +909,20 @@ namespace Lacrima
 			if (!a_cheek.welling) {
 				return;
 			}
+		}
+		// The duct of the stream this tear runs from, or another one that was found.
+		const Spot* chosen = a_spots[static_cast<std::size_t>(std::clamp(a_cheek.stream, 0, static_cast<int>(Face::kMaxStreams) - 1))] ?
+		                         &*a_spots[static_cast<std::size_t>(a_cheek.stream)] : nullptr;
+		for (const auto& candidate : a_spots) {
+			if (!chosen && candidate) {
+				chosen = &*candidate;
+			}
+		}
+		if (!chosen) {
+			return;
+		}
+		const Spot& a_spot = *chosen;
+		if (started) {
 			if (a_settings.debugLog) {
 				const auto& frame = a_crier.frame;
 				logger::info("{}: a tear of {} drops starts at head-space ({:.3f}, {:.3f}, {:.3f}) m, normal ({:.2f}, {:.2f}, {:.2f}), down ({:.2f}, {:.2f}, {:.2f}); "
@@ -1260,8 +1285,7 @@ namespace Lacrima
 		}
 	}
 
-	void Tears::Gesture(Crier& a_crier, const std::array<std::optional<Spot>, Face::kEyes>& a_spots, float a_scale, const Settings& a_settings,
-		float a_delta)
+	void Tears::Gesture(Crier& a_crier, const std::array<Spots, Face::kEyes>& a_spots, float a_scale, const Settings& a_settings, float a_delta)
 	{
 		if (a_crier.wipeArm <= 0.0f) {
 			return;
@@ -1269,12 +1293,14 @@ namespace Lacrima
 		a_crier.wipeArm -= a_delta;
 		bool        reached = false;
 		const float reach = a_settings.reach * a_scale / a_crier.frame.unit;
-		for (const auto& spot : a_spots) {
-			if (!spot) {
-				continue;
-			}
-			for (const auto& hand : a_crier.hands) {
-				reached = reached || SegmentDistance(spot->point, hand.a, hand.b) - hand.radius < reach;
+		for (const auto& eye : a_spots) {
+			for (const auto& spot : eye) {
+				if (!spot) {
+					continue;
+				}
+				for (const auto& hand : a_crier.hands) {
+					reached = reached || SegmentDistance(spot->point, hand.a, hand.b) - hand.radius < reach;
+				}
 			}
 		}
 		if (reached || a_crier.wipeArm <= 0.0f) {
@@ -1720,15 +1746,16 @@ namespace Lacrima
 		a_rope.root->SetAppCulled(false);
 	}
 
-	void Tears::Draw(Cheek& a_cheek, const Mount& a_mount, const Settings& a_settings, const Spot* a_marker)
+	void Tears::Draw(Cheek& a_cheek, const Mount& a_mount, const Settings& a_settings, const Spots* a_markers)
 	{
 		auto& meshes = MeshesFor();
 		if (meshes.failed) {
 			return;
 		}
 		auto&      particles = a_cheek.particles;
-		const bool restyled = a_cheek.opacity != a_settings.opacity || a_cheek.shine != a_settings.shine || a_cheek.gloss != a_settings.gloss;
-		if (!a_mount.world && !a_cheek.dirty && !restyled && !a_marker) {
+		const bool restyled = a_cheek.opacity != a_settings.opacity || a_cheek.shine != a_settings.shine || a_cheek.gloss != a_settings.gloss ||
+		                      a_cheek.reflection != a_settings.reflection;
+		if (!a_mount.world && !a_cheek.dirty && !restyled && !a_markers) {
 			// Nothing moved since the last draw, and the nodes hang under the head
 			// bone, so they are already where the tears are. Only a trail thinning
 			// out as it dries still needs redrawing.
@@ -1981,9 +2008,14 @@ namespace Lacrima
 				PoseDrop(a_mount, *blob, droplet.center, droplet.radius, up, droplet.velocity, droplet.contact);
 			}
 		}
-		if (a_marker) {
-			if (Blob* blob = AcquireBlob(a_cheek)) {
-				PoseDrop(a_mount, *blob, a_marker->point, kMarkerRadius / a_mount.frame->unit, up);
+		if (a_markers) {
+			for (const auto& spot : *a_markers) {
+				if (!spot) {
+					continue;
+				}
+				if (Blob* blob = AcquireBlob(a_cheek)) {
+					PoseDrop(a_mount, *blob, spot->point, kMarkerRadius / a_mount.frame->unit, up);
+				}
 			}
 		}
 
@@ -2068,7 +2100,7 @@ namespace Lacrima
 			return text;
 		}
 		if (a_actor && a_actor->Get3D(false)) {
-			text += "Head: " + Clean(Face::Describe(a_actor, a_settings.ductPosition, a_settings.ductBelow));
+			text += "Head: " + Clean(Face::Describe(a_actor, PlacementOf(a_settings)));
 		} else {
 			text += "No 3D loaded.";
 		}

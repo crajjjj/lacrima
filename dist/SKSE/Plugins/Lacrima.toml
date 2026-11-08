@@ -16,6 +16,8 @@ well = 0.9             # seconds a tear takes to gather at the lower lid
 hold = 0.8             # seconds a full tear clings to the lid before it runs
 duct_position = 0.3    # where tears start: 0 = inner corner of the eye, 1 = outer corner
 duct_below = 0.9       # how far below the middle of the eye, in eye sizes
+streams = 2            # points along the lower lid tears can start from (1 to 4); each tear picks one at random
+stream_spread = 0.6    # how far apart the streams sit along the lid, as a fraction of its length, centred on duct_position
 both_eyes = true       # false: one eye, picked at random each time crying starts
 max_actors = 6         # actors crying at once; the oldest stops past this
 max_particles = 160    # fluid on one cheek at most

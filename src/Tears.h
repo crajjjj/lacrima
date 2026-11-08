@@ -113,6 +113,9 @@ namespace Lacrima
 			Fluid::Vec3 down;
 		};
 
+		// One eye's ducts, one per stream; a stream whose duct was not found is empty.
+		using Spots = std::array<std::optional<Spot>, Face::kMaxStreams>;
+
 		// Where the tear nodes hang and what their transforms are expressed in:
 		// under the head bone in head-bone units (the default), or under the cell
 		// node in world units as 0.1.0 did ([debug] mount_world, `tears mount 1`),
@@ -165,6 +168,7 @@ namespace Lacrima
 
 			bool          sheds{ true };
 			bool          welling{ false };
+			int           stream{ 0 };  // which of the eye's ducts the current tear runs from
 			float         wait{ 0.0f };
 			float         slot{ 0.0f };
 			float         interval{ 0.1f };
@@ -227,19 +231,18 @@ namespace Lacrima
 		static Spot                 SpotOf(const Frame& a_frame, const Face::Duct& a_duct);
 
 		bool Prepare(Cheek& a_cheek, const Settings& a_settings);
-		void Emit(Crier& a_crier, Cheek& a_cheek, const Spot& a_spot, const Settings& a_settings, float a_delta);
+		void Emit(Crier& a_crier, Cheek& a_cheek, const Spots& a_spots, const Settings& a_settings, float a_delta);
 		void StartTear(Cheek& a_cheek, float a_strength, const Settings& a_settings);
 		void Wake(Cheek& a_cheek, const Frame& a_frame, bool a_morphing, std::span<const Fluid::Capsule> a_hands);
 		void Deposit(Cheek& a_cheek, const Frame& a_frame, const Settings& a_settings);
 		void Simulate(Cheek& a_cheek, const Frame& a_frame, const std::optional<Face::View>& a_view, std::span<const Fluid::Capsule> a_hands,
 			const Settings& a_settings, float a_delta);
 		void PoseHands(Crier& a_crier, float a_delta);
-		void Gesture(Crier& a_crier, const std::array<std::optional<Spot>, Face::kEyes>& a_spots, float a_scale, const Settings& a_settings,
-			float a_delta);
+		void Gesture(Crier& a_crier, const std::array<Spots, Face::kEyes>& a_spots, float a_scale, const Settings& a_settings, float a_delta);
 		void DryFace(Crier& a_crier);
 		void Expire(Cheek& a_cheek, const Frame& a_frame, const Settings& a_settings, float a_delta);
 		bool Attach(Cheek& a_cheek, const Crier& a_crier, RE::NiAVObject* a_root, bool a_world);
-		void Draw(Cheek& a_cheek, const Mount& a_mount, const Settings& a_settings, const Spot* a_marker);
+		void Draw(Cheek& a_cheek, const Mount& a_mount, const Settings& a_settings, const Spots* a_markers);
 		void Clear(Cheek& a_cheek);
 		void Release(Cheek& a_cheek);
 		bool Idle(const Crier& a_crier) const;
