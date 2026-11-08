@@ -1,0 +1,99 @@
+Lacrima - Procedural Tears
+Real tears for Skyrim SE / AE: they well up under the eyes, run down the face and drip off the chin.
+
+Every tear is simulated as fluid on the actor's own face, expression included. No tear textures, no face overlays. Lacrima is a framework: actors cry when another mod, a script, the console or the settings menu asks them to.
+
+
+WHAT IT DOES
+
+- Tears on the real face. Each eye runs a small fluid simulation on the face mesh as the game has posed it this frame, so tears follow the face's shape as the head turns and the expression changes.
+- How a tear behaves. It wells up on the lower lid and clings there for a moment, then runs down as a small bead and leaves a thin wet streak that dries after a while. A drop that reaches the underside of the chin hangs there briefly before it falls.
+- Several streams per eye. Tears start from up to four points along the lower lid, from the inner corner beside the nose to the outer corner, so trails build up over time.
+- Wet eyes. While an actor cries, their eyes glisten.
+- Hands wipe tears. A crying actor's own fingers and palms take away the tears they touch, in any animation that brings a hand to the face. There is also a wipe gesture you can trigger (the vanilla brow wipe, or any idle you pass in).
+- Player and NPCs alike, on vanilla and high-poly heads.
+- Light on performance. A tear at rest costs nothing until an expression, a tilt of the head or a hand stirs it, only the skin around the tears is read each frame, actors far from the camera keep their tears paused, and the number of actors crying at once is capped.
+
+
+REQUIREMENTS
+
+- SKSE64
+- Address Library for SKSE Plugins
+
+Optional:
+- SKSE Menu Framework - the in-game settings pages.
+  https://www.nexusmods.com/skyrimspecialedition/mods/120352
+- ConsoleUtil Extended - the "tears" console commands.
+  https://www.nexusmods.com/skyrimspecialedition/mods/133569
+
+
+INSTALLATION
+
+Install with a mod manager (MO2 recommended). Lacrima is one SKSE plugin plus meshes, textures, two small scripts and a config file. There is no ESP, nothing to build and nothing to configure first.
+
+To see it working: open the console, click an NPC (or click nothing for the player) and type
+    tears cry 0.8 30
+
+Updating: install the new version over the old one. Your saved settings are kept. No clean save needed.
+
+
+SETTINGS
+
+With SKSE Menu Framework, the Lacrima pages change everything live and save your changes when the menu closes:
+
+- Tears - how often and how heavily the eyes shed, where tears start, how many streams per eye, how many actors may cry at once.
+- Look - tear size, trail width, opacity, highlight, reflection, glow, wet eyes, how long a trail stays wet.
+- Physics - how firmly tears stick, how fast they run, how far a tear runs before it stops, how long a drop clings under the chin.
+- Wipe - hands taking tears away, the wipe gesture.
+- Test - make the player cry, shed one tear, stop or wipe; make nearby actors cry; show where tears start; reset everything to the shipped defaults.
+
+Without the menu, put the values you want to change into Data\SKSE\Plugins\Lacrima_User.toml, using the sections and keys of Lacrima.toml, which lists every setting with its default.
+
+
+CONSOLE (ConsoleUtil Extended)
+
+Commands act on the actor selected in the console, or on the player when none is selected.
+
+- tears cry 0.7 30 - cry at intensity 0.7 for 30 seconds (0 seconds = until stopped)
+- tears stop - stop crying; "tears stop 1" also wipes the face
+- tears tear - shed a single tear
+- tears wipe / tears wipeall - dry this face / every face at once
+- tears wipehand - wipe the tears away with a hand gesture
+- tears nearby 0.7 30 1500 - every actor within 1500 units of the player cries
+- tears status - what Lacrima found on the head and what the tears are doing
+- tears ducts 1 - mark where tears start (0 to hide)
+- tears enable 0 - turn Lacrima off for this session (1 on)
+
+
+FOR MOD AUTHORS
+
+Lacrima does nothing on its own; it is meant to be driven by your mod. Every call is a global function, so an optional integration needs no master and no property:
+
+    If Lacrima.GetAPIVersion() > 0          ; 0 = Lacrima is not installed
+        Lacrima.Cry(akActor, 0.7, 20.0)     ; intensity 0.0 to 1.0, seconds (0 or less = until stopped)
+    EndIf
+
+    Lacrima.StopCrying(akActor)             ; the tears on the face dry up
+    Lacrima.StopCrying(akActor, true)       ; or vanish at once
+    Lacrima.ShedTear(akActor)               ; one tear, also when not crying
+    Lacrima.WipeTears(akActor)
+    Lacrima.WipeTearsWithHand(akActor)      ; optional second argument: your own Idle
+    Bool crying = Lacrima.IsCrying(akActor)
+
+Mod events, with the crying actor as the sender, so an expression mod can react to crying it did not start:
+- Lacrima_CryStart (numArg = intensity)
+- Lacrima_CryStop
+
+SKSE plugins get the same calls as C exports of Lacrima.dll (include/API/LacrimaAPI.h in the source); there is nothing to link, and every call is safe from any thread.
+
+Crying does not survive loading a save, and no Lacrima_CryStop is sent then.
+
+
+SOURCE AND LICENSE
+
+GPL-3.0. Source, issues and the C++ API header: https://github.com/crajjjj/lacrima
+
+
+CREDITS
+
+The fluid simulation, the skin wrap and the mesh generators are adapted from OStrands by LeonVanWinkle (Saint), GPL-3.0. The archive carries the license and a notice listing what came from OStrands.
