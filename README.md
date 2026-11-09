@@ -169,6 +169,11 @@ while after it stops or the scene ends. One is for SexLab P+, which on 2.19 or n
 follows P+'s live penetration detection; the other is for classic SexLab, which goes by
 the animation's tags. They are separate downloads on the mod page.
 
+Apropos2 (the crajjjj patch, 1.0023 or newer) uses Lacrima for its 'Tears & Sobs' and
+'Mascara Smears' wear-and-tear levels when it finds the plugin: after an abusive scene
+the character cries, harder and longer the higher the abuse level, instead of getting
+the SlaveTats face textures. Its MCM has the switch and the crying time.
+
 ## Building
 
 ```
