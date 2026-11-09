@@ -58,8 +58,11 @@ style to 1 (plain: no glow, no reflection), and lower Opacity if they still look
 milky. Style 2 adds refraction, so the scene behind bends through the water.
 
 **Tears start in the wrong place?** (By the ears, say.) Lacrima reads the eyes and
-face meshes of the head to find the lower lids, and a head built differently can be
-read wrongly. Two settings on the Test page correct it: Face forward (`face_forward`,
+face meshes of the head to find the lower lids. Eye mods that build the eye from
+several layers are handled: when the part the game lists as the eyes is not the
+eyeballs, Lacrima measures the other layers and takes the one that is (`tears status`
+says so). For a head read wrongly some other way, two settings on the Test page
+correct it: Face forward (`face_forward`,
 0 decides from the meshes, 1 or -1 forces which way the face looks; try the value
 `tears status` does not show) and Eyes mesh space (`eyes_space`, try 1, then 2, if the
 tears start far from the eyes). Both apply at once. `tears status` prints what was

@@ -62,7 +62,7 @@ Without the menu, put the values you want to change into Data\SKSE\Plugins\Lacri
 
 Tears look white and solid? Some ENB presets amplify materials that reflect or give off a little light of their own, which the default water look does. Set Look style to 1 (plain), and lower Opacity if they still look milky.
 
-Tears start in the wrong place (by the ears, on the neck)? Lacrima reads the head's eye and face meshes to find the lower lids, and a head built differently can be read wrongly. On the Test page, Face forward set to the value "tears status" does not show will most likely fix it; Eyes mesh space (try 1, then 2) is the other. Please also report it: turn on Detailed log, make your character cry once, and post Documents\My Games\Skyrim Special Edition\SKSE\Lacrima.log with the names of your head and eye mods, so the next version handles that head on its own.
+Tears start in the wrong place (by the ears, on the neck)? Lacrima reads the head's eye and face meshes to find the lower lids. Eye mods that build the eye from several layers are handled since 0.2.4. For a head read wrongly some other way: on the Test page, Face forward set to the value "tears status" does not show will most likely fix it; Eyes mesh space (try 1, then 2) is the other. Please also report it: turn on Detailed log, make your character cry once, and post Documents\My Games\Skyrim Special Edition\SKSE\Lacrima.log with the names of your head and eye mods, so the next version handles that head on its own.
 
 
 CONSOLE (ConsoleUtil Extended)
