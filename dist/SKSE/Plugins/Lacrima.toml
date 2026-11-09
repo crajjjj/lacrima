@@ -18,7 +18,7 @@ duct_position = 0.3    # where tears start: 0 = inner corner of the eye, 1 = out
 duct_below = 0.9       # how far below the middle of the eye, in eye sizes
 streams = 2            # points along the lower lid tears can start from (1 to 4); each tear picks one at random
 stream_spread = 0.6    # how far apart the streams sit along the lid, as a fraction of its length, centred on duct_position
-variety = 0.5          # how much one tear differs from the next: start point on the lid, size, a second tear right after; 0 = all alike
+variety = 0.5          # how much one tear differs from the next: start point on the lid, size, how far its mascara streak runs, a second tear right after; 0 = all alike
 both_eyes = true       # false: one eye, picked at random each time crying starts
 max_actors = 6         # actors crying at once; the oldest stops past this
 max_particles = 160    # fluid on one cheek at most
@@ -42,7 +42,7 @@ mascara_opacity = 0.5  # how dark a mascara streak is
 mascara_width = 1.0    # how wide a mascara streak is
 mascara_smudge = 1.0   # how much mascara gathers in a dark band under the lower lid; 0 none
 mascara_spread = 0.6   # how far the smudge spreads down over the skin under the eye: 0 a band along the lid only, 1 the whole area under the eye
-mascara_length = 3.0   # cm down the face a streak runs at most: 3 stops above the nose, 7 at the mouth; 0 as far as the tear goes
+mascara_length = 3.0   # cm down the face a streak runs: 3 stops above the nose, 7 at the mouth; each streak a little shorter or longer, by variety; 0 as far as the tear goes
 mascara_lifetime = 300.0  # seconds a streak stays before it has faded away; a hand wipe smears it and it goes sooner
 
 [physics]

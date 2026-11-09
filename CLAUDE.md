@@ -150,7 +150,9 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   tear's `Cheek::seat` for the first, so no segment is long enough to leave the
   surface; stain `order` is the particle's x16 so they sort between deposits. Each
   stain carries `along`, its distance down the streak from the lid: `[look]
-  mascara_length` (cm, 0 = unlimited) cuts the point that would pass it back to the
+  mascara_length` (cm, 0 = unlimited; scaled per tear by `Particle::reach` -> `Stain::reach`,
+  1 +- `kLengthJitter` 0.5 x variety, picked in StartTear, so the streaks of different
+  tears end at different heights) cuts the point that would pass it back to the
   limit and lays it as the run's `kBeadOrder` end, after which the run takes nothing
   more however far the tear goes (`DrawStains` clips the live reach to the bead the
   same way). The

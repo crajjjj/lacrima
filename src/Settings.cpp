@@ -40,7 +40,7 @@ namespace Lacrima
 			Field{ "tears", "stream_spread", &Settings::streamSpread, 0.0f, 1.0f, "Tears", "Stream spread", "%.2f",
 				"How far apart the streams sit along the lid, as a fraction of its length, centred on where tears start." },
 			Field{ "tears", "variety", &Settings::variety, 0.0f, 1.0f, "Tears", "Variety", "%.2f",
-				"How much one tear differs from the next: where on the lid it starts, how big it is, and whether another follows right after. 0 makes every tear alike." },
+				"How much one tear differs from the next: where on the lid it starts, how big it is, how far its mascara streak runs, and whether another follows right after. 0 makes every tear alike." },
 			Field{ "tears", "both_eyes", &Settings::bothEyes, 0, 1, "Tears", "Both eyes", nullptr,
 				"Off sheds tears from one eye only, picked at random each time someone starts crying." },
 			Field{ "tears", "max_actors", &Settings::maxActors, 1, 16, "Tears", "Actors at once", "%d",
@@ -86,7 +86,7 @@ namespace Lacrima
 			Field{ "look", "mascara_spread", &Settings::mascaraSpread, 0.0f, 1.0f, "Look", "Mascara under the eye", "%.2f",
 				"How far the smudge spreads down from the lashes over the skin under the eye. 0 is a band along the lid only; 1 covers the whole area under the eye." },
 			Field{ "look", "mascara_length", &Settings::mascaraLength, 0.0f, 20.0f, "Look", "Mascara length", "%.1f cm",
-				"How far down the face a mascara streak runs at most, in cm from the eye: 3 stops it above the nose, 7 at the mouth. 0 lets it run as far as the tear goes." },
+				"How far down the face a mascara streak runs, in cm from the eye: 3 stops it above the nose, 7 at the mouth. Each streak runs a little shorter or longer than this, by Variety. 0 lets it run as far as the tear goes." },
 			Field{ "look", "mascara_lifetime", &Settings::mascaraLifetime, 10.0f, 1800.0f, "Look", "Mascara lifetime", "%.0f s",
 				"Seconds a mascara streak stays before it has faded away. A hand wipe smears it, and it goes sooner." },
 

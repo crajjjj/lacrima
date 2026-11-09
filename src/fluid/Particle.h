@@ -52,6 +52,7 @@ namespace Lacrima::Fluid
 		float         travel{};    // metres moved along a surface since it last stopped
 		float         hang{};      // seconds spent clinging to a surface that faces down (under a chin)
 		float         start{};     // metres along the lid from its duct where the tear started
+		float         reach{ 1.0f };  // how far this tear's mascara streak may run, as a share of [look] mascara_length (picked per tear)
 		std::int32_t  surface{ -1 };
 		std::uint32_t run{};
 		std::uint32_t order{};  // a drop left behind by a running tear: its place in that tear's trail (0 = not left behind)

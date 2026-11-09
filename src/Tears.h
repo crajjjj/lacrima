@@ -172,6 +172,7 @@ namespace Lacrima
 			std::uint8_t  stream{ 0 };
 			float         start{ 0.0f };     // where along the lid the tear started, metres from the duct
 			float         along{ 0.0f };     // metres down the streak from the lid, for [look] mascara_length
+			float         reach{ 1.0f };     // the tear's share of mascara_length: its streak ends at along = mascara_length x reach
 			bool          smeared{ false };
 			Fluid::Vec3   dragDir;           // smearing: which way it moves along the skin ...
 			float         drag{ 0.0f };      // ... how far it still has to go, metres ...
@@ -246,6 +247,7 @@ namespace Lacrima
 			bool          welling{ false };
 			int           stream{ 0 };  // which of the eye's ducts the current tear runs from
 			float         startOffset{ 0.0f };  // metres along the lid from that duct, picked per tear
+			float         reach{ 1.0f };        // its mascara streak's share of [look] mascara_length, picked per tear
 			float         wait{ 0.0f };
 			float         slot{ 0.0f };
 			float         interval{ 0.1f };

@@ -42,6 +42,7 @@ namespace Lacrima
 		constexpr float       kBigTearChance = 0.15f;  // chance a tear is a big one, at variety 1
 		constexpr float       kBigTear = 1.6f;
 		constexpr float       kFollowChance = 0.3f;    // chance another tear follows right behind, at variety 1
+		constexpr float       kLengthJitter = 0.5f;    // share of [look] mascara_length a streak may run shorter or longer, at variety 1
 		constexpr float       kFollowWait = 0.25f;     // ... after this share of the usual wait
 		constexpr float       kFallSpeed = 0.25f;
 		// A particle must be off every surface this long before falling counts: free
@@ -1071,6 +1072,7 @@ namespace Lacrima
 		const int streams = std::clamp(a_streams, 1, static_cast<int>(Face::kMaxStreams));
 		a_cheek.stream = streams > 1 ? std::uniform_int_distribution<int>(0, streams - 1)(_rng) : 0;
 		a_cheek.startOffset = (2.0f * unit(_rng) - 1.0f) * variety * kStartJitter;
+		a_cheek.reach = 1.0f + (2.0f * unit(_rng) - 1.0f) * variety * kLengthJitter;  // so the streaks of different tears end at different heights
 		a_cheek.left = std::max(2, static_cast<int>(std::lround(size)));
 		a_cheek.interval = a_settings.well / static_cast<float>(a_cheek.left);
 		a_cheek.slot = 0.0f;
@@ -1148,6 +1150,7 @@ namespace Lacrima
 			particle.run = a_cheek.run;
 			particle.stream = static_cast<std::uint8_t>(std::clamp(a_cheek.stream, 0, static_cast<int>(Face::kMaxStreams) - 1));
 			particle.start = a_cheek.startOffset;
+			particle.reach = a_cheek.reach;
 			// Born on the lid: the solver's stick-pull only reaches for particles already
 			// touching, and a tear that starts free falls off the face before it lands.
 			particle.touching = true;
@@ -1484,6 +1487,7 @@ namespace Lacrima
 		stain.run = a_particle.run;
 		stain.stream = a_particle.stream;
 		stain.start = a_particle.start;
+		stain.reach = a_particle.reach;
 		stain.smeared = a_particle.wiped;
 		stain.life = stain.smeared ? stain.lifetime * kSmearLife : stain.lifetime;
 		// The streak follows the skin between where the tear last left a drop (or the
@@ -1508,10 +1512,11 @@ namespace Lacrima
 		}
 		std::uint32_t order = a_order == kBeadOrder ? kBeadOrder : a_order * 16;
 		float         span = known ? Fluid::Length(here - from) : 0.0f;
-		// The streak stops at [look] mascara_length: the point that would pass it is
-		// cut back to it and ends the run, so the tear running on leaves no more.
+		// The streak stops at [look] mascara_length (times the tear's own share of it):
+		// the point that would pass it is cut back to it and ends the run, so the tear
+		// running on leaves no more.
 		if (a_settings.mascaraLength > 0.0f && known) {
-			const float room = a_settings.mascaraLength * 0.01f - fromAlong;
+			const float room = a_settings.mascaraLength * 0.01f * stain.reach - fromAlong;
 			if (room <= 0.0f) {
 				return;
 			}
@@ -2408,7 +2413,7 @@ namespace Lacrima
 							++count;
 						}
 					}
-					const float room = a_settings.mascaraLength > 0.0f ? a_settings.mascaraLength * 0.01f - last.along : std::numeric_limits<float>::max();
+					const float room = a_settings.mascaraLength > 0.0f ? a_settings.mascaraLength * 0.01f * last.reach - last.along : std::numeric_limits<float>::max();
 					if (count > 0 && room > 0.0f) {
 						Vec3        bead = sum * (1.0f / static_cast<float>(count));
 						const float reach = Fluid::Length(bead - last.position);

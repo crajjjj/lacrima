@@ -69,8 +69,8 @@ paste that line in a report, with the head and eye mods you use. It is also writ
 whenever a crying starts.
 
 Variety (Tears page) sets how much one tear differs from the next: where on the lid it
-starts, how big it is, and whether another follows right behind. At 0 every tear runs
-the same way.
+starts, how big it is, how far its mascara streak runs, and whether another follows
+right behind. At 0 every tear runs the same way.
 
 ## Console
 
