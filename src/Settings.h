@@ -45,6 +45,7 @@ namespace Lacrima
 		float mascara{ 0.0f };
 		float mascaraOpacity{ 0.5f };
 		float mascaraWidth{ 1.0f };
+		float mascaraSmudge{ 1.0f };
 		float mascaraLifetime{ 300.0f };
 
 		float stickiness{ 2.0f };

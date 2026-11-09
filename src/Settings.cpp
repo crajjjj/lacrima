@@ -81,6 +81,8 @@ namespace Lacrima
 				"How dark a mascara streak is." },
 			Field{ "look", "mascara_width", &Settings::mascaraWidth, 0.2f, 3.0f, "Look", "Mascara width", "%.2f",
 				"How wide a mascara streak is." },
+			Field{ "look", "mascara_smudge", &Settings::mascaraSmudge, 0.0f, 2.0f, "Look", "Mascara smudge", "%.2f",
+				"How much mascara gathers in a dark band under the lower lid as the tears carry it out of the lashes. 0 is none." },
 			Field{ "look", "mascara_lifetime", &Settings::mascaraLifetime, 10.0f, 1800.0f, "Look", "Mascara lifetime", "%.0f s",
 				"Seconds a mascara streak stays before it has faded away. A hand wipe smears it, and it goes sooner." },
 

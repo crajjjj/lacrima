@@ -117,19 +117,29 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   within `[wipe] reach` of a duct, or when the arm runs out. The brow wipe passes the
   forehead, not the eyes, which is why reach is generous; a real eye-wipe idle can be
   passed by the caller.
-- **Running mascara** (`Cheek::stains`, `LayStain`, `DrawStains`): when the actor's
-  mascara strength is above 0, every drop a running tear leaves behind (`Deposit`) also
-  lays a `Stain` point, taken down onto the skin (`OntoSkin`), and a bead that dries on
-  the skin ends its streak (`kBeadOrder`). Stains have no physics: they sit in head
-  space, age for `[look] mascara_lifetime` and thin out over the last 30% of it. Each
-  run is drawn as one rope from the lid of its stream through its points in order to
-  the bead while it still runs, using `meshes\Lacrima\tear_stain.nif`: the trail rope's
-  geometry and RopeNN bones with a matte dark material and its own pool
-  (`stainRopes`, `_spareStains`, at most 16 streaks and 160 points per cheek, oldest
-  run dropped first). A hand capsule touching a streak, or a hand-wipe gesture
-  (`DryFace`), smears it (wider, at most 35% of its lifetime left); `Clear` (WipeTears,
-  StopCrying with wipe) removes it. An actor with streaks stays a crier (busy, not
-  idle) until they fade. The streak mesh is optional: without it tears still show.
+- **Running mascara** (`Cheek::stains`, `Cheek::smudge`, `LayStain`, `DrawStains`):
+  when the actor's mascara strength is above 0, every drop a running tear leaves behind
+  (`Deposit`) also lays a `Stain` point, and a bead that dries on the skin ends its
+  streak (`kBeadOrder`); each tear that starts also builds the `Smudge`, the band under
+  the lower lid (first tear 45%, then 20% each, times the strength). Marks have no
+  physics: they sit in head space, age for `[look] mascara_lifetime` and thin out over
+  the last 30% of it. They are drawn with `meshes\Lacrima\tear_stain.nif` (the trail
+  rope's geometry and RopeNN bones, a matte near-black material, its own pool
+  `stainRopes` / `_spareStains`, at most 16 streaks + the smudge and 160 points per
+  cheek, oldest run dropped first), **sunk into the skin** (`OntoSkin` / `OntoFace`
+  with a depth from `SinkOf`): the face writes depth and the mark does not, so only a
+  flat cap shows, which reads as pigment rather than a tube. The smudge is one rope
+  along Face's `lids` (6 points under the lashes, `kLidBelow`), fullest in the middle;
+  a streak starts in it and tapers down the cheek. **Smearing** (`SmearStains`): a hand
+  capsule over a mark drags it along the skin the way the hand moves (its velocity in
+  the skin plane; a resting hand drags outward, `Cheek::outward` = away from the other
+  eye), `kSmearDrag` per wipe and `kSmearMax` in all at `kSmearSpeed`, widening to
+  `kSmearWidth` and sinking deeper (`kSmearSink`) so it gets flatter, with at most 35%
+  of its lifetime left; the hand-wipe gesture (`DryFace`) smears everything outward.
+  Dragging marks are re-projected onto the posed face each frame and `Bounds` poses
+  skin under them. `Clear` (WipeTears, StopCrying with wipe) removes it all. An actor
+  with marks stays a crier (busy, not idle) until they fade. The mark mesh is optional:
+  without it tears still show.
 - **Per call, then per actor, then the setting.** `CryEx` (and `Cry`, with 0 / -1)
   carries a stream count and a mascara strength in the `kCry` request; `StartCrying`
   keeps them as `Crier::callStreams` / `Crier::callMascara` until the next cry, and

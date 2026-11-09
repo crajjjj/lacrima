@@ -9,7 +9,7 @@ WHAT IT DOES
 - Tears on the real face. Each eye runs a small fluid simulation on the face mesh as the game has posed it this frame, so tears follow the face's shape as the head turns and the expression changes.
 - How a tear behaves. It wells up on the lower lid and clings there for a moment, then runs down as a small bead and leaves a thin wet streak that dries after a while. A drop that reaches the underside of the chin hangs there briefly before it falls.
 - Several streams per eye. Tears start from up to four points along the lower lid, from the inner corner beside the nose to the outer corner, each a little to one side of the last, so trails build up over time instead of retracing one line.
-- Running mascara (optional). Each tear leaves a dark streak down the exact path it ran, which builds up as the actor keeps crying, outlives the water and fades after a few minutes. A hand wiping the face smears it. Off by default; other mods can turn it on per actor.
+- Running mascara (optional). Each tear carries pigment out of the lashes: a dark band builds up under the lower lid and a streak runs down the exact path the tear took, both outliving the water and fading after a few minutes. A hand wiping the face smears them along the skin. Off by default; other mods can turn it on per actor or per cry.
 - Wet eyes. While an actor cries, their eyes glisten.
 - Hands wipe tears. A crying actor's own fingers and palms take away the tears they touch, in any animation that brings a hand to the face. There is also a wipe gesture you can trigger (the vanilla brow wipe, or any idle you pass in).
 - Player and NPCs alike, on vanilla and high-poly heads.

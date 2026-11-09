@@ -32,9 +32,10 @@ drop that reaches the underside of the chin clings there for a moment before it 
 While an actor cries, their eyes glisten.
 
 Running mascara is optional (`mascara`, off by default; other mods can turn it on per
-actor or per cry): each tear then leaves a dark streak down the exact path it ran. The
-streak builds up as the actor keeps crying, outlives the water and fades after a few
-minutes. A hand wiping the face smears it wider and fainter instead of taking it off.
+actor or per cry). Each tear then carries pigment out of the lashes: a dark band builds
+up under the lower lid, and a streak runs down the exact path the tear took. Both
+outlive the water and fade after a few minutes. A hand wiping the face smears them:
+it drags them along the skin the way it moves, wider and flatter, and they go sooner.
 
 Hands take tears away. A crying actor's own fingers and palms absorb the tears they
 touch, in any animation that brings a hand to the face. `WipeTearsWithHand` plays a

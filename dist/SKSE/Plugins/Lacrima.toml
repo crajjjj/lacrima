@@ -40,6 +40,7 @@ fade = 5.0             # seconds at the end of its life a trail spends thinning 
 mascara = 0.0          # running mascara: tears leave a dark streak that outlives the water; 0 none, up to 1 (mods can set it per actor)
 mascara_opacity = 0.5  # how dark a mascara streak is
 mascara_width = 1.0    # how wide a mascara streak is
+mascara_smudge = 1.0   # how much mascara gathers in a dark band under the lower lid; 0 none
 mascara_lifetime = 300.0  # seconds a streak stays before it has faded away; a hand wipe smears it and it goes sooner
 
 [physics]

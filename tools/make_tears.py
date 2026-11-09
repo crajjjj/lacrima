@@ -139,7 +139,7 @@ def build_rope():
 # poses it the same way), drawn matte and dark: pigment on the skin, not water. No
 # highlight, no reflection, no light of its own, no depth write. The game sets the
 # opacity from [look] mascara_opacity.
-STAIN_COLOR = (34, 26, 30)
+STAIN_COLOR = (20, 16, 18)
 STAIN_ALPHA = 0.5
 
 

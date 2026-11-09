@@ -125,6 +125,8 @@ namespace Lacrima
 
 		// One eye's ducts, one per stream; a stream whose duct was not found is empty.
 		using Spots = std::array<std::optional<Spot>, Face::kMaxStreams>;
+		// One eye's lower lid, inner corner to outer, in head space.
+		using LidSpots = std::array<std::optional<Spot>, Face::kLidPoints>;
 
 		// Where the tear nodes hang and what their transforms are expressed in: under
 		// the cell node in world units as 0.1.0 did (the shipped default, [debug]
@@ -152,11 +154,13 @@ namespace Lacrima
 		};
 
 		// Running mascara: a point of the dark streak a tear leaves on the skin, in head
-		// space, laid where the tear left a drop of its trail. It outlives the water and
-		// fades; a hand smears it (wider, fainter, gone sooner).
+		// space, laid where the tear left a drop of its trail and sunk a little into the
+		// skin so only a flat cap shows. It outlives the water and fades; a hand drags
+		// it along the skin (a smear: wider, gone sooner).
 		struct Stain
 		{
 			Fluid::Vec3   position;
+			Fluid::Vec3   normal{ 0.0f, 0.0f, 1.0f };  // the skin's, where it lies
 			float         life{ 0.0f };      // seconds left
 			float         lifetime{ 1.0f };  // seconds it had when laid
 			float         strength{ 0.0f };  // pigment, 0 to 1
@@ -165,6 +169,25 @@ namespace Lacrima
 			std::uint8_t  stream{ 0 };
 			float         start{ 0.0f };     // where along the lid the tear started, metres from the duct
 			bool          smeared{ false };
+			Fluid::Vec3   dragDir;           // smearing: which way it moves along the skin ...
+			float         drag{ 0.0f };      // ... how far it still has to go, metres ...
+			float         dragged{ 0.0f };   // ... and how far it has gone in all
+			float         widen{ 1.0f };     // how much wider the smearing made it
+		};
+
+		// The band of mascara under one lower lid, which the tears carry out of the
+		// lashes. Drawn along the lid points Face finds; a smear shifts it as a whole.
+		struct Smudge
+		{
+			float       strength{ 0.0f };  // 0 none, 1 full
+			float       life{ 0.0f };
+			float       lifetime{ 1.0f };
+			bool        smeared{ false };
+			Fluid::Vec3 offset;            // where smearing moved it, head space
+			Fluid::Vec3 dragDir;
+			float       drag{ 0.0f };
+			float       dragged{ 0.0f };
+			float       widen{ 1.0f };
 		};
 
 		// What a script or plugin set for one actor, for this session.
@@ -191,9 +214,12 @@ namespace Lacrima
 			std::vector<Blob>              blobs;
 			std::vector<Rope>              ropes;
 			std::vector<Stain>             stains;
+			Smudge                         smudge;
 			std::vector<Rope>              stainRopes;
 			float                          stainOpacity{ -1.0f };
 			std::size_t                    shownStains{ 0 };
+			Fluid::Vec3                    outward;  // along the lid, away from the nose, head space
+			bool                           outwardKnown{ false };
 			float                          opacity{ -1.0f };
 			float                          shine{ -1.0f };
 			float                          gloss{ -1.0f };
@@ -293,6 +319,14 @@ namespace Lacrima
 		void Deposit(Cheek& a_cheek, const Frame& a_frame, const Settings& a_settings, float a_mascara);
 		void LayStain(Cheek& a_cheek, const Fluid::Particle& a_particle, std::uint32_t a_order, const Settings& a_settings, float a_mascara);
 		void AgeStains(Cheek& a_cheek, float a_delta);
+		// Hands touching mascara drag it along the skin; marks already dragging move on.
+		void SmearStains(Cheek& a_cheek, const Frame& a_frame, const std::optional<Face::View>& a_view, const LidSpots& a_lids, float a_delta);
+		static void Smear(Stain& a_stain, Fluid::Vec3 a_direction);
+		static void SmearSmudge(Smudge& a_smudge, Fluid::Vec3 a_direction);
+		static bool HasMascara(const Cheek& a_cheek);
+		// The point on the posed face nearest a_point (head space), a_depth metres under
+		// the skin; a_point itself when no skin is near. The skin's normal in a_normal.
+		static Fluid::Vec3 OntoFace(const Frame& a_frame, const Face::View& a_view, Fluid::Vec3 a_point, float a_depth, Fluid::Vec3* a_normal);
 		void Simulate(Cheek& a_cheek, const Frame& a_frame, const std::optional<Face::View>& a_view, std::span<const Fluid::Capsule> a_hands,
 			const Settings& a_settings, float a_delta, float a_mascara);
 		void PoseHands(Crier& a_crier, float a_delta);
@@ -300,7 +334,7 @@ namespace Lacrima
 		void DryFace(Crier& a_crier);
 		void Expire(Cheek& a_cheek, const Frame& a_frame, const Settings& a_settings, float a_delta, float a_mascara);
 		bool Attach(Cheek& a_cheek, const Crier& a_crier, RE::NiAVObject* a_root, bool a_world);
-		void Draw(Cheek& a_cheek, const Mount& a_mount, const Settings& a_settings, const Spots& a_spots, bool a_markers);
+		void Draw(Cheek& a_cheek, const Mount& a_mount, const Settings& a_settings, const Spots& a_spots, const LidSpots& a_lids, bool a_markers);
 		void Clear(Cheek& a_cheek);
 		void Release(Cheek& a_cheek);
 		bool Idle(const Crier& a_crier) const;
@@ -316,8 +350,9 @@ namespace Lacrima
 		void    Shade(RE::NiAVObject* a_root, const Settings& a_settings, bool a_restyle);
 		void    ShadeStain(RE::NiAVObject* a_root, const Settings& a_settings);
 		void    Reshade(Cheek& a_cheek, const Settings& a_settings);
-		void    DrawStains(Cheek& a_cheek, const Mount& a_mount, const Settings& a_settings, const Spots& a_spots);
-		void    PoseStain(const Mount& a_mount, Rope& a_rope);
+		void    DrawStains(Cheek& a_cheek, const Mount& a_mount, const Settings& a_settings, const Spots& a_spots, const LidSpots& a_lids);
+		// Poses a_rope along _stainPath with _stainRadius; a_taper thins it toward the end.
+		void    PoseStain(const Mount& a_mount, Rope& a_rope, bool a_taper);
 		void    PoseBlob(const Mount& a_mount, Blob& a_blob);
 		void    PoseDrop(const Mount& a_mount, Blob& a_blob, Fluid::Vec3 a_center, float a_radius, Fluid::Vec3 a_up, Fluid::Vec3 a_velocity = {},
 			   std::optional<Fluid::Vec3> a_contact = std::nullopt);
