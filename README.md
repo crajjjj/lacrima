@@ -62,7 +62,7 @@ or on the player when none is selected.
 
 | Command | What it does |
 |---|---|
-| `tears cry 0.7 30` | Cry at intensity 0.7 for 30 seconds (0 seconds = until stopped) |
+| `tears cry 0.7 30` | Cry at intensity 0.7 for 30 seconds (0 seconds = until stopped); `tears cry 0.7 30 3` sheds from 3 points per eye |
 | `tears stop` | Stop crying; `tears stop 1` also wipes the face |
 | `tears tear` | Shed a single tear (`tears tear 0` left eye, `1` right, `2` both) |
 | `tears wipe` / `tears wipeall` | Dry this face / every face, at once |
@@ -71,7 +71,6 @@ or on the player when none is selected.
 | `tears status` | What Lacrima found on the head and what the tears are doing |
 | `tears ducts 1` | Mark where tears start (`tears ducts 0` to hide) |
 | `tears mount 0` | Hang the tears under the head bone, the cheaper way (`tears mount 1`, the default, draws them in world space) |
-| `tears streams 3` | This actor's tears start from 3 points per eye (`0` = the setting) |
 | `tears mascara 1` | Running mascara on this actor (`0` none, `-1` = the setting) |
 | `tears count` | How many actors are crying |
 | `tears enable 0` | Turn Lacrima off for this session (`1` on) |
@@ -95,15 +94,16 @@ Lacrima.WipeTearsWithHand(akActor, myEyeWipeIdle)
 Bool  crying = Lacrima.IsCrying(akActor)
 Float left   = Lacrima.GetTimeLeft(akActor)   ; -1 = until stopped
 
-If Lacrima.GetAPIVersion() >= 2               ; per-actor overrides
-    Lacrima.SetStreams(akActor, 3)            ; tears from 3 points per eye (0 = the setting)
-    Lacrima.SetMascara(akActor, 1.0)          ; running mascara (0 = none, negative = the setting)
+If Lacrima.GetAPIVersion() >= 2
+    Lacrima.CryEx(akActor, 0.7, 20.0, 3)      ; Cry, shedding from 3 points per eye (0 = the setting)
+    Lacrima.SetMascara(akActor, 1.0)          ; running mascara for this actor (0 = none, negative = the setting)
 EndIf
 ```
 
 `Cry` on an actor who already cries replaces the intensity and the time left. Crying
-does not survive loading a save, and no `Lacrima_CryStop` is sent then; nor do the
-per-actor overrides. `WipeTears` also takes off running mascara, while
+does not survive loading a save, and no `Lacrima_CryStop` is sent then; nor does
+`SetMascara`. `CryEx`'s stream count lasts until the actor's next `Cry` or `CryEx`.
+`WipeTears` also takes off running mascara, while
 `WipeTearsWithHand` smears it. Calling a global function of a script that is not
 installed only logs an error, so the `GetAPIVersion` check is all an optional
 integration needs.

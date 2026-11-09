@@ -25,7 +25,9 @@ namespace Lacrima
 			float timeLeft{ 0.0f };
 		};
 
-		void Cry(RE::ActorHandle a_actor, float a_intensity, float a_seconds);
+		// a_streams: how many points along the lower lid this crying sheds from, 1 to 4;
+		// 0 uses the setting. It lasts until the next Cry for the actor.
+		void Cry(RE::ActorHandle a_actor, float a_intensity, float a_seconds, int a_streams = 0);
 		void Stop(RE::ActorHandle a_actor, bool a_wipe);
 		void Shed(RE::ActorHandle a_actor, int a_eye);
 		void Wipe(RE::ActorHandle a_actor);
@@ -34,9 +36,8 @@ namespace Lacrima
 		void WipeWithHand(RE::ActorHandle a_actor, RE::TESIdleForm* a_idle);
 		void WipeAll();
 		void CryNearby(float a_radius, float a_intensity, float a_seconds);
-		// Per-actor overrides, for this session: how many streams per eye (0 goes back
-		// to the setting) and how much running mascara (negative goes back to it).
-		void SetStreams(RE::ActorHandle a_actor, int a_streams);
+		// Per-actor override, for this session: how much running mascara (negative goes
+		// back to the setting).
 		void SetMascara(RE::ActorHandle a_actor, float a_strength);
 
 		State       Query(RE::ActorHandle a_actor) const;
@@ -60,7 +61,6 @@ namespace Lacrima
 				kWipeAll,
 				kNearby,
 				kHandWipe,
-				kStreams,
 				kMascara
 			};
 
@@ -72,6 +72,7 @@ namespace Lacrima
 			bool             wipe{ false };
 			float            radius{ 0.0f };
 			RE::TESIdleForm* idle{ nullptr };
+			int              streams{ 0 };  // kCry: 0 = the setting
 		};
 
 		struct Blob
@@ -166,7 +167,6 @@ namespace Lacrima
 		// What a script or plugin set for one actor, for this session.
 		struct Override
 		{
-			int   streams{ 0 };       // 0: the setting
 			float mascara{ -1.0f };   // negative: the setting
 		};
 
@@ -241,7 +241,8 @@ namespace Lacrima
 			bool                                       watched{ false };
 			bool                                       frozen{ false };
 			float                                      wipeArm{ 0.0f };
-			int                                        streams{ 1 };     // per eye, the override or the setting, this frame
+			int                                        callStreams{ 0 }; // what the last Cry asked for; 0 = the setting
+			int                                        streams{ 1 };     // per eye, that or the setting, this frame
 			float                                      mascara{ 0.0f };  // the override or the setting, this frame
 			RE::NiPointer<RE::NiAVObject>              skeleton;   // the 3D the bones below came from
 			RE::NiPointer<RE::NiNode>                  head;
@@ -264,7 +265,7 @@ namespace Lacrima
 		void        Apply(const Request& a_request, const Settings& a_settings);
 		Crier*      CrierFor(RE::ActorHandle a_actor, const Settings& a_settings, bool a_create, bool a_evict = true);
 		static bool Enabled();
-		void        StartCrying(Crier& a_crier, float a_intensity, float a_seconds, const Settings& a_settings);
+		void        StartCrying(Crier& a_crier, float a_intensity, float a_seconds, int a_streams, const Settings& a_settings);
 		void        StopCrying(Crier& a_crier);
 		void        SendEvent(const char* a_name, RE::ActorHandle a_actor, float a_value);
 
@@ -279,8 +280,7 @@ namespace Lacrima
 		// Where along the lid a tear started: a_offset metres to the side of the duct.
 		static Fluid::Vec3          LidPoint(const Spot& a_spot, float a_offset);
 
-		Override        OverrideOf(std::uint32_t a_actor) const;
-		Face::Placement PlacementFor(std::uint32_t a_actor, const Settings& a_settings) const;
+		Override OverrideOf(std::uint32_t a_actor) const;
 
 		bool Prepare(Cheek& a_cheek, const Settings& a_settings);
 		void Emit(Crier& a_crier, Cheek& a_cheek, const Spots& a_spots, const Settings& a_settings, float a_delta);

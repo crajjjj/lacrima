@@ -67,9 +67,9 @@ void Lacrima_Wipe(RE::Actor* actor)
 	Lacrima::Tears::Get().Wipe(HandleOf(actor));
 }
 
-void Lacrima_SetStreams(RE::Actor* actor, std::int32_t streams)
+void Lacrima_CryEx(RE::Actor* actor, float intensity, float seconds, std::int32_t streams)
 {
-	Lacrima::Tears::Get().SetStreams(HandleOf(actor), streams);
+	Lacrima::Tears::Get().Cry(HandleOf(actor), intensity, seconds, streams);
 }
 
 void Lacrima_SetMascara(RE::Actor* actor, float strength)

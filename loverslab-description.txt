@@ -67,7 +67,7 @@ CONSOLE (ConsoleUtil Extended)
 
 Commands act on the actor selected in the console, or on the player when none is selected.
 
-- tears cry 0.7 30 - cry at intensity 0.7 for 30 seconds (0 seconds = until stopped)
+- tears cry 0.7 30 - cry at intensity 0.7 for 30 seconds (0 seconds = until stopped); tears cry 0.7 30 3 sheds from 3 points per eye
 - tears stop - stop crying; "tears stop 1" also wipes the face
 - tears tear - shed a single tear
 - tears wipe / tears wipeall - dry this face / every face at once
@@ -75,7 +75,6 @@ Commands act on the actor selected in the console, or on the player when none is
 - tears nearby 0.7 30 1500 - every actor within 1500 units of the player cries
 - tears status - what Lacrima found on the head and what the tears are doing
 - tears ducts 1 - mark where tears start (0 to hide)
-- tears streams 3 - this actor's tears start from 3 points per eye (0 = the setting)
 - tears mascara 1 - running mascara on this actor (0 none, -1 = the setting)
 - tears enable 0 - turn Lacrima off for this session (1 on)
 
@@ -95,9 +94,9 @@ Lacrima does nothing on its own; it is meant to be driven by your mod. Every cal
     Lacrima.WipeTearsWithHand(akActor)      ; optional second argument: your own Idle
     Bool crying = Lacrima.IsCrying(akActor)
 
-    If Lacrima.GetAPIVersion() >= 2         ; per-actor overrides, for the session
-        Lacrima.SetStreams(akActor, 3)      ; tears from 3 points per eye (0 = the setting)
-        Lacrima.SetMascara(akActor, 1.0)    ; running mascara (0 = none, negative = the setting)
+    If Lacrima.GetAPIVersion() >= 2
+        Lacrima.CryEx(akActor, 0.7, 20.0, 3)  ; Cry, shedding from 3 points per eye (0 = the setting)
+        Lacrima.SetMascara(akActor, 1.0)      ; running mascara for this actor (0 = none, negative = the setting)
     EndIf
 
 Mod events, with the crying actor as the sender, so an expression mod can react to crying it did not start:

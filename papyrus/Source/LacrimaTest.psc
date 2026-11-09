@@ -29,19 +29,23 @@ Bool Function Loaded() global
 	Return Lacrima.GetAPIVersion() > 0
 EndFunction
 
-; Params in YAML order: intensity, seconds
-String Function Cry(Float intensity, Float seconds) global
+; Params in YAML order: intensity, seconds, streams
+String Function Cry(Float intensity, Float seconds, Int streams) global
 	If !Loaded()
 		Return "Lacrima.dll is not loaded."
 	EndIf
 	If !Lacrima.IsEnabled()
 		Return "Lacrima is off; turn it on with: tears enable 1"
 	EndIf
-	Lacrima.Cry(Target(), intensity, seconds)
-	If seconds > 0.0
-		Return Who() + " cries at intensity " + intensity + " for " + seconds + " s."
+	Lacrima.CryEx(Target(), intensity, seconds, streams)
+	String from = ""
+	If streams > 0
+		from = ", from " + streams + " point(s) per eye"
 	EndIf
-	Return Who() + " cries at intensity " + intensity + " until stopped."
+	If seconds > 0.0
+		Return Who() + " cries at intensity " + intensity + " for " + seconds + " s" + from + "."
+	EndIf
+	Return Who() + " cries at intensity " + intensity + " until stopped" + from + "."
 EndFunction
 
 ; Params in YAML order: wipe
@@ -130,18 +134,6 @@ EndFunction
 String Function Reload() global
 	Lacrima.ReloadConfig()
 	Return "Lacrima.toml and Lacrima_User.toml read again."
-EndFunction
-
-; Params in YAML order: streams
-String Function Streams(Int streams) global
-	If !Loaded()
-		Return "Lacrima.dll is not loaded."
-	EndIf
-	Lacrima.SetStreams(Target(), streams)
-	If streams <= 0
-		Return Who() + " uses the streams setting again."
-	EndIf
-	Return Who() + " sheds tears from " + streams + " point(s) per eye."
 EndFunction
 
 ; Params in YAML order: strength

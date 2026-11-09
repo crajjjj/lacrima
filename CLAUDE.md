@@ -130,11 +130,13 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   (`DryFace`), smears it (wider, at most 35% of its lifetime left); `Clear` (WipeTears,
   StopCrying with wipe) removes it. An actor with streaks stays a crier (busy, not
   idle) until they fade. The streak mesh is optional: without it tears still show.
-- **Per-actor overrides** (`Tears::_overrides`, set through the `kStreams` /
-  `kMascara` requests): streams per eye (0 = the setting) and mascara strength
-  (negative = the setting), resolved into `Crier::streams` / `Crier::mascara` each
-  frame; `PlacementFor` gives Face the actor's stream count. Session only: cleared on
-  load with everything else.
+- **Streams per call, mascara per actor.** `CryEx` (and `Cry`, with 0) carries a
+  stream count in the `kCry` request; `StartCrying` keeps it as `Crier::callStreams`
+  until the next cry, and `PlacementOf(settings, crier.streams)` gives Face that
+  count. Mascara is an attribute of the actor rather than of one cry (the streaks
+  outlive the crying), so it is a session override in `Tears::_overrides`, set
+  through the `kMascara` request (negative = the setting) and resolved into
+  `Crier::mascara` each frame; cleared on load with everything else.
 - **Settings** (`Settings.cpp`): one field table drives the toml reader, the user-file
   writer and the menu pages. `Lacrima.toml` holds the shipped defaults;
   `Lacrima_User.toml` holds only what the player changed (written by the menu).
@@ -143,7 +145,7 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   not null-check their `GetProcAddress` results, so every wrapper used is on
   `kFrameworkExports`, probed at `kDataLoaded`.
 - **APIs**: `Lacrima.psc` (natives in `Papyrus.cpp`, `kAPIVersion`: 2 added
-  `SetStreams` / `SetMascara`), C exports in `Api.cpp` / `include/API/LacrimaAPI.h` /
+  `CryEx` / `SetMascara`), C exports in `Api.cpp` / `include/API/LacrimaAPI.h` /
   `exports.def` (interface version packed MMmmpp: 10100 added the same two). Never
   change the arguments of a shipped native or export; add a new one.
 - **Console**: `LacrimaTest.psc` + `dist\SKSE\CustomConsole\Lacrima.yaml` (ConsoleUtil

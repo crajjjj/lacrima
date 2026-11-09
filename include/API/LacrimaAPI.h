@@ -54,13 +54,15 @@ namespace RE
 //   and dries the face once a hand comes near the eyes, or after a few seconds if it
 //   never does. An idle that cannot play (the actor is busy) dries the face at once.
 //   Running mascara is smeared, not removed: wider, fainter, gone sooner.
-// - SetStreams (10100): how many points along the lower lid this actor's tears start
-//   from, 1 to 4; each tear picks one at random. 0 goes back to the player's setting.
+// - CryEx (10100) is Cry with one more argument: streams, how many points along the
+//   lower lid this crying sheds from, 1 to 4; each tear picks one at random. 0 uses
+//   the player's setting, as Cry does. It holds until the next Cry or CryEx for the
+//   actor.
 // - SetMascara (10100): running mascara for this actor, 0.0-1.0. Each tear leaves a
 //   dark streak down its path that outlives the water and fades after a few minutes
 //   (the player sets how long). 0 = none; a negative value goes back to the player's
-//   setting, which is 0 unless they changed it.
-// - Overrides last for the session: they do not survive loading a save.
+//   setting, which is 0 unless they changed it. It belongs to the actor, not to one
+//   cry, and lasts for the session: it does not survive loading a save.
 // - Independently of any gesture, a crying actor's own hands take away the tears they
 //   touch, in any animation, unless the player turned that off.
 // - Lacrima sends the mod events Lacrima_CryStart (numArg = intensity) and
@@ -76,7 +78,7 @@ extern "C" {
 // Lacrima's own version, packed major*10000 + minor*100 + patch (100 = 0.1.0).
 std::uint32_t Lacrima_GetVersion();
 
-// 10000 = 1.0.0: Cry .. WipeTearsWithHand. 10100 = 1.1.0: SetStreams, SetMascara.
+// 10000 = 1.0.0: Cry .. WipeTearsWithHand. 10100 = 1.1.0: CryEx, SetMascara.
 std::uint32_t Lacrima_GetInterfaceVersion();
 
 void  Lacrima_Cry(RE::Actor* actor, float intensity, float seconds);
@@ -90,6 +92,6 @@ void  Lacrima_Wipe(RE::Actor* actor);
 void  Lacrima_WipeTearsWithHand(RE::Actor* actor, RE::TESIdleForm* idle);
 
 // 10100
-void Lacrima_SetStreams(RE::Actor* actor, std::int32_t streams);
+void Lacrima_CryEx(RE::Actor* actor, float intensity, float seconds, std::int32_t streams);
 void Lacrima_SetMascara(RE::Actor* actor, float strength);
 }

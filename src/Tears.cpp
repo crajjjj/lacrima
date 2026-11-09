@@ -172,9 +172,10 @@ namespace Lacrima
 			return a_text;
 		}
 
-		Face::Placement PlacementOf(const Settings& a_settings)
+		// a_streams: the crier's own count; 0 takes the setting.
+		Face::Placement PlacementOf(const Settings& a_settings, int a_streams = 0)
 		{
-			return { a_settings.ductPosition, a_settings.ductBelow, a_settings.streams, a_settings.streamSpread };
+			return { a_settings.ductPosition, a_settings.ductBelow, a_streams > 0 ? a_streams : a_settings.streams, a_settings.streamSpread };
 		}
 
 		float SegmentDistance(Vec3 a_point, Vec3 a_from, Vec3 a_to)
@@ -214,7 +215,7 @@ namespace Lacrima
 
 	// ------------------------------------------------------------------ requests
 
-	void Tears::Cry(RE::ActorHandle a_actor, float a_intensity, float a_seconds)
+	void Tears::Cry(RE::ActorHandle a_actor, float a_intensity, float a_seconds, int a_streams)
 	{
 		if (!a_actor) {
 			return;
@@ -224,8 +225,10 @@ namespace Lacrima
 		if (!Enabled()) {
 			return;
 		}
+		Request request{ Request::Kind::kCry, a_actor, intensity, seconds };
+		request.streams = std::clamp(a_streams, 0, static_cast<int>(Face::kMaxStreams));
 		std::scoped_lock guard(_lock);
-		_pending.push_back({ Request::Kind::kCry, a_actor, intensity, seconds });
+		_pending.push_back(request);
 		auto& state = _states[a_actor.native_handle()];
 		state.crying = intensity > 0.0f;
 		state.intensity = intensity;
@@ -295,17 +298,6 @@ namespace Lacrima
 		_pending.push_back(request);
 	}
 
-	void Tears::SetStreams(RE::ActorHandle a_actor, int a_streams)
-	{
-		if (!a_actor) {
-			return;
-		}
-		Request request{ Request::Kind::kStreams, a_actor };
-		request.eye = std::clamp(a_streams, 0, static_cast<int>(Face::kMaxStreams));
-		std::scoped_lock guard(_lock);
-		_pending.push_back(request);
-	}
-
 	void Tears::SetMascara(RE::ActorHandle a_actor, float a_strength)
 	{
 		if (!a_actor) {
@@ -321,15 +313,6 @@ namespace Lacrima
 	{
 		const auto it = _overrides.find(a_actor);
 		return it != _overrides.end() ? it->second : Override{};
-	}
-
-	Face::Placement Tears::PlacementFor(std::uint32_t a_actor, const Settings& a_settings) const
-	{
-		auto placement = PlacementOf(a_settings);
-		if (const auto over = OverrideOf(a_actor); over.streams > 0) {
-			placement.streams = over.streams;
-		}
-		return placement;
 	}
 
 	Tears::State Tears::Query(RE::ActorHandle a_actor) const
@@ -435,10 +418,11 @@ namespace Lacrima
 		return _criers.emplace(key, std::move(crier)).first->second.get();
 	}
 
-	void Tears::StartCrying(Crier& a_crier, float a_intensity, float a_seconds, const Settings& a_settings)
+	void Tears::StartCrying(Crier& a_crier, float a_intensity, float a_seconds, int a_streams, const Settings& a_settings)
 	{
 		std::uniform_real_distribution<float> unit(0.0f, 1.0f);
 		const bool                            started = !a_crier.crying;
+		a_crier.callStreams = a_streams;
 		a_crier.target = a_intensity;
 		a_crier.forever = a_seconds <= 0.0f;
 		a_crier.timeLeft = a_crier.forever ? -1.0f : a_seconds;
@@ -476,7 +460,7 @@ namespace Lacrima
 					StopCrying(*crier);
 				}
 			} else if (auto* crier = CrierFor(a_request.actor, a_settings, true)) {
-				StartCrying(*crier, a_request.intensity, a_request.seconds, a_settings);
+				StartCrying(*crier, a_request.intensity, a_request.seconds, a_request.streams, a_settings);
 			}
 			break;
 		case Request::Kind::kStop:
@@ -547,11 +531,11 @@ namespace Lacrima
 					if (!actor || actor->IsDead() || !actor->Get3D(false) || actor->GetPosition().GetDistance(center) > a_request.radius) {
 						continue;
 					}
-					if (!Face::Of(actor.get(), PlacementFor(handle.native_handle(), a_settings), nullptr)) {
+					if (!Face::Of(actor.get(), PlacementOf(a_settings), nullptr)) {
 						continue;
 					}
 					if (auto* crier = CrierFor(handle, a_settings, true, false)) {
-						StartCrying(*crier, a_request.intensity, a_request.seconds, a_settings);
+						StartCrying(*crier, a_request.intensity, a_request.seconds, 0, a_settings);
 						++started;
 					} else {
 						++skipped;
@@ -561,20 +545,13 @@ namespace Lacrima
 					skipped ? std::format("; {} more had no free slot ([tears] max_actors)", skipped) : std::string{});
 			}
 			break;
-		case Request::Kind::kStreams:
 		case Request::Kind::kMascara:
 			{
 				const auto key = a_request.actor.native_handle();
-				auto       over = OverrideOf(key);
-				if (a_request.kind == Request::Kind::kStreams) {
-					over.streams = a_request.eye;
-				} else {
-					over.mascara = a_request.intensity;
-				}
-				if (over.streams <= 0 && over.mascara < 0.0f) {
+				if (a_request.intensity < 0.0f) {
 					_overrides.erase(key);
 				} else {
-					_overrides[key] = over;
+					_overrides[key] = Override{ a_request.intensity };
 				}
 			}
 			break;
@@ -671,10 +648,10 @@ namespace Lacrima
 			}
 			{
 				const auto over = OverrideOf(it->first);
-				crier.streams = std::clamp(over.streams > 0 ? over.streams : settings.streams, 1, static_cast<int>(Face::kMaxStreams));
+				crier.streams = std::clamp(crier.callStreams > 0 ? crier.callStreams : settings.streams, 1, static_cast<int>(Face::kMaxStreams));
 				crier.mascara = std::clamp(over.mascara >= 0.0f ? over.mascara : settings.mascara, 0.0f, 1.0f);
 			}
-			const auto placement = PlacementFor(it->first, settings);
+			const auto placement = PlacementOf(settings, crier.streams);
 			const float goal = crier.crying ? crier.target : 0.0f;
 			const float step = a_delta / kRamp;
 			crier.intensity = crier.intensity < goal ? std::min(goal, crier.intensity + step) : std::max(goal, crier.intensity - step);
@@ -2521,7 +2498,7 @@ namespace Lacrima
 			return text;
 		}
 		if (a_actor && a_actor->Get3D(false)) {
-			text += "Head: " + Clean(Face::Describe(a_actor, PlacementFor(a_actor->GetHandle().native_handle(), a_settings)));
+			text += "Head: " + Clean(Face::Describe(a_actor, PlacementOf(a_settings, a_crier ? a_crier->streams : 0)));
 		} else {
 			text += "No 3D loaded.";
 		}
