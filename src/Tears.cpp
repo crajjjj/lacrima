@@ -93,10 +93,11 @@ namespace Lacrima
 		// rope into the skin instead made the marks come and go as the head turned, and
 		// dip out of sight between their points on the curve of the cheek.) Its points
 		// are laid densely along the skin for the same reason.
-		constexpr float       kStainRadius = 0.0020f;   // metres at width 1: a streak 4 mm wide
+		constexpr float       kStainRadius = 0.0024f;   // metres at width 1: a streak about 4 mm wide (the stain texture fades to nothing at the ribbon's edges)
 		constexpr float       kStainLift = 0.0005f;     // how far above the skin a mark lies (the posed skin can lag the rendered one by a frame on an expression change)
 		constexpr float       kStainSpacing = 0.006f;   // metres between the points of a streak along the skin
-		constexpr float       kSmudgeRadius = 0.0036f;  // the band under the lid: 7 mm tall
+		constexpr float       kSmudgeRadius = 0.0025f;  // the band under the lid: 5 mm tall
+		constexpr float       kPoolReach = 0.008f;      // metres along the lid from where a tear started that the mascara spreads below the band
 		constexpr float       kSmudgeFirst = 0.45f;     // how much the first tear leaves under the lid, at full mascara
 		constexpr float       kSmudgeMore = 0.2f;       // ... and each one after
 		constexpr float       kStainFade = 0.3f;        // the last share of its life a mark spends fading
@@ -2290,7 +2291,7 @@ namespace Lacrima
 			RE::NiTransform world;
 			world.rotate = Rotation(a_rope.frames[b]);
 			world.translate = a_positions[b];
-			world.scale = std::max(a_radii[b], 0.0005f);
+			world.scale = std::max(a_radii[b], 0.0001f);  // a 0.2 mm hairline where a ribbon carries nothing
 			a_rope.bones[b]->local = world;
 		}
 		a_rope.root->SetAppCulled(false);
@@ -2307,16 +2308,59 @@ namespace Lacrima
 		auto&       radius = _stainRadius;
 
 		// The mascara under the eye: a ribbon along each row of lid points, tiled
-		// top to bottom so they read as one dark area. The top row is the band under
-		// the lashes, full all the way into both corners of the eye, where the lid line
-		// curves up and mascara pools; each row below it is as tall as the spread
-		// exposes (the setting, grown by every tear and by a wipe) and shorter toward
-		// the corners, so the area rounds off downward like a shadow under the eye.
-		// The whole moves as one when smeared.
+		// top to bottom. The top row is a thin band under the lashes, all the way into
+		// both corners of the eye, where the lid line curves up and mascara pools. The
+		// rows below it spread the mascara down over the skin only where the tears ran:
+		// around each streak's start on the lid (and the welling tear's seat), fading
+		// out sideways over kPoolReach, as tall as the spread exposes (the setting,
+		// grown by every tear and by a wipe) and shorter toward the corners. A uniform
+		// band and uniform rows read as dark circles under the eyes; this reads as
+		// mascara that ran where the tears did. The whole moves as one when smeared.
 		const auto& smudge = a_cheek.smudge;
 		if (smudge.strength > 0.0f && a_settings.mascaraSmudge > 0.0f) {
 			const float fade = std::sqrt(std::clamp(smudge.life / std::max(smudge.lifetime * kStainFade, 1e-3f), 0.0f, 1.0f));
 			const float band = kSmudgeRadius * a_settings.mascaraWidth * a_settings.mascaraSmudge * (0.5f + 0.5f * smudge.strength) * smudge.widen * fade;
+			// how much each lid point is under a tear's path, 0 to 1
+			std::array<float, Face::kLidPoints> pooled{};
+			const auto                          pool = [&](Vec3 a_at) {
+				for (std::size_t i = 0; i < Face::kLidPoints; ++i) {
+					if (const auto& lid = a_lids[0][i]) {
+						const float d = Fluid::Length(lid->point + smudge.offset - a_at) / kPoolReach;
+						pooled[i] = std::max(pooled[i], std::exp(-d * d));
+					}
+				}
+			};
+			if (a_cheek.seatKnown) {
+				pool(a_cheek.seat);
+			}
+			{
+				// each streak's start: the stain laid first in its run, put where the
+				// streak is drawn from
+				std::array<std::pair<std::uint32_t, std::size_t>, kMaxStainRuns> firsts{};
+				std::size_t                                                      runs = 0;
+				for (std::size_t s = 0; s < a_cheek.stains.size(); ++s) {
+					const auto& stain = a_cheek.stains[s];
+					std::size_t at = runs;
+					for (std::size_t k = 0; k < runs; ++k) {
+						if (firsts[k].first == stain.run) {
+							at = k;
+						}
+					}
+					if (at == runs) {
+						if (runs == firsts.size()) {
+							continue;
+						}
+						firsts[runs++] = { stain.run, s };
+					} else if (stain.order < a_cheek.stains[firsts[at].second].order) {
+						firsts[at].second = s;
+					}
+				}
+				for (std::size_t k = 0; k < runs; ++k) {
+					const auto& first = a_cheek.stains[firsts[k].second];
+					const auto& origin = a_spots[std::min<std::size_t>(first.stream, Face::kMaxStreams - 1)];
+					pool(origin ? LidPoint(*origin, first.start) + (first.smeared ? first.dragDir * first.dragged : Vec3{}) : first.position);
+				}
+			}
 			// rows below the band exposed, 0 to kLidRows - 1
 			const float spread = std::clamp(a_settings.mascaraSpread * (0.6f + 0.4f * smudge.strength) * smudge.widen, 0.0f, 1.0f) * static_cast<float>(Face::kLidRows - 1);
 			std::array<float, Face::kLidPoints> bottom{};  // where the row above ends: along the skin below the lid point above this one
@@ -2337,7 +2381,7 @@ namespace Lacrima
 					}
 					const float bell = corners + (1.0f - corners) * std::sin(std::numbers::pi_v<float> * (static_cast<float>(i) + 0.5f) / static_cast<float>(Face::kLidPoints));
 					Vec3        center = lid->point;
-					float       half = band * bell;
+					float       half = band * bell * (0.7f + 0.3f * pooled[i]);  // the band is fuller where the tears ran
 					if (row > 0) {
 						// from the row above's lower edge down, along the skin toward this row's point
 						const auto& above = a_lids[row - 1][i];
@@ -2346,7 +2390,7 @@ namespace Lacrima
 						}
 						const Vec3  down = Fluid::Normalize(lid->point - above->point, lid->down);
 						const float step = Fluid::Length(lid->point - above->point);
-						half = 0.5f * exposed * step * bell * fade;
+						half = 0.5f * exposed * step * bell * fade * pooled[i];  // only under a tear's path; a hairline elsewhere
 						center = above->point + down * (bottom[i] + half);
 						bottom[i] += 2.0f * half - step;  // now below this row's point
 					} else {
@@ -2504,7 +2548,7 @@ namespace Lacrima
 			RE::NiTransform world;
 			world.rotate = Rotation({ y.Cross(z), y, z });
 			world.translate = a_positions[b];
-			world.scale = std::max(a_radii[b], 0.0005f);
+			world.scale = std::max(a_radii[b], 0.0001f);  // a 0.2 mm hairline where a ribbon carries nothing
 			a_rope.bones[b]->local = world;
 		}
 		a_rope.root->SetAppCulled(false);

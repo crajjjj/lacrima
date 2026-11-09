@@ -191,7 +191,14 @@ def main():
     # the environment mask: reflect everywhere, scaled at run time by [look] reflection
     open(os.path.join(tex_dir, 'tear_m.dds'), 'wb').write(dds_bgra(8, 8, lambda x, y: (255, 255, 255, 255)))
     r, g, b = STAIN_COLOR
-    open(os.path.join(tex_dir, 'stain.dds'), 'wb').write(dds_bgra(8, 8, lambda x, y: (r, g, b, 255)))
+    # Across the ribbon (u = the texture's x, 0 at one edge, 0.25 at the top centre,
+    # 0.5 at the other edge, the rest the underside) the alpha is a soft lens: nothing
+    # at the edges, full at the centre, so no mark has a hard edge and tiled ribbons
+    # blend into one another.
+    def soft(x, y):
+        a = max(0.0, math.sin(2.0 * math.pi * (x + 0.5) / 64.0))
+        return (r, g, b, int(round(255 * a)))
+    open(os.path.join(tex_dir, 'stain.dds'), 'wb').write(dds_bgra(64, 4, soft))
     open(os.path.join(tex_dir, 'stain_n.dds'), 'wb').write(dds_bgra(4, 4, lambda x, y: (128, 128, 255, 255), normal=True))
     print('tear.dds, tear_n.dds, tear_m.dds, stain.dds, stain_n.dds')
 

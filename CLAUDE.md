@@ -161,12 +161,18 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   centre at the middle, on the skin below the lid margin, which curls under, rising
   to `kLidCorner` at the corners `kLidSide` radii out, so the band reaches into both
   corners where mascara pools, as the usual overlay textures draw it; the rows below
-  sit `kLidRowStep` eye radii apart down to the top of the cheek). The top row is the
-  band, full height into the corners; the rows below are tiled onto its lower edge,
-  each as tall as `[look] mascara_spread` exposes (0 the band only, 1 the whole area
-  under the eye; the first tear shows 60% of it, every tear more, a wipe widens it)
-  and narrower toward the corners (`corners` 0.55 / 0.2 of the middle), so the dark
-  area rounds off downward like a shadow under the eye. A streak starts in it and tapers
+  sit `kLidRowStep` eye radii apart down to the top of the cheek). The top row is a
+  thin band (`kSmudgeRadius` 2.5 mm), full height into the corners and fuller where
+  the tears ran; the rows below are tiled onto its lower edge, each as tall as `[look]
+  mascara_spread` exposes (0 the band only, 1 the whole area under the eye; the first
+  tear shows 60% of it, every tear more, a wipe widens it), narrower toward the
+  corners (`corners` 0.55 / 0.2 of the middle), and scaled by `pooled[i]`: how close
+  the lid point is to a streak's start on the lid (the first stain of each run, placed
+  as the streak is drawn) or the welling tear's seat, a Gaussian over `kPoolReach`
+  8 mm, so the spread exists only under the tears' paths and is a 0.2 mm hairline
+  elsewhere. Uniform rows read as dark circles under the eyes (user, 0.2.3). The stain
+  texture is a 64 px soft alpha lens across the ribbon (`make_tears.py` `soft`), so no
+  mark has a hard edge and tiled rows blend. A streak starts in it and tapers
   down the cheek. **Smearing** (`SmearStains`): a hand
   capsule over a mark drags it along the skin the way the hand moves (its velocity in
   the skin plane; a resting hand drags outward, `Cheek::outward` = away from the other
