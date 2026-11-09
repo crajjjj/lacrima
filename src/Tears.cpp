@@ -188,7 +188,8 @@ namespace Lacrima
 		// a_streams: the crier's own count; 0 takes the setting.
 		Face::Placement PlacementOf(const Settings& a_settings, int a_streams = 0)
 		{
-			return { a_settings.ductPosition, a_settings.ductBelow, a_streams > 0 ? a_streams : a_settings.streams, a_settings.streamSpread };
+			return { a_settings.ductPosition, a_settings.ductBelow, a_streams > 0 ? a_streams : a_settings.streams, a_settings.streamSpread,
+				a_settings.faceForward, a_settings.eyesSpace };
 		}
 
 		float SegmentDistance(Vec3 a_point, Vec3 a_from, Vec3 a_to)

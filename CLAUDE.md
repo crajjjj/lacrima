@@ -121,6 +121,15 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   within `[wipe] reach` of a duct, or when the arm runs out. The brow wipe passes the
   forehead, not the eyes, which is why reach is generous; a real eye-wipe idle can be
   passed by the caller.
+- **Placement overrides** (`[debug] face_forward`, `eyes_space`, carried in `Face::Placement`,
+  stored on the `Head` it was built with; a change rebuilds the head through `HeadOf`'s
+  `retune`): two LoversLab users (11-09) had tears start by the ears. The ducts are aimed
+  in head-bone space and the duct is the nearest face vertex facing `forward`, which
+  `Build` takes from the eyes sitting in front of the face centroid; a wrong `forward`
+  sends the target behind the eye and the facing filter leaves only the temple, and an
+  eyes mesh whose skin transform is not the face's lands the eyes elsewhere. The two
+  knobs force each, so a reporter can find which; `tears status` prints the eye centres,
+  face centre and forward for the same reason. Cause not yet confirmed.
 - **Running mascara** (`Cheek::stains`, `Cheek::smudge`, `LayStain`, `DrawStains`):
   when the actor's mascara strength is above 0, every drop a running tear leaves behind
   (`Deposit`) also lays a `Stain` point, and a bead that dries on the skin ends its

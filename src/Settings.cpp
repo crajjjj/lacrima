@@ -118,6 +118,10 @@ namespace Lacrima
 
 			Field{ "debug", "show_ducts", &Settings::showDucts, 0, 1, "Test", "Show tear starts", nullptr,
 				"Marks where tears start on the console-selected actor, or on the player." },
+			Field{ "debug", "face_forward", &Settings::faceForward, -1, 1, "Test", "Face forward", "%d",
+				"For a head whose tears start in the wrong place, by the ears or behind the head. 0 works out from the meshes which way the face looks; 1 and -1 force it. If tears start by the ears, try the value tears status does not show." },
+			Field{ "debug", "eyes_space", &Settings::eyesSpace, 0, 2, "Test", "Eyes mesh space", "%d",
+				"For a head whose tears start far from the eyes. 0 reads the eyes mesh through its own skin transform; 1 treats it as drawn in the face mesh's space; 2 as already in head space. Try 1, then 2." },
 			Field{ "debug", "mount_world", &Settings::mountWorld, 0, 1, "Test", "Draw tears in world space", nullptr,
 				"Debug A/B. Off, the tears hang under the head bone and move with it in the same frame. On, they are drawn in world space under the cell node, which runs a frame behind a turning head, so the marks flicker." },
 		};

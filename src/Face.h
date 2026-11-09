@@ -67,6 +67,12 @@ namespace Lacrima::Face
 		float below{ 0.9f };
 		int   streams{ 1 };
 		float spread{ 0.6f };
+		// For a head Lacrima reads wrongly ([debug] face_forward, eyes_space): which way
+		// the face looks in head-bone space (0 decides from the meshes, else +1 / -1
+		// along y), and which transform takes the eyes mesh into head-bone space (0 its
+		// own skin's, 1 the face mesh's, 2 none). A change rebuilds the head.
+		int forward{ 0 };
+		int eyesSpace{ 0 };
 
 		bool operator==(const Placement&) const = default;
 	};

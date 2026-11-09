@@ -100,6 +100,8 @@ namespace Lacrima::Face
 			std::array<EyeShape, kEyes>                         eyes{};  // in head-bone space
 			float                                               forward{ 1.0f };
 			RE::NiPoint3                                        faceCentre;  // the face mesh's centroid, head-bone space: what decided forward
+			int                                                 forwardOverride{ 0 };  // Placement::forward and eyesSpace the head was built with
+			int                                                 eyesSpace{ 0 };
 			Placement                                           placement{ -1.0f, -1.0f, 0, -1.0f };
 			// The face mesh's own space is not the eyes mesh's (a vanilla eyes part is
 			// authored around the head bone, a face part around the skeleton root), so
@@ -660,7 +662,12 @@ namespace Lacrima::Face
 			// eyes are measured and the ducts aimed.
 			a_head.faceToBone = ToHeadBone(face);
 			a_head.boneToFace = a_head.faceToBone.Invert();
-			const RE::NiTransform eyesToBone = ToHeadBone(eyes);
+			RE::NiTransform eyesToBone = ToHeadBone(eyes);
+			if (a_head.eyesSpace == 1) {
+				eyesToBone = a_head.faceToBone;  // [debug] eyes_space: the eyes drawn in the face mesh's space
+			} else if (a_head.eyesSpace == 2) {
+				eyesToBone = RE::NiTransform{};  // ... or already in head-bone space
+			}
 
 			// Eyes: one mesh holds both, split by side of the midline. They only place
 			// the ducts; the eyeball is not a surface tears run on.
@@ -714,7 +721,7 @@ namespace Lacrima::Face
 				}
 			}
 			eyesMiddle = eyesMiddle / static_cast<float>(valid);
-			a_head.forward = eyesMiddle.y >= centroidInBone.y ? 1.0f : -1.0f;
+			a_head.forward = a_head.forwardOverride != 0 ? static_cast<float>(a_head.forwardOverride) : (eyesMiddle.y >= centroidInBone.y ? 1.0f : -1.0f);
 			a_head.faceCentre = centroidInBone;
 			a_head.eyes[kRight] = a_head.forward > 0.0f ? sides[1] : sides[0];
 			a_head.eyes[kLeft] = a_head.forward > 0.0f ? sides[0] : sides[1];
@@ -725,8 +732,9 @@ namespace Lacrima::Face
 				a_head.report = std::format("only {} usable face points", facePoints);
 				return;
 			}
-			a_head.report = std::format("face {} points{}, eyes {} vertices{}", facePoints, faceMesh.dynamic ? " (animated)" : "",
-				eyeMesh.positions.size(), eyeMesh.dynamic ? " (animated)" : "");
+			a_head.report = std::format("face {} points{}, eyes {} vertices{}{}{}", facePoints, faceMesh.dynamic ? " (animated)" : "",
+				eyeMesh.positions.size(), eyeMesh.dynamic ? " (animated)" : "", a_head.forwardOverride != 0 ? ", forward forced" : "",
+				a_head.eyesSpace == 1 ? ", eyes taken in the face's space" : a_head.eyesSpace == 2 ? ", eyes taken in head space" : "");
 			a_head.ok = true;
 			a_head.placement = Placement{ -1.0f, -1.0f, 0, -1.0f };
 		}
@@ -916,7 +924,8 @@ namespace Lacrima::Face
 			}
 		}
 
-		Head* HeadOf(RE::Actor* a_actor)
+		// a_placement only for its overrides; null keeps the ones the head was built with.
+		Head* HeadOf(RE::Actor* a_actor, const Placement* a_placement = nullptr)
 		{
 			auto* root = a_actor ? a_actor->Get3D(false) : nullptr;
 			if (!root || !root->parent) {
@@ -925,7 +934,8 @@ namespace Lacrima::Face
 			auto& head = heads[a_actor->GetHandle().native_handle()];
 			head.seen = clock;
 			const bool fresh = head.root.get() != root;
-			if (!fresh && clock - head.checked < kRecheck) {
+			const bool retune = a_placement && (a_placement->forward != head.forwardOverride || a_placement->eyesSpace != head.eyesSpace);
+			if (!fresh && !retune && clock - head.checked < kRecheck) {
 				return &head;
 			}
 			if (fresh) {
@@ -941,9 +951,13 @@ namespace Lacrima::Face
 				geometry = geometry ? geometry : Guess(root, type == RE::BGSHeadPart::HeadPartType::kEyes);
 				signature.emplace_back(geometry, VerticesOf(geometry));
 			}
-			if (fresh || signature != head.signature || !head.ok) {
+			if (fresh || retune || signature != head.signature || !head.ok) {
 				const std::string before = head.report;
 				head.signature = std::move(signature);
+				if (a_placement) {
+					head.forwardOverride = a_placement->forward;
+					head.eyesSpace = a_placement->eyesSpace;
+				}
 				Build(a_actor, head);
 				if (head.report == before) {
 					return &head;
@@ -1003,7 +1017,7 @@ namespace Lacrima::Face
 
 	std::optional<View> Of(RE::Actor* a_actor, const Placement& a_placement, const Region* a_region, const Region* a_watch)
 	{
-		auto* head = HeadOf(a_actor);
+		auto* head = HeadOf(a_actor, &a_placement);
 		if (!head || !head->ok) {
 			return std::nullopt;
 		}
@@ -1027,7 +1041,7 @@ namespace Lacrima::Face
 
 	std::string Describe(RE::Actor* a_actor, const Placement& a_placement)
 	{
-		auto* head = HeadOf(a_actor);
+		auto* head = HeadOf(a_actor, &a_placement);
 		if (!head) {
 			return "no 3D loaded";
 		}

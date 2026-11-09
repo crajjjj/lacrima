@@ -63,4 +63,6 @@ gesture_wait = 3.5     # seconds a wipe gesture waits for the hand before drying
 
 [debug]
 show_ducts = false     # mark where tears start on the console-selected actor, or the player (two beads under the eyes)
+face_forward = 0       # for a head whose tears start in the wrong place (by the ears): 0 works out from the meshes which way the face looks, 1 or -1 forces it; try the value `tears status` does not show
+eyes_space = 0         # for a head whose tears start far from the eyes: 0 reads the eyes mesh through its own skin transform, 1 as if drawn in the face mesh's space, 2 as already in head space; try 1, then 2
 mount_world = false    # false: tears hang under the head bone and move with it in the same frame; true: drawn in world space under the cell node, which runs a frame behind a turning head (marks flicker)
