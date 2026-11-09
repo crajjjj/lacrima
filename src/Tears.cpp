@@ -37,6 +37,12 @@ namespace Lacrima
 		constexpr float       kWatchMargin = 0.006f;  // metres around the tears where an expression moving the skin wakes them
 		constexpr float       kTipGrace = 0.15f;      // seconds off the skin after which a piece of the bead no longer ends the trail
 		constexpr float       kWellSpeed = 0.02f;
+		// Variety, all scaled by [tears] variety.
+		constexpr float       kStartJitter = 0.006f;   // metres either side of the duct a tear may start, at variety 1
+		constexpr float       kBigTearChance = 0.15f;  // chance a tear is a big one, at variety 1
+		constexpr float       kBigTear = 1.6f;
+		constexpr float       kFollowChance = 0.3f;    // chance another tear follows right behind, at variety 1
+		constexpr float       kFollowWait = 0.25f;     // ... after this share of the usual wait
 		constexpr float       kFallSpeed = 0.25f;
 		// A particle must be off every surface this long before falling counts: free
 		// fall passes kFallSpeed within 30 ms, before a released tear can land.
@@ -949,6 +955,12 @@ namespace Lacrima
 		return { ToLocal(a_frame, a_duct.point), ToLocalDirection(a_frame, a_duct.normal), ToLocalDirection(a_frame, a_duct.down) };
 	}
 
+	Vec3 Tears::LidPoint(const Spot& a_spot, float a_offset)
+	{
+		const Vec3 side = Fluid::Normalize(Fluid::Cross(a_spot.normal, a_spot.down), { 1.0f, 0.0f, 0.0f });
+		return a_spot.point + side * a_offset;
+	}
+
 	Vec3 Tears::ToLocal(const Frame& a_frame, const RE::NiPoint3& a_point)
 	{
 		return ToVec((a_frame.inverse * (a_point - a_frame.origin)) / a_frame.unit);
@@ -991,11 +1003,19 @@ namespace Lacrima
 	void Tears::StartTear(Cheek& a_cheek, float a_strength, int a_streams, const Settings& a_settings)
 	{
 		std::uniform_real_distribution<float> unit(0.0f, 1.0f);
-		const float                           size = static_cast<float>(a_settings.drop) * (0.5f + 0.5f * a_strength) * (0.75f + 0.5f * unit(_rng));
+		// Variety: tears differ in size, now and then one is much bigger, and each starts
+		// a little to one side of its duct, so no two run down quite the same line.
+		const float variety = a_settings.variety;
+		const float spread = 0.25f + 0.35f * variety;
+		float       size = static_cast<float>(a_settings.drop) * (0.5f + 0.5f * a_strength) * (1.0f - spread + 2.0f * spread * unit(_rng));
+		if (unit(_rng) < kBigTearChance * variety) {
+			size *= kBigTear;
+		}
 		a_cheek.run = ++_nextRun;
 		// each tear picks one of the eye's streams
 		const int streams = std::clamp(a_streams, 1, static_cast<int>(Face::kMaxStreams));
 		a_cheek.stream = streams > 1 ? std::uniform_int_distribution<int>(0, streams - 1)(_rng) : 0;
+		a_cheek.startOffset = (2.0f * unit(_rng) - 1.0f) * variety * kStartJitter;
 		a_cheek.left = std::max(2, static_cast<int>(std::lround(size)));
 		a_cheek.interval = a_settings.well / static_cast<float>(a_cheek.left);
 		a_cheek.slot = 0.0f;
@@ -1044,7 +1064,7 @@ namespace Lacrima
 		const float spacing = a_cheek.spacing;
 		const float lift = 0.6f * spacing;
 		const Vec3  side = Fluid::Normalize(Fluid::Cross(a_spot.normal, a_spot.down), { 1.0f, 0.0f, 0.0f });
-		const Vec3  seat = a_spot.point + a_spot.normal * lift;
+		const Vec3  seat = LidPoint(a_spot, a_cheek.startOffset) + a_spot.normal * lift;
 		auto&       particles = a_cheek.particles;
 		bool        born = false;
 		a_cheek.slot -= a_delta;
@@ -1061,6 +1081,7 @@ namespace Lacrima
 			particle.velocity = a_spot.down * kWellSpeed;
 			particle.run = a_cheek.run;
 			particle.stream = static_cast<std::uint8_t>(std::clamp(a_cheek.stream, 0, static_cast<int>(Face::kMaxStreams) - 1));
+			particle.start = a_cheek.startOffset;
 			// Born on the lid: the solver's stick-pull only reaches for particles already
 			// touching, and a tear that starts free falls off the face before it lands.
 			particle.touching = true;
@@ -1103,6 +1124,9 @@ namespace Lacrima
 		a_cheek.welling = false;
 		const float rate = a_settings.rate * std::max(a_crier.intensity, 0.05f);
 		a_cheek.wait = 60.0f / rate * (0.5f + unit(_rng));
+		if (unit(_rng) < kFollowChance * a_settings.variety) {
+			a_cheek.wait *= kFollowWait;  // another tear right behind this one
+		}
 	}
 
 	// ---------------------------------------------------------------- simulation
@@ -1400,6 +1424,7 @@ namespace Lacrima
 		stain.run = a_particle.run;
 		stain.order = a_order;
 		stain.stream = a_particle.stream;
+		stain.start = a_particle.start;
 		stain.smeared = a_particle.wiped;
 		stain.life = stain.smeared ? stain.lifetime * kSmearLife : stain.lifetime;
 		stains.push_back(stain);
@@ -1611,7 +1636,8 @@ namespace Lacrima
 		a_cheek.ropes.clear();
 		a_cheek.stainRopes.clear();
 		a_cheek.root.reset();
-		a_cheek.opacity = a_cheek.shine = a_cheek.gloss = a_cheek.stainOpacity = -1.0f;
+		a_cheek.opacity = a_cheek.shine = a_cheek.gloss = a_cheek.stainOpacity = a_cheek.refraction = -1.0f;
+		a_cheek.style = -1;
 		Clear(a_cheek);
 	}
 
@@ -1730,8 +1756,14 @@ namespace Lacrima
 		return true;
 	}
 
-	void Tears::Shade(RE::NiAVObject* a_root, const Settings& a_settings)
+	// The look style: 0 water (reflection and a faint light of its own), 1 plain (neither:
+	// ENB presets that amplify self-lit or reflective materials turn those into solid
+	// white), 2 refraction (plain, and the scene behind bends through the water).
+	void Tears::Shade(RE::NiAVObject* a_root, const Settings& a_settings, bool a_restyle)
 	{
+		using Flag = RE::BSShaderProperty::EShaderPropertyFlag8;
+		const bool  water = a_settings.style == 0;
+		const bool  refract = a_settings.style == 2;
 		const auto& names = MeshNames::Get();
 		for (const auto& name : { names.blobShape, names.ropeShape }) {
 			auto* shape = a_root->GetObjectByName(name);
@@ -1745,16 +1777,24 @@ namespace Lacrima
 				if (lighting->emissiveColor) {
 					*lighting->emissiveColor = RE::NiColor(1.0f, 1.0f, 1.0f);
 				}
-				lighting->emissiveMult = a_settings.glow;
+				lighting->emissiveMult = water ? a_settings.glow : 0.0f;
 			}
 			if (shader->GetMaterialType() == RE::BSShaderMaterial::Type::kLighting) {
 				if (auto* material = static_cast<RE::BSLightingShaderMaterialBase*>(shader->GetBaseMaterial())) {
 					material->specularColorScale = a_settings.shine;
 					material->specularPower = a_settings.gloss;
+					material->refractionPower = refract ? a_settings.refraction : 0.0f;
 					if (material->GetFeature() == RE::BSShaderMaterial::Feature::kEnvironmentMap) {
-						static_cast<RE::BSLightingShaderMaterialEnvmap*>(material)->envMapScale = a_settings.reflection;
+						static_cast<RE::BSLightingShaderMaterialEnvmap*>(material)->envMapScale = water ? a_settings.reflection : 0.0f;
 					}
 				}
+			}
+			if (a_restyle) {
+				// the style changes which shader passes draw the tear: rebuild them
+				shader->SetFlags(Flag::kOwnEmit, water);
+				shader->SetFlags(Flag::kRefraction, refract);
+				shader->SetupGeometry(geometry);
+				shader->FinishSetupGeometry(geometry);
 			}
 		}
 	}
@@ -1777,20 +1817,25 @@ namespace Lacrima
 			a_cheek.stainOpacity = a_settings.mascaraOpacity;
 		}
 		if (a_cheek.opacity == a_settings.opacity && a_cheek.shine == a_settings.shine && a_cheek.gloss == a_settings.gloss &&
-			a_cheek.reflection == a_settings.reflection && a_cheek.glow == a_settings.glow) {
+			a_cheek.reflection == a_settings.reflection && a_cheek.glow == a_settings.glow && a_cheek.style == a_settings.style &&
+			a_cheek.refraction == a_settings.refraction) {
 			return;
 		}
+		// A new or recycled mesh (opacity reset) may carry another style's flags.
+		const bool restyle = a_cheek.style != a_settings.style || a_cheek.opacity < 0.0f;
 		for (auto& blob : a_cheek.blobs) {
-			Shade(blob.root.get(), a_settings);
+			Shade(blob.root.get(), a_settings, restyle);
 		}
 		for (auto& rope : a_cheek.ropes) {
-			Shade(rope.root.get(), a_settings);
+			Shade(rope.root.get(), a_settings, restyle);
 		}
 		a_cheek.opacity = a_settings.opacity;
 		a_cheek.shine = a_settings.shine;
 		a_cheek.gloss = a_settings.gloss;
 		a_cheek.reflection = a_settings.reflection;
 		a_cheek.glow = a_settings.glow;
+		a_cheek.style = a_settings.style;
+		a_cheek.refraction = a_settings.refraction;
 	}
 
 	Tears::Blob* Tears::AcquireBlob(Cheek& a_cheek)
@@ -2033,7 +2078,7 @@ namespace Lacrima
 				radius.clear();
 				const auto& origin = a_spots[std::min<std::size_t>(first.stream, Face::kMaxStreams - 1)];
 				if (origin) {
-					path.push_back(origin->point + origin->normal * kStainLift);
+					path.push_back(LidPoint(*origin, first.start) + origin->normal * kStainLift);
 					radius.push_back(radiusOf(first));
 				}
 				for (std::size_t i = begin; i < end; ++i) {
@@ -2116,7 +2161,8 @@ namespace Lacrima
 		}
 		auto&      particles = a_cheek.particles;
 		const bool restyled = a_cheek.opacity != a_settings.opacity || a_cheek.shine != a_settings.shine || a_cheek.gloss != a_settings.gloss ||
-		                      a_cheek.reflection != a_settings.reflection || a_cheek.glow != a_settings.glow ||
+		                      a_cheek.reflection != a_settings.reflection || a_cheek.glow != a_settings.glow || a_cheek.style != a_settings.style ||
+		                      a_cheek.refraction != a_settings.refraction ||
 		                      (!a_cheek.stainRopes.empty() && a_cheek.stainOpacity != a_settings.mascaraOpacity);
 		if (!a_mount.world && !a_cheek.dirty && !restyled && !a_markers) {
 			// Nothing moved since the last draw, and the nodes hang under the head
@@ -2353,7 +2399,7 @@ namespace Lacrima
 				_ropePoints.clear();
 				if (origin) {
 					Fluid::Particle lid = particles[trail.empty() ? begin : trail.front()];
-					lid.position = origin->point + origin->normal * (0.6f * spacing);
+					lid.position = LidPoint(*origin, particles[begin].start) + origin->normal * (0.6f * spacing);
 					_ropePoints.push_back(lid);
 				}
 				for (const auto i : trail) {

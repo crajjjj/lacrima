@@ -18,12 +18,15 @@ duct_position = 0.3    # where tears start: 0 = inner corner of the eye, 1 = out
 duct_below = 0.9       # how far below the middle of the eye, in eye sizes
 streams = 2            # points along the lower lid tears can start from (1 to 4); each tear picks one at random
 stream_spread = 0.6    # how far apart the streams sit along the lid, as a fraction of its length, centred on duct_position
+variety = 0.5          # how much one tear differs from the next: start point on the lid, size, a second tear right after; 0 = all alike
 both_eyes = true       # false: one eye, picked at random each time crying starts
 max_actors = 6         # actors crying at once; the oldest stops past this
 max_particles = 160    # fluid on one cheek at most
 max_distance = 3000    # game units from the camera; farther actors' tears pause where they are (trails still dry)
 
 [look]
+style = 0              # 0 water (reflective, faint glow); 1 plain (no glow, no reflection: try it if tears look white and solid under an ENB preset); 2 refraction (plain + the scene bends through the water, experimental)
+refraction = 0.3       # in the refraction style, how strongly the scene behind bends through a tear
 size = 0.8             # drop size; real tears are about 1, bigger reads better from afar
 trail = 1.2            # width of the wet trail a tear leaves
 opacity = 0.3          # how much the water hides the skin; the rest shows through

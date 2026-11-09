@@ -24,11 +24,14 @@ namespace Lacrima
 		float ductBelow{ 0.9f };
 		int   streams{ 2 };
 		float streamSpread{ 0.6f };
+		float variety{ 0.5f };
 		bool  bothEyes{ true };
 		int   maxActors{ 6 };
 		int   maxParticles{ 160 };
 		float maxDistance{ 3000.0f };
 
+		int   style{ 0 };  // 0 water, 1 plain (no glow, no reflection), 2 refraction
+		float refraction{ 0.3f };
 		float size{ 0.8f };
 		float trail{ 1.2f };
 		float opacity{ 0.3f };

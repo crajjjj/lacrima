@@ -51,6 +51,7 @@ namespace Lacrima::Fluid
 		float         airborne{};  // seconds since the particle last touched a surface
 		float         travel{};    // metres moved along a surface since it last stopped
 		float         hang{};      // seconds spent clinging to a surface that faces down (under a chin)
+		float         start{};     // metres along the lid from its duct where the tear started
 		std::int32_t  surface{ -1 };
 		std::uint32_t run{};
 		std::uint32_t order{};  // a drop left behind by a running tear: its place in that tear's trail (0 = not left behind)

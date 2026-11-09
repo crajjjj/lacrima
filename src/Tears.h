@@ -159,6 +159,7 @@ namespace Lacrima
 			std::uint32_t run{ 0 };
 			std::uint32_t order{ 0 };        // its place along the tear's path
 			std::uint8_t  stream{ 0 };
+			float         start{ 0.0f };     // where along the lid the tear started, metres from the duct
 			bool          smeared{ false };
 		};
 
@@ -195,6 +196,8 @@ namespace Lacrima
 			float                          gloss{ -1.0f };
 			float                          reflection{ -1.0f };
 			float                          glow{ -1.0f };
+			int                            style{ -1 };
+			float                          refraction{ -1.0f };
 			Fluid::Vec3                    restDown;        // where down was when the sleeping tears settled
 			bool                           rested{ false };
 			bool                           dirty{ true };   // the fluid changed since the last draw
@@ -205,6 +208,7 @@ namespace Lacrima
 			bool          sheds{ true };
 			bool          welling{ false };
 			int           stream{ 0 };  // which of the eye's ducts the current tear runs from
+			float         startOffset{ 0.0f };  // metres along the lid from that duct, picked per tear
 			float         wait{ 0.0f };
 			float         slot{ 0.0f };
 			float         interval{ 0.1f };
@@ -272,6 +276,8 @@ namespace Lacrima
 		// of them (where an expression moving the skin must wake them).
 		std::optional<Face::Region> Bounds(const Crier& a_crier, bool a_awakeOnly, float a_margin) const;
 		static Spot                 SpotOf(const Frame& a_frame, const Face::Duct& a_duct);
+		// Where along the lid a tear started: a_offset metres to the side of the duct.
+		static Fluid::Vec3          LidPoint(const Spot& a_spot, float a_offset);
 
 		Override        OverrideOf(std::uint32_t a_actor) const;
 		Face::Placement PlacementFor(std::uint32_t a_actor, const Settings& a_settings) const;
@@ -303,7 +309,7 @@ namespace Lacrima
 		Blob*   AcquireBlob(Cheek& a_cheek);
 		Rope*   AcquireRope(Cheek& a_cheek);
 		Rope*   AcquireStainRope(Cheek& a_cheek);
-		void    Shade(RE::NiAVObject* a_root, const Settings& a_settings);
+		void    Shade(RE::NiAVObject* a_root, const Settings& a_settings, bool a_restyle);
 		void    ShadeStain(RE::NiAVObject* a_root, const Settings& a_settings);
 		void    Reshade(Cheek& a_cheek, const Settings& a_settings);
 		void    DrawStains(Cheek& a_cheek, const Mount& a_mount, const Settings& a_settings, const Spots& a_spots);

@@ -95,7 +95,18 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   `NiSkinInstance`: the engine hides a dismember partition whenever an equipped item
   covers its slot (TNG uses slot 52). The material is an environment-mapped,
   translucent lighting shader without depth write, with a faint glow of its own
-  (`[look] glow`) so a streak reads as a light wet line from any angle.
+  (`[look] glow`) so a streak reads as a light wet line from any angle. `[look] style`
+  switches it live in `Shade`: 0 water (that), 1 plain (no own-emit flag, emissive 0,
+  envMapScale 0: some ENB presets turn glow or reflection into solid white, a player
+  report), 2 refraction (plain + the `kRefraction` flag and `refractionPower`,
+  untested on the envmap shader type). Changing the style flips shader flags, so
+  `Shade` rebuilds the passes (`SetupGeometry` / `FinishSetupGeometry`), and does so
+  for every new or recycled mesh too, since a clone may carry another style's flags.
+- **Variety** (`[tears] variety`, in `StartTear` and at the end of `Emit`): each tear
+  starts up to 6 mm (at 1) to one side of its duct along the lid (`startOffset`, kept on
+  its particles and streak points as `start` so the trail and the mascara streak start
+  where it did, `LidPoint`), varies more in size with an occasional big one, and now
+  and then another follows right behind.
 - **Hands** (`Tears::PoseHands`): palm + thumb/index/middle/ring finger capsules from
   the skeleton's hand and finger bones, in head space with velocities relative to the
   head, passed to the solver as colliders (so a hand smears tears) when `[wipe] hands`

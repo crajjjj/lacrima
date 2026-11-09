@@ -46,6 +46,15 @@ change everything live and save your changes when the menu closes. Without it, w
 the values you want to change into `Data\SKSE\Plugins\Lacrima_User.toml`, using the
 sections and keys of `Lacrima.toml`, which lists every setting with its default.
 
+**Tears look white and solid?** Some ENB presets amplify materials that reflect or
+give off a little light of their own, which the default water look does. Set Look
+style to 1 (plain: no glow, no reflection), and lower Opacity if they still look
+milky. Style 2 adds refraction, so the scene behind bends through the water.
+
+Variety (Tears page) sets how much one tear differs from the next: where on the lid it
+starts, how big it is, and whether another follows right behind. At 0 every tear runs
+the same way.
+
 ## Console
 
 With ConsoleUtil Extended installed. Commands act on the actor selected in the console,

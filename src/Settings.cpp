@@ -39,6 +39,8 @@ namespace Lacrima
 				"How many points along the lower lid tears can start from. Each tear picks one at random, so several trails form over time." },
 			Field{ "tears", "stream_spread", &Settings::streamSpread, 0.0f, 1.0f, "Tears", "Stream spread", "%.2f",
 				"How far apart the streams sit along the lid, as a fraction of its length, centred on where tears start." },
+			Field{ "tears", "variety", &Settings::variety, 0.0f, 1.0f, "Tears", "Variety", "%.2f",
+				"How much one tear differs from the next: where on the lid it starts, how big it is, and whether another follows right after. 0 makes every tear alike." },
 			Field{ "tears", "both_eyes", &Settings::bothEyes, 0, 1, "Tears", "Both eyes", nullptr,
 				"Off sheds tears from one eye only, picked at random each time someone starts crying." },
 			Field{ "tears", "max_actors", &Settings::maxActors, 1, 16, "Tears", "Actors at once", "%d",
@@ -48,6 +50,11 @@ namespace Lacrima
 			Field{ "tears", "max_distance", &Settings::maxDistance, 500.0f, 20000.0f, "Tears", "Simulate within", "%.0f units",
 				"Tears on an actor farther than this from the camera pause where they are until the actor comes closer; the trails still dry up." },
 
+			Field{ "look", "style", &Settings::style, 0, 2, "Look", "Look style", "%d",
+				"0 water: reflective, with a faint glow. 1 plain: no glow and no reflection; try it if tears look white and solid under an ENB preset. "
+				"2 refraction: plain, and the scene behind bends through the water (experimental)." },
+			Field{ "look", "refraction", &Settings::refraction, 0.0f, 1.0f, "Look", "Refraction", "%.2f",
+				"In the refraction style, how strongly the scene behind bends through a tear." },
 			Field{ "look", "size", &Settings::size, 0.5f, 3.0f, "Look", "Tear size", "%.2f",
 				"Scales every drop. Real tears are about 1; bigger reads better from a distance." },
 			Field{ "look", "trail", &Settings::trail, 0.2f, 2.0f, "Look", "Trail width", "%.2f",
