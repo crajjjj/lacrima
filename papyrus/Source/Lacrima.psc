@@ -29,15 +29,30 @@ Function StopCrying(Actor akActor, Bool abWipe = false) global native
 ; aiEye: 0 left, 1 right, 2 both, -1 one at random.
 Function ShedTear(Actor akActor, Int aiEye = -1) global native
 
-; Removes the tears on the face at once, without changing whether the actor cries.
+; Removes the tears on the face at once, and any running mascara, without changing
+; whether the actor cries.
 Function WipeTears(Actor akActor) global native
 
 ; Wipes the tears away by hand: plays akIdle (the vanilla brow wipe when None) and
 ; dries the face when a hand comes near the eyes, or after a few seconds if it never
 ; does. An idle that cannot play (the actor is busy, in furniture, in a scene) dries
 ; the face at once. Crying goes on; the next tear just takes a moment longer.
+; Running mascara is smeared rather than removed: wider, fainter, gone sooner.
 ; Pass your own Idle for an animation that wipes the eyes properly.
 Function WipeTearsWithHand(Actor akActor, Idle akIdle = None) global native
+
+; API version 2. Per-actor overrides; they last for this session, not past loading
+; a save.
+
+; How many points along the lower lid this actor's tears start from, 1 to 4; each
+; tear picks one at random, so several streaks form over time. 0 goes back to the
+; player's setting.
+Function SetStreams(Actor akActor, Int aiStreams) global native
+
+; Running mascara for this actor, 0.0 to 1.0: each tear leaves a dark streak down
+; its path that outlives the water and fades after a few minutes. 0.0 is none; a
+; negative value goes back to the player's setting (0.0 unless they changed it).
+Function SetMascara(Actor akActor, Float afStrength) global native
 
 Bool Function IsCrying(Actor akActor) global native
 

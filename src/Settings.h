@@ -39,6 +39,10 @@ namespace Lacrima
 		float eyeShine{ 1.6f };
 		float lifetime{ 30.0f };
 		float fade{ 5.0f };
+		float mascara{ 0.0f };
+		float mascaraOpacity{ 0.5f };
+		float mascaraWidth{ 1.0f };
+		float mascaraLifetime{ 300.0f };
 
 		float stickiness{ 2.0f };
 		float friction{ 30.0f };

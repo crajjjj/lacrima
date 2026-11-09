@@ -106,6 +106,24 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   within `[wipe] reach` of a duct, or when the arm runs out. The brow wipe passes the
   forehead, not the eyes, which is why reach is generous; a real eye-wipe idle can be
   passed by the caller.
+- **Running mascara** (`Cheek::stains`, `LayStain`, `DrawStains`): when the actor's
+  mascara strength is above 0, every drop a running tear leaves behind (`Deposit`) also
+  lays a `Stain` point, taken down onto the skin (`OntoSkin`), and a bead that dries on
+  the skin ends its streak (`kBeadOrder`). Stains have no physics: they sit in head
+  space, age for `[look] mascara_lifetime` and thin out over the last 30% of it. Each
+  run is drawn as one rope from the lid of its stream through its points in order to
+  the bead while it still runs, using `meshes\Lacrima\tear_stain.nif`: the trail rope's
+  geometry and RopeNN bones with a matte dark material and its own pool
+  (`stainRopes`, `_spareStains`, at most 16 streaks and 160 points per cheek, oldest
+  run dropped first). A hand capsule touching a streak, or a hand-wipe gesture
+  (`DryFace`), smears it (wider, at most 35% of its lifetime left); `Clear` (WipeTears,
+  StopCrying with wipe) removes it. An actor with streaks stays a crier (busy, not
+  idle) until they fade. The streak mesh is optional: without it tears still show.
+- **Per-actor overrides** (`Tears::_overrides`, set through the `kStreams` /
+  `kMascara` requests): streams per eye (0 = the setting) and mascara strength
+  (negative = the setting), resolved into `Crier::streams` / `Crier::mascara` each
+  frame; `PlacementFor` gives Face the actor's stream count. Session only: cleared on
+  load with everything else.
 - **Settings** (`Settings.cpp`): one field table drives the toml reader, the user-file
   writer and the menu pages. `Lacrima.toml` holds the shipped defaults;
   `Lacrima_User.toml` holds only what the player changed (written by the menu).
@@ -113,9 +131,10 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
 - **Menu** (`Menu.cpp`): SKSE Menu Framework pages. The vendored header's wrappers do
   not null-check their `GetProcAddress` results, so every wrapper used is on
   `kFrameworkExports`, probed at `kDataLoaded`.
-- **APIs**: `Lacrima.psc` (natives in `Papyrus.cpp`, `kAPIVersion`), C exports in
-  `Api.cpp` / `include/API/LacrimaAPI.h` / `exports.def` (interface version packed
-  MMmmpp). Never change the arguments of a shipped native or export; add a new one.
+- **APIs**: `Lacrima.psc` (natives in `Papyrus.cpp`, `kAPIVersion`: 2 added
+  `SetStreams` / `SetMascara`), C exports in `Api.cpp` / `include/API/LacrimaAPI.h` /
+  `exports.def` (interface version packed MMmmpp: 10100 added the same two). Never
+  change the arguments of a shipped native or export; add a new one.
 - **Console**: `LacrimaTest.psc` + `dist\SKSE\CustomConsole\Lacrima.yaml` (ConsoleUtil
   Extended, alias `tears`). CUE passes args by position, so YAML arg order must match
   the function's parameters, and a returned string must never contain `%` (CUE prints

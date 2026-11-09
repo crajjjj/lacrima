@@ -131,3 +131,29 @@ String Function Reload() global
 	Lacrima.ReloadConfig()
 	Return "Lacrima.toml and Lacrima_User.toml read again."
 EndFunction
+
+; Params in YAML order: streams
+String Function Streams(Int streams) global
+	If !Loaded()
+		Return "Lacrima.dll is not loaded."
+	EndIf
+	Lacrima.SetStreams(Target(), streams)
+	If streams <= 0
+		Return Who() + " uses the streams setting again."
+	EndIf
+	Return Who() + " sheds tears from " + streams + " point(s) per eye."
+EndFunction
+
+; Params in YAML order: strength
+String Function Mascara(Float strength) global
+	If !Loaded()
+		Return "Lacrima.dll is not loaded."
+	EndIf
+	Lacrima.SetMascara(Target(), strength)
+	If strength < 0.0
+		Return Who() + " uses the mascara setting again."
+	ElseIf strength == 0.0
+		Return Who() + " has no running mascara."
+	EndIf
+	Return Who() + " has running mascara at " + strength + "."
+EndFunction

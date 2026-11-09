@@ -24,7 +24,7 @@ std::uint32_t Lacrima_GetVersion()
 
 std::uint32_t Lacrima_GetInterfaceVersion()
 {
-	return 10000;
+	return 10100;
 }
 
 void Lacrima_Cry(RE::Actor* actor, float intensity, float seconds)
@@ -65,5 +65,15 @@ void Lacrima_ShedTear(RE::Actor* actor, std::int32_t eye)
 void Lacrima_Wipe(RE::Actor* actor)
 {
 	Lacrima::Tears::Get().Wipe(HandleOf(actor));
+}
+
+void Lacrima_SetStreams(RE::Actor* actor, std::int32_t streams)
+{
+	Lacrima::Tears::Get().SetStreams(HandleOf(actor), streams);
+}
+
+void Lacrima_SetMascara(RE::Actor* actor, float strength)
+{
+	Lacrima::Tears::Get().SetMascara(HandleOf(actor), strength);
 }
 }

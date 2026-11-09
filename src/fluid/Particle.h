@@ -58,5 +58,6 @@ namespace Lacrima::Fluid
 		bool          bulk{};
 		bool          asleep{};
 		bool          touching{};
+		bool          wiped{};  // a hand took it: the mascara under it smears
 	};
 }

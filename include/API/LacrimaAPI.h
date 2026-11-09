@@ -48,10 +48,19 @@ namespace RE
 //   unless wipe is true, which removes them at once.
 // - ShedTear sheds one tear even from an actor who is not crying. eye: 0 left,
 //   1 right, 2 both, anything else one at random.
-// - Wipe removes the tears on the face without changing whether the actor cries.
+// - Wipe removes the tears on the face, and any running mascara, without changing
+//   whether the actor cries.
 // - WipeTearsWithHand plays idle (the vanilla brow wipe, Skyrim.esm 0977EC, when null)
 //   and dries the face once a hand comes near the eyes, or after a few seconds if it
 //   never does. An idle that cannot play (the actor is busy) dries the face at once.
+//   Running mascara is smeared, not removed: wider, fainter, gone sooner.
+// - SetStreams (10100): how many points along the lower lid this actor's tears start
+//   from, 1 to 4; each tear picks one at random. 0 goes back to the player's setting.
+// - SetMascara (10100): running mascara for this actor, 0.0-1.0. Each tear leaves a
+//   dark streak down its path that outlives the water and fades after a few minutes
+//   (the player sets how long). 0 = none; a negative value goes back to the player's
+//   setting, which is 0 unless they changed it.
+// - Overrides last for the session: they do not survive loading a save.
 // - Independently of any gesture, a crying actor's own hands take away the tears they
 //   touch, in any animation, unless the player turned that off.
 // - Lacrima sends the mod events Lacrima_CryStart (numArg = intensity) and
@@ -67,7 +76,7 @@ extern "C" {
 // Lacrima's own version, packed major*10000 + minor*100 + patch (100 = 0.1.0).
 std::uint32_t Lacrima_GetVersion();
 
-// 10000 = 1.0.0: everything in this header.
+// 10000 = 1.0.0: Cry .. WipeTearsWithHand. 10100 = 1.1.0: SetStreams, SetMascara.
 std::uint32_t Lacrima_GetInterfaceVersion();
 
 void  Lacrima_Cry(RE::Actor* actor, float intensity, float seconds);
@@ -79,4 +88,8 @@ float Lacrima_GetTimeLeft(RE::Actor* actor);
 void  Lacrima_ShedTear(RE::Actor* actor, std::int32_t eye);
 void  Lacrima_Wipe(RE::Actor* actor);
 void  Lacrima_WipeTearsWithHand(RE::Actor* actor, RE::TESIdleForm* idle);
+
+// 10100
+void Lacrima_SetStreams(RE::Actor* actor, std::int32_t streams);
+void Lacrima_SetMascara(RE::Actor* actor, float strength);
 }

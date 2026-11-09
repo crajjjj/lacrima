@@ -34,6 +34,10 @@ namespace Lacrima
 		void WipeWithHand(RE::ActorHandle a_actor, RE::TESIdleForm* a_idle);
 		void WipeAll();
 		void CryNearby(float a_radius, float a_intensity, float a_seconds);
+		// Per-actor overrides, for this session: how many streams per eye (0 goes back
+		// to the setting) and how much running mascara (negative goes back to it).
+		void SetStreams(RE::ActorHandle a_actor, int a_streams);
+		void SetMascara(RE::ActorHandle a_actor, float a_strength);
 
 		State       Query(RE::ActorHandle a_actor) const;
 		std::string Status(RE::ActorHandle a_actor);
@@ -55,7 +59,9 @@ namespace Lacrima
 				kWipe,
 				kWipeAll,
 				kNearby,
-				kHandWipe
+				kHandWipe,
+				kStreams,
+				kMascara
 			};
 
 			Kind             kind{ Kind::kCry };
@@ -141,6 +147,28 @@ namespace Lacrima
 			std::optional<Fluid::Vec3> contact;
 		};
 
+		// Running mascara: a point of the dark streak a tear leaves on the skin, in head
+		// space, laid where the tear left a drop of its trail. It outlives the water and
+		// fades; a hand smears it (wider, fainter, gone sooner).
+		struct Stain
+		{
+			Fluid::Vec3   position;
+			float         life{ 0.0f };      // seconds left
+			float         lifetime{ 1.0f };  // seconds it had when laid
+			float         strength{ 0.0f };  // pigment, 0 to 1
+			std::uint32_t run{ 0 };
+			std::uint32_t order{ 0 };        // its place along the tear's path
+			std::uint8_t  stream{ 0 };
+			bool          smeared{ false };
+		};
+
+		// What a script or plugin set for one actor, for this session.
+		struct Override
+		{
+			int   streams{ 0 };       // 0: the setting
+			float mascara{ -1.0f };   // negative: the setting
+		};
+
 		// One eye's fluid: the particles running down that cheek, their solver, and
 		// the meshes that draw them. OStrands calls this a domain.
 		struct Cheek
@@ -158,6 +186,10 @@ namespace Lacrima
 			RE::NiPointer<RE::NiNode>      root;
 			std::vector<Blob>              blobs;
 			std::vector<Rope>              ropes;
+			std::vector<Stain>             stains;
+			std::vector<Rope>              stainRopes;
+			float                          stainOpacity{ -1.0f };
+			std::size_t                    shownStains{ 0 };
 			float                          opacity{ -1.0f };
 			float                          shine{ -1.0f };
 			float                          gloss{ -1.0f };
@@ -205,6 +237,8 @@ namespace Lacrima
 			bool                                       watched{ false };
 			bool                                       frozen{ false };
 			float                                      wipeArm{ 0.0f };
+			int                                        streams{ 1 };     // per eye, the override or the setting, this frame
+			float                                      mascara{ 0.0f };  // the override or the setting, this frame
 			RE::NiPointer<RE::NiAVObject>              skeleton;   // the 3D the bones below came from
 			RE::NiPointer<RE::NiNode>                  head;
 			std::vector<RE::NiPointer<RE::NiAVObject>> handBones;
@@ -218,7 +252,9 @@ namespace Lacrima
 		{
 			RE::NiPointer<RE::NiNode> blob;
 			RE::NiPointer<RE::NiNode> rope;
+			RE::NiPointer<RE::NiNode> stain;
 			bool                      failed{ false };
+			bool                      stainFailed{ false };  // no mascara mesh: tears still show, streaks do not
 		};
 
 		void        Apply(const Request& a_request, const Settings& a_settings);
@@ -237,17 +273,22 @@ namespace Lacrima
 		std::optional<Face::Region> Bounds(const Crier& a_crier, bool a_awakeOnly, float a_margin) const;
 		static Spot                 SpotOf(const Frame& a_frame, const Face::Duct& a_duct);
 
+		Override        OverrideOf(std::uint32_t a_actor) const;
+		Face::Placement PlacementFor(std::uint32_t a_actor, const Settings& a_settings) const;
+
 		bool Prepare(Cheek& a_cheek, const Settings& a_settings);
 		void Emit(Crier& a_crier, Cheek& a_cheek, const Spots& a_spots, const Settings& a_settings, float a_delta);
-		void StartTear(Cheek& a_cheek, float a_strength, const Settings& a_settings);
+		void StartTear(Cheek& a_cheek, float a_strength, int a_streams, const Settings& a_settings);
 		bool Wake(Cheek& a_cheek, const Frame& a_frame, bool a_morphing, std::span<const Fluid::Capsule> a_hands);
-		void Deposit(Cheek& a_cheek, const Frame& a_frame, const Settings& a_settings);
+		void Deposit(Cheek& a_cheek, const Frame& a_frame, const Settings& a_settings, float a_mascara);
+		void LayStain(Cheek& a_cheek, const Fluid::Particle& a_particle, std::uint32_t a_order, const Settings& a_settings, float a_mascara);
+		void AgeStains(Cheek& a_cheek, float a_delta);
 		void Simulate(Cheek& a_cheek, const Frame& a_frame, const std::optional<Face::View>& a_view, std::span<const Fluid::Capsule> a_hands,
-			const Settings& a_settings, float a_delta);
+			const Settings& a_settings, float a_delta, float a_mascara);
 		void PoseHands(Crier& a_crier, float a_delta);
 		void Gesture(Crier& a_crier, const std::array<Spots, Face::kEyes>& a_spots, float a_scale, const Settings& a_settings, float a_delta);
 		void DryFace(Crier& a_crier);
-		void Expire(Cheek& a_cheek, const Frame& a_frame, const Settings& a_settings, float a_delta);
+		void Expire(Cheek& a_cheek, const Frame& a_frame, const Settings& a_settings, float a_delta, float a_mascara);
 		bool Attach(Cheek& a_cheek, const Crier& a_crier, RE::NiAVObject* a_root, bool a_world);
 		void Draw(Cheek& a_cheek, const Mount& a_mount, const Settings& a_settings, const Spots& a_spots, bool a_markers);
 		void Clear(Cheek& a_cheek);
@@ -258,11 +299,15 @@ namespace Lacrima
 		static RE::NiPointer<RE::BSDismemberSkinInstance> DismemberOf(RE::NiNode* a_root, const RE::BSFixedString& a_shape);
 		static void                                       Reveal(RE::BSDismemberSkinInstance* a_skin);
 		bool    CloneBlob(Blob& a_blob);
-		bool    CloneRope(Rope& a_rope);
+		bool    CloneRope(Rope& a_rope, RE::NiNode* a_mesh, const RE::BSFixedString& a_shape);
 		Blob*   AcquireBlob(Cheek& a_cheek);
 		Rope*   AcquireRope(Cheek& a_cheek);
+		Rope*   AcquireStainRope(Cheek& a_cheek);
 		void    Shade(RE::NiAVObject* a_root, const Settings& a_settings);
+		void    ShadeStain(RE::NiAVObject* a_root, const Settings& a_settings);
 		void    Reshade(Cheek& a_cheek, const Settings& a_settings);
+		void    DrawStains(Cheek& a_cheek, const Mount& a_mount, const Settings& a_settings, const Spots& a_spots);
+		void    PoseStain(const Mount& a_mount, Rope& a_rope);
 		void    PoseBlob(const Mount& a_mount, Blob& a_blob);
 		void    PoseDrop(const Mount& a_mount, Blob& a_blob, Fluid::Vec3 a_center, float a_radius, Fluid::Vec3 a_up, Fluid::Vec3 a_velocity = {},
 			   std::optional<Fluid::Vec3> a_contact = std::nullopt);
@@ -289,6 +334,7 @@ namespace Lacrima
 		std::chrono::steady_clock::time_point                                    _statusAt{};
 
 		std::unordered_map<std::uint32_t, std::unique_ptr<Crier>> _criers;
+		std::unordered_map<std::uint32_t, Override>                _overrides;  // main thread only
 		std::vector<std::uint32_t>                                 _order;
 		Meshes                                                     _meshes;
 		std::vector<Fluid::Vec3>                                   _directions;
@@ -297,6 +343,10 @@ namespace Lacrima
 		std::vector<float>                                         _ropeAlong;
 		std::vector<Blob>                                          _spareBlobs;
 		std::vector<Rope>                                          _spareRopes;
+		std::vector<Rope>                                          _spareStains;
+		std::vector<Fluid::Vec3>                                   _stainPath;
+		std::vector<float>                                         _stainRadius;
+		std::vector<std::size_t>                                   _stainOrder;
 		// Draw and Expire scratch, kept across frames so a frame allocates nothing.
 		std::vector<std::size_t>              _pooled;
 		std::vector<std::size_t>              _owner;

@@ -11,3 +11,5 @@ Lacrima_GetTimeLeft
 Lacrima_ShedTear
 Lacrima_Wipe
 Lacrima_WipeTearsWithHand
+Lacrima_SetStreams
+Lacrima_SetMascara

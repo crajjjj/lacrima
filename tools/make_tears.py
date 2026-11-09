@@ -3,7 +3,8 @@
 # LeonVanWinkle (Saint), GPL-3.0.
 #
 # The bone names and counts are read by src/Tears.cpp: BlobNN bones (at least 12)
-# and ROPE_BONES RopeNN bones (Tears::kRopeBones). Change both sides together.
+# and ROPE_BONES RopeNN bones (Tears::kRopeBones) in both the trail rope and the
+# mascara streak. Change both sides together.
 #
 #   python tools/make_tears.py
 
@@ -134,6 +135,37 @@ def build_rope():
                              ALPHA_BLEND)
 
 
+# Running mascara: the same rope as the trail (same RopeNN bones, so src/Tears.cpp
+# poses it the same way), drawn matte and dark: pigment on the skin, not water. No
+# highlight, no reflection, no light of its own, no depth write. The game sets the
+# opacity from [look] mascara_opacity.
+STAIN_COLOR = (34, 26, 30)
+STAIN_ALPHA = 0.5
+
+
+def stain_shader(texset):
+    flags1 = SLSF1_SKINNED | SLSF1_RECEIVE_SHADOWS | SLSF1_ZBUFFER_TEST
+    out = u32(0) + i32(-1) + u32(0) + i32(-1) + u32(flags1) + u32(0)  # shader type 0 = default; SLSF2 empty = no depth write
+    out += f32(0.0, 0.0) + f32(1.0, 1.0) + i32(texset)
+    out += f32(0.0, 0.0, 0.0) + f32(0.0)  # no light of its own
+    out += u32(3)
+    out += f32(STAIN_ALPHA) + f32(0.0) + f32(10.0)
+    out += f32(1.0, 1.0, 1.0) + f32(0.0)  # no highlight
+    out += f32(0.3) + f32(2.0)
+    return out
+
+
+STAIN_TEXTURES = [TEXTURE_DIR + 'stain.dds', TEXTURE_DIR + 'stain_n.dds']
+
+
+def build_stain():
+    verts, tris = rope_geometry()
+    length = ROPE_BONES - 1
+    return build_skinned_nif('StainRoot', ['Rope%02d' % i for i in range(ROPE_BONES)], [(0.0, float(i), 0.0) for i in range(ROPE_BONES)],
+                             'StainShape', verts, tris, (0.0, length / 2, 0.0, length / 2 + 1.0), 1.0, stain_shader, STAIN_TEXTURES,
+                             ALPHA_BLEND)
+
+
 def main():
     root = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'dist')
     mesh_dir = os.path.join(root, 'meshes', 'Lacrima')
@@ -141,7 +173,7 @@ def main():
     os.makedirs(mesh_dir, exist_ok=True)
     os.makedirs(tex_dir, exist_ok=True)
 
-    for kind, builder in (('blob', build_blob), ('rope', build_rope)):
+    for kind, builder in (('blob', build_blob), ('rope', build_rope), ('stain', build_stain)):
         data, verts, tris = builder()
         open(os.path.join(mesh_dir, 'tear_%s.nif' % kind), 'wb').write(data)
         print('tear_%s.nif: %d vertices, %d triangles, %d bytes' % (kind, verts, tris, len(data)))
@@ -153,7 +185,10 @@ def main():
     open(os.path.join(tex_dir, 'tear_n.dds'), 'wb').write(dds_bgra(32, 64, glint_normal_map(32, 64), normal=True))
     # the environment mask: reflect everywhere, scaled at run time by [look] reflection
     open(os.path.join(tex_dir, 'tear_m.dds'), 'wb').write(dds_bgra(8, 8, lambda x, y: (255, 255, 255, 255)))
-    print('tear.dds, tear_n.dds, tear_m.dds')
+    r, g, b = STAIN_COLOR
+    open(os.path.join(tex_dir, 'stain.dds'), 'wb').write(dds_bgra(8, 8, lambda x, y: (r, g, b, 255)))
+    open(os.path.join(tex_dir, 'stain_n.dds'), 'wb').write(dds_bgra(4, 4, lambda x, y: (128, 128, 255, 255), normal=True))
+    print('tear.dds, tear_n.dds, tear_m.dds, stain.dds, stain_n.dds')
 
 
 if __name__ == '__main__':

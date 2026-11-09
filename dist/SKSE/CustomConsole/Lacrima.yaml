@@ -87,6 +87,22 @@ subs:
         type: int
         default: 1
         help: 1 world space, 0 head bone
+  - name: streams
+    func: Streams
+    help: How many points per eye the target's tears start from (1 to 4; 0 = the setting)
+    args:
+      - name: streams
+        type: int
+        default: 3
+        help: 1 to 4, or 0 for the setting
+  - name: mascara
+    func: Mascara
+    help: Running mascara on the target (0 none, up to 1; -1 = the setting)
+    args:
+      - name: strength
+        type: float
+        default: 1.0
+        help: 0.0 to 1.0, or -1 for the setting
   - name: enable
     func: Enable
     help: Turn Lacrima on (1) or off (0) for this session

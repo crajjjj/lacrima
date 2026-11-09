@@ -82,6 +82,16 @@ namespace Lacrima::Papyrus
 			return Tears::Get().Status(HandleOf(a_actor));
 		}
 
+		void SetStreams(RE::StaticFunctionTag*, RE::Actor* a_actor, std::int32_t a_streams)
+		{
+			Tears::Get().SetStreams(HandleOf(a_actor), a_streams);
+		}
+
+		void SetMascara(RE::StaticFunctionTag*, RE::Actor* a_actor, float a_strength)
+		{
+			Tears::Get().SetMascara(HandleOf(a_actor), a_strength);
+		}
+
 		// LacrimaTest debug natives
 
 		void NearbyNative(RE::StaticFunctionTag*, float a_radius, float a_intensity, float a_seconds)
@@ -127,6 +137,8 @@ namespace Lacrima::Papyrus
 		a_vm->RegisterFunction("SetEnabled"sv, kScript, SetEnabled);
 		a_vm->RegisterFunction("ReloadConfig"sv, kScript, ReloadConfig);
 		a_vm->RegisterFunction("GetStatus"sv, kScript, GetStatus);
+		a_vm->RegisterFunction("SetStreams"sv, kScript, SetStreams);
+		a_vm->RegisterFunction("SetMascara"sv, kScript, SetMascara);
 
 		a_vm->RegisterFunction("NearbyNative"sv, kTestScript, NearbyNative);
 		a_vm->RegisterFunction("ShowDuctsNative"sv, kTestScript, ShowDuctsNative);

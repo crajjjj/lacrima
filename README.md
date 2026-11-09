@@ -29,6 +29,11 @@ wells on the lid, runs as a small bead and leaves a thin wet streak behind it; a
 that reaches the underside of the chin clings there for a moment before it falls. While
 an actor cries, their eyes glisten.
 
+Running mascara is optional (`mascara`, off by default, and settable per actor by other
+mods): each tear then leaves a dark streak down the exact path it ran. The streak builds
+up as the actor keeps crying, outlives the water and fades after a few minutes. A hand
+wiping the face smears it wider and fainter instead of taking it off.
+
 Hands take tears away. A crying actor's own fingers and palms absorb the tears they
 touch, in any animation that brings a hand to the face. `WipeTearsWithHand` plays a
 wipe gesture (the vanilla brow wipe unless you pass another idle) and dries the face
@@ -57,6 +62,8 @@ or on the player when none is selected.
 | `tears status` | What Lacrima found on the head and what the tears are doing |
 | `tears ducts 1` | Mark where tears start (`tears ducts 0` to hide) |
 | `tears mount 0` | Hang the tears under the head bone, the cheaper way (`tears mount 1`, the default, draws them in world space) |
+| `tears streams 3` | This actor's tears start from 3 points per eye (`0` = the setting) |
+| `tears mascara 1` | Running mascara on this actor (`0` none, `-1` = the setting) |
 | `tears count` | How many actors are crying |
 | `tears enable 0` | Turn Lacrima off for this session (`1` on) |
 | `tears reload` | Read the toml files again |
@@ -78,12 +85,19 @@ Lacrima.WipeTearsWithHand(akActor)            ; with the brow-wipe gesture
 Lacrima.WipeTearsWithHand(akActor, myEyeWipeIdle)
 Bool  crying = Lacrima.IsCrying(akActor)
 Float left   = Lacrima.GetTimeLeft(akActor)   ; -1 = until stopped
+
+If Lacrima.GetAPIVersion() >= 2               ; per-actor overrides
+    Lacrima.SetStreams(akActor, 3)            ; tears from 3 points per eye (0 = the setting)
+    Lacrima.SetMascara(akActor, 1.0)          ; running mascara (0 = none, negative = the setting)
+EndIf
 ```
 
 `Cry` on an actor who already cries replaces the intensity and the time left. Crying
-does not survive loading a save, and no `Lacrima_CryStop` is sent then. Calling a
-global function of a script that is not installed only logs an error, so the
-`GetAPIVersion` check is all an optional integration needs.
+does not survive loading a save, and no `Lacrima_CryStop` is sent then; nor do the
+per-actor overrides. `WipeTears` also takes off running mascara, while
+`WipeTearsWithHand` smears it. Calling a global function of a script that is not
+installed only logs an error, so the `GetAPIVersion` check is all an optional
+integration needs.
 
 Lacrima sends `Lacrima_CryStart` (numArg = intensity) and `Lacrima_CryStop` mod events,
 with the actor as the sender, so an expression mod can react to crying it did not start:
