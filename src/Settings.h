@@ -47,7 +47,7 @@ namespace Lacrima
 		float mascaraWidth{ 1.0f };
 		float mascaraSmudge{ 1.0f };
 		float mascaraSpread{ 0.6f };
-		float mascaraLength{ 0.0f };  // cm down the face a streak runs at most; 0 as far as the tear goes
+		float mascaraLength{ 3.0f };  // cm down the face a streak runs at most; 0 as far as the tear goes
 		float mascaraLifetime{ 300.0f };
 
 		float stickiness{ 2.0f };

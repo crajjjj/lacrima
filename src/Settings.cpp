@@ -86,7 +86,7 @@ namespace Lacrima
 			Field{ "look", "mascara_spread", &Settings::mascaraSpread, 0.0f, 1.0f, "Look", "Mascara under the eye", "%.2f",
 				"How far the smudge spreads down from the lashes over the skin under the eye. 0 is a band along the lid only; 1 covers the whole area under the eye." },
 			Field{ "look", "mascara_length", &Settings::mascaraLength, 0.0f, 20.0f, "Look", "Mascara length", "%.1f cm",
-				"How far down the face a mascara streak runs at most, in cm from the eye: about 4 stops it level with the nose, 7 at the mouth. 0 lets it run as far as the tear goes." },
+				"How far down the face a mascara streak runs at most, in cm from the eye: 3 stops it above the nose, 7 at the mouth. 0 lets it run as far as the tear goes." },
 			Field{ "look", "mascara_lifetime", &Settings::mascaraLifetime, 10.0f, 1800.0f, "Look", "Mascara lifetime", "%.0f s",
 				"Seconds a mascara streak stays before it has faded away. A hand wipe smears it, and it goes sooner." },
 
