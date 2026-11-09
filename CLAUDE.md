@@ -121,6 +121,19 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   within `[wipe] reach` of a duct, or when the arm runs out. The brow wipe passes the
   forehead, not the eyes, which is why reach is generous; a real eye-wipe idle can be
   passed by the caller.
+- **The eyes part is not always the eyeballs** (`Face::MeasureEyes`, `EyesRead`, 0.2.4):
+  the first ear report's log (HPH Breton, CVEO eyes) showed the part named on the
+  record, `FemaleEyesLavender`, as a 176-vertex mesh spread 3.6 units around a point
+  2.6 cm behind the eyes (CVEO's eye system puts a socket or shadow shell in the
+  vanilla part and the eyeballs elsewhere). The ducts are placed in eye radii, so
+  they landed 5.6 units below the measured centre, on the jaw by the ear, and the
+  face centroid sat in front of that centre, flipping `forward`. `Build` now scores
+  what it measures against two eyeballs (radius about `kEyeRadius` 1 unit, `kEyeApart`
+  5 units; `plausible` within [0.45, 1.8] and [2.5, 8]); when the named part fails,
+  the part's `extraParts` and every other geometry on the actor are measured and the
+  most eyeball-like one taken (one not called an eye only below `kEyeScoreUnnamed`),
+  the report says so (`eyesNote`), and `Glisten` works on the chosen geometry. The
+  placement clamps the radius to that range whatever was measured.
 - **Placement overrides** (`[debug] face_forward`, `eyes_space`, carried in `Face::Placement`,
   stored on the `Head` it was built with; a change rebuilds the head through `HeadOf`'s
   `retune`): two LoversLab users (11-09) had tears start by the ears. The ducts are aimed

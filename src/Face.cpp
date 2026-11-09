@@ -23,6 +23,16 @@ namespace Lacrima::Face
 		constexpr float         kLidCorner = 0.15f; // ... and at the corners, where the lid line has curved up to the eye's own height
 		constexpr float         kLidRowStep = 0.4f; // eye radii between the rows under the lid: three rows reach the top of the cheek
 		constexpr float         kFacingFloor = -0.2f;
+		// What two eyeballs measure in head-bone space (game units): about 1 unit in
+		// radius (1.4 cm), 5 units apart. The ducts are placed in eye radii, so a
+		// radius far off lands them far from the eye.
+		constexpr float         kEyeRadius = 1.0f;
+		constexpr float         kEyeRadiusMin = 0.45f;
+		constexpr float         kEyeRadiusMax = 1.8f;
+		constexpr float         kEyeApart = 5.0f;
+		constexpr float         kEyeApartMin = 2.5f;
+		constexpr float         kEyeApartMax = 8.0f;
+		constexpr float         kEyeScoreUnnamed = 0.35f;  // a geometry not called an eye must measure this close to be taken
 		constexpr std::size_t   kMinFacePoints = 200;
 		constexpr std::size_t   kMinEyePoints = 8;
 		constexpr std::size_t   kNone = static_cast<std::size_t>(-1);
@@ -116,6 +126,7 @@ namespace Lacrima::Face
 			bool                                                morphing{ false };
 			std::string                                         faceName;
 			std::string                                         eyesName;
+			std::string                                         eyesNote;  // when the eyes were measured on another geometry than the eyes part
 			std::string                                         report;
 			RE::NiPointer<RE::BSGeometry>                       eyesGeometry;
 			float                                               eyeEnv{ -1.0f };    // the eyes material's own values, restored after glistening
@@ -420,6 +431,76 @@ namespace Lacrima::Face
 			return best;
 		}
 
+		// One eyes geometry measured in head-bone space: the mesh split by side of
+		// the midline, each side's centre and mean spread. score says how far it is
+		// from two eyeballs (0 = exactly), plausible whether it is within reason. The
+		// eyes part named on the record is not always the eyeballs: CVEO's part is a
+		// 176-vertex mesh spread 3.6 units around a point behind the eyes (an eye
+		// socket or shadow shell; LL report 2026-11-09), which put the ducts on the
+		// jaw by the ears.
+		struct EyesRead
+		{
+			std::array<EyeShape, 2> sides{};
+			Mesh                    mesh;
+			float                   score{ std::numeric_limits<float>::max() };
+			bool                    plausible{ false };
+		};
+
+		bool MeasureEyes(RE::BSGeometry* a_eyes, const RE::NiTransform& a_toBone, EyesRead& a_out)
+		{
+			a_out = {};
+			if (!a_eyes || !ReadMesh(a_eyes, a_out.mesh)) {
+				return false;
+			}
+			std::vector<RE::NiPoint3> points;
+			points.reserve(a_out.mesh.positions.size());
+			std::array<RE::NiPoint3, 2> sum{};
+			std::array<std::size_t, 2>  count{};
+			for (const auto& position : a_out.mesh.positions) {
+				const RE::NiPoint3 p = a_toBone * position;
+				points.push_back(p);
+				const std::size_t side = p.x >= 0.0f ? 1 : 0;
+				sum[side] += p;
+				++count[side];
+			}
+			auto& sides = a_out.sides;
+			for (std::size_t s = 0; s < 2; ++s) {
+				if (count[s] < kMinEyePoints) {
+					continue;
+				}
+				sides[s].center = sum[s] / static_cast<float>(count[s]);
+				float spread = 0.0f;
+				for (const auto& p : points) {
+					if ((p.x >= 0.0f ? 1u : 0u) == s) {
+						spread += p.GetDistance(sides[s].center);
+					}
+				}
+				sides[s].radius = spread / static_cast<float>(count[s]);
+				sides[s].valid = sides[s].radius > 0.05f;
+			}
+			if (!sides[0].valid && !sides[1].valid) {
+				return false;
+			}
+			float score = 0.0f;
+			bool  plausible = sides[0].valid && sides[1].valid;
+			for (const auto& side : sides) {
+				if (!side.valid) {
+					score += 1.0f;
+					continue;
+				}
+				score += std::abs(std::log(side.radius / kEyeRadius));
+				plausible = plausible && side.radius >= kEyeRadiusMin && side.radius <= kEyeRadiusMax;
+			}
+			if (sides[0].valid && sides[1].valid) {
+				const float apart = sides[0].center.GetDistance(sides[1].center);
+				score += std::abs(std::log(std::max(apart, 1e-3f) / kEyeApart));
+				plausible = plausible && apart >= kEyeApartMin && apart <= kEyeApartMax;
+			}
+			a_out.score = score;
+			a_out.plausible = plausible;
+			return true;
+		}
+
 		// Adds a mesh's vertices as wrap points: deduplicated on a fine voxel, with
 		// normals turned outward. Returns how many points it added.
 		std::size_t Add(Head& a_head, RE::BSGeometry* a_geometry, const Mesh& a_mesh,
@@ -512,7 +593,7 @@ namespace Lacrima::Face
 					continue;
 				}
 				const float out = eye.center.x >= 0.0f ? 1.0f : -1.0f;
-				const float r = eye.radius;
+				const float r = std::clamp(eye.radius, kEyeRadiusMin, kEyeRadiusMax);  // a wild measurement must not throw the ducts off the face
 				for (int s = 0; s < streams; ++s) {
 					// streams sit evenly across a_spread of the lid, centred on a_position
 					const float along = streams == 1 ? a_placement.position :
@@ -555,7 +636,7 @@ namespace Lacrima::Face
 					continue;
 				}
 				const float out = eye.center.x >= 0.0f ? 1.0f : -1.0f;
-				const float r = eye.radius;
+				const float r = std::clamp(eye.radius, kEyeRadiusMin, kEyeRadiusMax);
 				for (std::size_t row = 0; row < kLidRows; ++row) {
 					for (std::size_t i = 0; i < kLidPoints; ++i) {
 						const float        across = 2.0f * static_cast<float>(i) / static_cast<float>(kLidPoints - 1) - 1.0f;  // -1 inner corner .. 1 outer
@@ -651,16 +732,10 @@ namespace Lacrima::Face
 			a_head.eyesName = std::format("{}{}", eyes->name.c_str() ? eyes->name.c_str() : "?", guessedEyes ? " (guessed by name)" : "");
 
 			Mesh faceMesh;
-			Mesh eyeMesh;
 			if (!ReadMesh(face, faceMesh)) {
 				a_head.report = "the face mesh has no readable vertices";
 				return;
 			}
-			if (!ReadMesh(eyes, eyeMesh)) {
-				a_head.report = "the eyes mesh has no readable vertices";
-				return;
-			}
-			a_head.eyesGeometry.reset(eyes);
 
 			// Each head part is authored in its own space (a vanilla eyes part around
 			// the head bone, a face part around the skeleton root); the skin-to-bone
@@ -668,46 +743,84 @@ namespace Lacrima::Face
 			// eyes are measured and the ducts aimed.
 			a_head.faceToBone = ToHeadBone(face);
 			a_head.boneToFace = a_head.faceToBone.Invert();
-			RE::NiTransform eyesToBone = ToHeadBone(eyes);
-			if (a_head.eyesSpace == 1) {
-				eyesToBone = a_head.faceToBone;  // [debug] eyes_space: the eyes drawn in the face mesh's space
-			} else if (a_head.eyesSpace == 2) {
-				eyesToBone = RE::NiTransform{};  // ... or already in head-bone space
-			}
+			const auto toBone = [&](RE::BSGeometry* a_geometry) {
+				if (a_head.eyesSpace == 1) {
+					return a_head.faceToBone;  // [debug] eyes_space: the eyes drawn in the face mesh's space
+				}
+				if (a_head.eyesSpace == 2) {
+					return RE::NiTransform{};  // ... or already in head-bone space
+				}
+				return ToHeadBone(a_geometry);
+			};
 
 			// Eyes: one mesh holds both, split by side of the midline. They only place
-			// the ducts; the eyeball is not a surface tears run on.
-			std::vector<RE::NiPoint3> eyePoints;
-			eyePoints.reserve(eyeMesh.positions.size());
-			for (const auto& position : eyeMesh.positions) {
-				eyePoints.push_back(eyesToBone * position);
-			}
-			std::array<RE::NiPoint3, kEyes> sum{};
-			std::array<std::size_t, kEyes>  count{};
-			for (const auto& position : eyePoints) {
-				const std::size_t side = position.x >= 0.0f ? 1 : 0;
-				sum[side] += position;
-				++count[side];
-			}
-			std::array<EyeShape, 2> sides{};
-			for (std::size_t s = 0; s < 2; ++s) {
-				if (count[s] < kMinEyePoints) {
-					continue;
-				}
-				sides[s].center = sum[s] / static_cast<float>(count[s]);
-				float spread = 0.0f;
-				for (const auto& position : eyePoints) {
-					if ((position.x >= 0.0f ? 1u : 0u) == s) {
-						spread += position.GetDistance(sides[s].center);
+			// the ducts; the eyeball is not a surface tears run on. The eyes part named
+			// on the record first; when it does not measure as two eyeballs, the part's
+			// extra parts and every other geometry on the actor are measured and the
+			// most eyeball-like taken (one not called an eye only if it measures very
+			// close), so an eyes system whose named part is a shell still places the
+			// ducts on the lids.
+			EyesRead        read;
+			RE::BSGeometry* chosen = nullptr;
+			const bool      named = MeasureEyes(eyes, toBone(eyes), read);
+			a_head.eyesNote.clear();
+			if (named && read.plausible) {
+				chosen = eyes;
+			} else {
+				std::vector<RE::BSGeometry*> candidates;
+				if (auto* npc = a_actor->GetActorBase()) {
+					if (auto* part = npc->GetCurrentHeadPartByType(RE::BGSHeadPart::HeadPartType::kEyes)) {
+						for (auto* extra : part->extraParts) {
+							auto* object = extra && extra->formEditorID.c_str() ? root->GetObjectByName(extra->formEditorID) : nullptr;
+							auto* geometry = object ? object->AsGeometry() : nullptr;
+							if (geometry && geometry != eyes) {
+								candidates.push_back(geometry);
+							}
+						}
 					}
 				}
-				sides[s].radius = spread / static_cast<float>(count[s]);
-				sides[s].valid = sides[s].radius > 0.05f;
+				RE::BSVisit::TraverseScenegraphGeometries(root, [&](RE::BSGeometry* a_geometry) {
+					if (a_geometry != eyes && a_geometry != face && VerticesOf(a_geometry) > 0 && !Hidden(a_geometry, root) &&
+						std::ranges::find(candidates, a_geometry) == candidates.end()) {
+						candidates.push_back(a_geometry);
+					}
+					return RE::BSVisit::BSVisitControl::kContinue;
+				});
+				EyesRead best;
+				for (auto* candidate : candidates) {
+					const char*       raw = candidate->name.c_str();
+					const std::string name = raw ? Lower(raw) : std::string{};
+					const bool        eyeNamed = name.find("eye") != std::string::npos && name.find("brow") == std::string::npos &&
+					                      name.find("lash") == std::string::npos && name.find("liner") == std::string::npos &&
+					                      name.find("shadow") == std::string::npos;
+					EyesRead measured;
+					if (!MeasureEyes(candidate, toBone(candidate), measured) || !measured.plausible) {
+						continue;
+					}
+					if ((eyeNamed || measured.score < kEyeScoreUnnamed) && measured.score < best.score) {
+						best = std::move(measured);
+						chosen = candidate;
+					}
+				}
+				const auto describe = [](const EyesRead& a_read) {
+					return std::format("radius {:.2f} / {:.2f}, {:.1f} apart", a_read.sides[0].radius, a_read.sides[1].radius,
+						a_read.sides[0].valid && a_read.sides[1].valid ? a_read.sides[0].center.GetDistance(a_read.sides[1].center) : 0.0f);
+				};
+				if (chosen) {
+					a_head.eyesNote = std::format(" (measured on {}: the eyes part {} does not look like two eyes, {})", chosen->name.c_str() ? chosen->name.c_str() : "?",
+						eyes->name.c_str() ? eyes->name.c_str() : "?", named ? describe(read) : "unreadable");
+					read = std::move(best);
+				} else if (named) {
+					chosen = eyes;
+					a_head.eyesNote = std::format(" (the eyes part does not look like two eyes, {}; nothing better on the head)", describe(read));
+				} else {
+					a_head.report = "the eyes mesh has no readable vertices";
+					return;
+				}
 			}
-			if (!sides[0].valid && !sides[1].valid) {
-				a_head.report = "the eyes mesh does not look like two eyes";
-				return;
-			}
+			a_head.eyesGeometry.reset(chosen);
+			const auto& sides = read.sides;
+			const auto& eyeMesh = read.mesh;
 
 			// The face looks along +Y or -Y in head-bone space: the eyes sit in front
 			// of the middle of the head. Right = forward x up, so with forward +Y the
@@ -738,8 +851,8 @@ namespace Lacrima::Face
 				a_head.report = std::format("only {} usable face points", facePoints);
 				return;
 			}
-			a_head.report = std::format("face {} points{}, eyes {} vertices{}{}{}", facePoints, faceMesh.dynamic ? " (animated)" : "",
-				eyeMesh.positions.size(), eyeMesh.dynamic ? " (animated)" : "", a_head.forwardOverride != 0 ? ", forward forced" : "",
+			a_head.report = std::format("face {} points{}, eyes {} vertices{}{}{}{}", facePoints, faceMesh.dynamic ? " (animated)" : "",
+				eyeMesh.positions.size(), eyeMesh.dynamic ? " (animated)" : "", a_head.eyesNote, a_head.forwardOverride != 0 ? ", forward forced" : "",
 				a_head.eyesSpace == 1 ? ", eyes taken in the face's space" : a_head.eyesSpace == 2 ? ", eyes taken in head space" : "");
 			a_head.ok = true;
 			a_head.placement = Placement{ -1.0f, -1.0f, 0, -1.0f };
