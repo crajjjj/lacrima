@@ -139,7 +139,12 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   streak). For the same reason `LayStain` lays intermediate points every
   `kStainSpacing` along the skin (`OntoSkin`) from the run's previous point, or the
   tear's `Cheek::seat` for the first, so no segment is long enough to leave the
-  surface; stain `order` is the particle's x16 so they sort between deposits. The
+  surface; stain `order` is the particle's x16 so they sort between deposits. Each
+  stain carries `along`, its distance down the streak from the lid: `[look]
+  mascara_length` (cm, 0 = unlimited) cuts the point that would pass it back to the
+  limit and lays it as the run's `kBeadOrder` end, after which the run takes nothing
+  more however far the tear goes (`DrawStains` clips the live reach to the bead the
+  same way). The
   smudge is a ribbon per row of Face's `lids` (`kLidRows` = 3 rows of 8 points; the
   first row follows the curve of the eye from corner to corner, `kLidBelow` under the
   centre at the middle, on the skin below the lid margin, which curls under, rising

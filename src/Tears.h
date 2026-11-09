@@ -170,6 +170,7 @@ namespace Lacrima
 			std::uint32_t order{ 0 };        // its place along the tear's path
 			std::uint8_t  stream{ 0 };
 			float         start{ 0.0f };     // where along the lid the tear started, metres from the duct
+			float         along{ 0.0f };     // metres down the streak from the lid, for [look] mascara_length
 			bool          smeared{ false };
 			Fluid::Vec3   dragDir;           // smearing: which way it moves along the skin ...
 			float         drag{ 0.0f };      // ... how far it still has to go, metres ...

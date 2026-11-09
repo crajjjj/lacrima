@@ -42,6 +42,7 @@ mascara_opacity = 0.5  # how dark a mascara streak is
 mascara_width = 1.0    # how wide a mascara streak is
 mascara_smudge = 1.0   # how much mascara gathers in a dark band under the lower lid; 0 none
 mascara_spread = 0.6   # how far the smudge spreads down over the skin under the eye: 0 a band along the lid only, 1 the whole area under the eye
+mascara_length = 0.0   # cm down the face a streak runs at most: about 4 stops level with the nose, 7 at the mouth; 0 as far as the tear goes
 mascara_lifetime = 300.0  # seconds a streak stays before it has faded away; a hand wipe smears it and it goes sooner
 
 [physics]

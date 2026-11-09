@@ -1445,6 +1445,11 @@ namespace Lacrima
 			return;
 		}
 		auto& stains = a_cheek.stains;
+		// A streak that has already ended (dried, or run its full [look] mascara_length)
+		// takes nothing more, however far the tear goes on.
+		if (std::ranges::any_of(stains, [&](const Stain& a_stain) { return a_stain.run == a_particle.run && a_stain.order == kBeadOrder; })) {
+			return;
+		}
 		// Too many streaks on this cheek: the oldest one goes.
 		std::size_t runs = 0;
 		std::uint32_t oldest = std::numeric_limits<std::uint32_t>::max();
@@ -1471,14 +1476,16 @@ namespace Lacrima
 		// The streak follows the skin between where the tear last left a drop (or the
 		// lid it welled on) and here: points every kStainSpacing along the way, each
 		// put onto the skin, so the ribbon between them cannot dip under the cheek.
-		const Vec3    here = OntoSkin(a_cheek.skin, a_particle.position, -kStainLift, &stain.normal);
+		Vec3          here = OntoSkin(a_cheek.skin, a_particle.position, -kStainLift, &stain.normal);
 		std::uint32_t fromOrder = 0;
 		Vec3          from{};
+		float         fromAlong = 0.0f;
 		bool          known = false;
 		for (const auto& other : stains) {
-			if (other.run == a_particle.run && other.order != kBeadOrder && (!known || other.order > fromOrder)) {
+			if (other.run == a_particle.run && (!known || other.order > fromOrder)) {
 				fromOrder = other.order;
 				from = other.position;
+				fromAlong = other.along;
 				known = true;
 			}
 		}
@@ -1486,20 +1493,35 @@ namespace Lacrima
 			from = a_cheek.seat;
 			known = true;
 		}
-		const std::uint32_t order = a_order == kBeadOrder ? kBeadOrder : a_order * 16;
+		std::uint32_t order = a_order == kBeadOrder ? kBeadOrder : a_order * 16;
+		float         span = known ? Fluid::Length(here - from) : 0.0f;
+		// The streak stops at [look] mascara_length: the point that would pass it is
+		// cut back to it and ends the run, so the tear running on leaves no more.
+		if (a_settings.mascaraLength > 0.0f && known) {
+			const float room = a_settings.mascaraLength * 0.01f - fromAlong;
+			if (room <= 0.0f) {
+				return;
+			}
+			if (span > room) {
+				here = OntoSkin(a_cheek.skin, from + (here - from) * (room / span), -kStainLift, &stain.normal);
+				span = room;
+				order = kBeadOrder;
+			}
+		}
 		if (known && order > fromOrder) {
-			const float       span = Fluid::Length(here - from);
 			const std::size_t between = std::min<std::size_t>(14, span > kStainSpacing ? static_cast<std::size_t>(span / kStainSpacing) : 0);
 			for (std::size_t k = 1; k <= between && stains.size() < kMaxStains; ++k) {
 				const float t = static_cast<float>(k) / static_cast<float>(between + 1);
 				Stain       step = stain;
 				step.position = OntoSkin(a_cheek.skin, from + (here - from) * t, -kStainLift, &step.normal);
 				step.order = fromOrder + std::max<std::uint32_t>(1, static_cast<std::uint32_t>(static_cast<float>(order - fromOrder) * t));
+				step.along = fromAlong + span * t;
 				stains.push_back(step);
 			}
 		}
 		stain.position = here;
 		stain.order = order;
+		stain.along = fromAlong + span;
 		stains.push_back(stain);
 		a_cheek.dirty = true;
 	}
@@ -2362,7 +2384,8 @@ namespace Lacrima
 					normals.push_back(stains[order[i]].normal);
 					radius.push_back(radiusOf(stains[order[i]]));
 				}
-				// a tear still running: its streak reaches the bead
+				// a tear still running: its streak reaches the bead, but no further than
+				// [look] mascara_length lets it
 				if (last.order != kBeadOrder) {
 					Vec3        sum{};
 					std::size_t count = 0;
@@ -2372,9 +2395,15 @@ namespace Lacrima
 							++count;
 						}
 					}
-					if (count > 0) {
+					const float room = a_settings.mascaraLength > 0.0f ? a_settings.mascaraLength * 0.01f - last.along : std::numeric_limits<float>::max();
+					if (count > 0 && room > 0.0f) {
+						Vec3        bead = sum * (1.0f / static_cast<float>(count));
+						const float reach = Fluid::Length(bead - last.position);
+						if (reach > room) {
+							bead = last.position + (bead - last.position) * (room / reach);
+						}
 						Vec3 normal = last.normal;
-						path.push_back(OntoSkin(a_cheek.skin, sum * (1.0f / static_cast<float>(count)), -kStainLift, &normal));
+						path.push_back(OntoSkin(a_cheek.skin, bead, -kStainLift, &normal));
 						normals.push_back(normal);
 						radius.push_back(radiusOf(last));
 					}
