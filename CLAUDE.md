@@ -136,7 +136,8 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   `PlacementOf(settings, crier.streams)` gives Face the count. Mascara also has a
   per-actor session override, `SetMascara` (`Tears::_overrides`, the `kMascara`
   request), since whether an actor wears makeup outlives any one cry. Each frame
-  `Crier::mascara` = the call's if not negative, else the actor's, else the setting;
+  `Crier::mascara` = the call's if it gave one (-1 = not given), else the actor's,
+  else the setting;
   overrides clear on load with everything else.
 - **Settings** (`Settings.cpp`): one field table drives the toml reader, the user-file
   writer and the menu pages. `Lacrima.toml` holds the shipped defaults;

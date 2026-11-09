@@ -75,7 +75,7 @@ Commands act on the actor selected in the console, or on the player when none is
 - tears nearby 0.7 30 1500 - every actor within 1500 units of the player cries
 - tears status - what Lacrima found on the head and what the tears are doing
 - tears ducts 1 - mark where tears start (0 to hide)
-- tears mascara 1 - running mascara on this actor (0 none, -1 = the setting)
+- tears mascara 1 - this actor wears running mascara (0 none; -1 forgets it, so the player's setting applies)
 - tears enable 0 - turn Lacrima off for this session (1 on)
 
 
@@ -95,8 +95,9 @@ Lacrima does nothing on its own; it is meant to be driven by your mod. Every cal
     Bool crying = Lacrima.IsCrying(akActor)
 
     If Lacrima.GetAPIVersion() >= 2
-        Lacrima.CryEx(akActor, 0.7, 20.0, 3, 1.0)  ; from 3 points per eye, with running mascara
-        Lacrima.SetMascara(akActor, 1.0)           ; running mascara for every cry of this actor
+        Lacrima.CryEx(akActor, 0.7, 20.0, 3, 1.0)  ; from 3 points per eye, with full running mascara
+        Lacrima.CryEx(akActor, 0.7, 20.0, 3)       ; the same, mascara left to the actor or the player
+        Lacrima.SetMascara(akActor, 1.0)           ; this actor wears mascara: every cry shows it
     EndIf
 
 Mod events, with the crying actor as the sender, so an expression mod can react to crying it did not start:

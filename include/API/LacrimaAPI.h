@@ -57,13 +57,15 @@ namespace RE
 // - CryEx (10100) is Cry with two more arguments, which hold until the next Cry or
 //   CryEx for the actor. streams: how many points along the lower lid this crying
 //   sheds from, 1 to 4; each tear picks one at random; 0 uses the player's setting,
-//   as Cry does. mascara: running mascara for this crying, 0.0-1.0; negative uses
-//   the actor's SetMascara, else the player's setting, as Cry does.
+//   as Cry does. mascara: running mascara for this crying, 0.0 (none) to 1.0 (full).
+//   Pass -1.0 to not decide it here: the actor's SetMascara value then applies, or
+//   the player's setting if the actor has none. Plain Cry works that way.
 // - SetMascara (10100): running mascara for this actor, 0.0-1.0. Each tear leaves a
 //   dark streak down its path that outlives the water and fades after a few minutes
-//   (the player sets how long). 0 = none; a negative value goes back to the player's
-//   setting, which is 0 unless they changed it. It belongs to the actor, not to one
-//   cry, and lasts for the session: it does not survive loading a save.
+//   (the player sets how long). Every cry of the actor uses it, unless a CryEx call
+//   passes its own value. -1.0 clears it, so the player's setting applies again (no
+//   mascara unless they turned it on). It lasts for the session: it does not survive
+//   loading a save.
 // - Independently of any gesture, a crying actor's own hands take away the tears they
 //   touch, in any animation, unless the player turned that off.
 // - Lacrima sends the mod events Lacrima_CryStart (numArg = intensity) and

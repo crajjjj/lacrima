@@ -97,20 +97,26 @@ Bool  crying = Lacrima.IsCrying(akActor)
 Float left   = Lacrima.GetTimeLeft(akActor)   ; -1 = until stopped
 
 If Lacrima.GetAPIVersion() >= 2
-    Lacrima.CryEx(akActor, 0.7, 20.0, 3, 1.0) ; Cry from 3 points per eye, with running mascara
-                                              ; (0 streams = the setting; negative mascara = the actor's or the setting)
-    Lacrima.SetMascara(akActor, 1.0)          ; running mascara for every cry of this actor (negative = the setting)
+    Lacrima.CryEx(akActor, 0.7, 20.0, 3, 1.0) ; cry from 3 points per eye, with full running mascara
+    Lacrima.CryEx(akActor, 0.7, 20.0, 3)      ; the same, mascara left to the actor or the player
+    Lacrima.SetMascara(akActor, 1.0)          ; this actor wears mascara: every cry shows it
+    Lacrima.SetMascara(akActor, -1.0)         ; forget that: the player's setting again
 EndIf
 ```
 
 - `Cry` on an actor who already cries replaces the intensity and the time left.
 - `CryEx` (API version 2) is `Cry` with two optional arguments, which hold until the
-  actor's next `Cry` or `CryEx`: how many points per eye the tears start from (1 to 4;
-  0 uses the player's setting) and running mascara for this crying (0.0 to 1.0;
-  negative uses the actor's `SetMascara`, else the player's setting).
-- `SetMascara` (API version 2) sets running mascara for every cry of one actor, unless a
-  `CryEx` call gives its own. So the order is: the call, then the actor, then the
-  player's setting.
+  actor's next `Cry` or `CryEx`:
+  - streams: how many points per eye the tears start from, 1 to 4. 0, the default,
+    uses the player's setting.
+  - mascara: running mascara for this crying, from 0.0 (none) to 1.0 (full). -1.0,
+    the default, means "not decided here": the actor's `SetMascara` value applies, or
+    the player's setting if the actor has none. Plain `Cry` works that way.
+- `SetMascara` (API version 2) says how much running mascara an actor wears, 0.0 to
+  1.0; every cry of that actor shows it, unless a `CryEx` call passes its own value.
+  -1.0 clears it, so the player's setting applies again.
+- Which mascara a cry gets: the `CryEx` value if it gave one, else the actor's
+  `SetMascara` value, else the player's setting (off unless they turned it on).
 - `WipeTears` also takes off running mascara; `WipeTearsWithHand` smears it.
 - Crying and `SetMascara` do not survive loading a save, and no `Lacrima_CryStop` is
   sent then: forget the actors you track on load, or ask `IsCrying` again.

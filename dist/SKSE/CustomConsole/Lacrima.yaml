@@ -14,7 +14,7 @@ help: Lacrima tears test harness
 subs:
   - name: cry
     func: Cry
-    help: Make the target cry (seconds 0 = until stopped; streams 0 = the setting; mascara -1 = the actor's or the setting)
+    help: Make the target cry (seconds 0 = until stopped; streams 0 = the setting; mascara -1 = not set here)
     args:
       - name: intensity
         type: float
@@ -31,7 +31,7 @@ subs:
       - name: mascara
         type: float
         default: -1
-        help: Running mascara for this crying, 0 to 1; -1 uses the actor's or the setting
+        help: Running mascara for this crying, 0 none to 1 full; -1 leaves it to the actor's or the player's setting
   - name: stop
     func: Stop
     help: Stop crying; the tears on the face dry up (wipe 1 removes them at once)
@@ -97,7 +97,7 @@ subs:
         help: 1 world space, 0 head bone
   - name: mascara
     func: Mascara
-    help: Running mascara on the target (0 none, up to 1; -1 = the setting)
+    help: The target wears running mascara (0 none, up to 1 full; -1 forgets it, so the player's setting applies)
     args:
       - name: strength
         type: float
