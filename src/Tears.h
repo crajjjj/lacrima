@@ -156,9 +156,10 @@ namespace Lacrima
 		};
 
 		// Running mascara: a point of the dark streak a tear leaves on the skin, in head
-		// space, laid where the tear left a drop of its trail and sunk a little into the
-		// skin so only a flat cap shows. It outlives the water and fades; a hand drags
-		// it along the skin (a smear: wider, gone sooner).
+		// space, laid where the tear left a drop of its trail (and every kStainSpacing
+		// along the skin between drops), drawn as a flat ribbon lying just above the
+		// skin. It outlives the water and fades; a hand drags it along the skin (a
+		// smear: wider, gone sooner).
 		struct Stain
 		{
 			Fluid::Vec3   position;

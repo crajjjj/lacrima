@@ -65,9 +65,9 @@ namespace Lacrima
 		float gestureWait{ 3.5f };
 
 		bool showDucts{ false };
-		bool mountWorld{ false };
-		int  faceForward{ 0 };  // [debug] face_forward: 0 from the meshes, 1 / -1 forced
-		int  eyesSpace{ 0 };    // [debug] eyes_space: 0 the eyes mesh's own skin transform, 1 the face's, 2 none  // false: tears under the head bone, carried by the engine in the same frame; true: under the cell node in world space (a frame behind a turning head)
+		bool mountWorld{ false };  // false: tears under the head bone, carried by the engine in the same frame; true: under the cell node in world space (a frame behind a turning head)
+		int  faceForward{ 0 };     // [debug] face_forward: 0 from the meshes, 1 / -1 forced
+		int  eyesSpace{ 0 };       // [debug] eyes_space: 0 the eyes mesh's own skin transform, 1 the face's, 2 none
 
 		static std::unique_lock<std::recursive_mutex> Lock();
 		static Settings&                              Get();

@@ -57,6 +57,15 @@ give off a little light of their own, which the default water look does. Set Loo
 style to 1 (plain: no glow, no reflection), and lower Opacity if they still look
 milky. Style 2 adds refraction, so the scene behind bends through the water.
 
+**Tears start in the wrong place?** (By the ears, say.) Lacrima reads the eyes and
+face meshes of the head to find the lower lids, and a head built differently can be
+read wrongly. Two settings on the Test page correct it: Face forward (`face_forward`,
+0 decides from the meshes, 1 or -1 forces which way the face looks; try the value
+`tears status` does not show) and Eyes mesh space (`eyes_space`, try 1, then 2, if the
+tears start far from the eyes). Both apply at once. `tears status` prints what was
+read, where each eye was measured and which way the face was taken to look; please
+paste that line in a report, with the head and eye mods you use.
+
 Variety (Tears page) sets how much one tear differs from the next: where on the lid it
 starts, how big it is, and whether another follows right behind. At 0 every tear runs
 the same way.

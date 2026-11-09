@@ -625,6 +625,12 @@ namespace Lacrima::Face
 			for (auto& perEye : a_head.duct) {
 				perEye.fill(kNone);
 			}
+			for (auto& perEye : a_head.lid) {
+				for (auto& row : perEye) {
+					row.fill(kNone);
+				}
+			}
+			a_head.lids = {};
 			a_head.ok = false;
 			a_head.faceName.clear();
 			a_head.eyesName.clear();
