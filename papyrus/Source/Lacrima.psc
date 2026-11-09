@@ -43,17 +43,19 @@ Function WipeTearsWithHand(Actor akActor, Idle akIdle = None) global native
 
 ; API version 2.
 
-; Cry with one more argument: aiStreams, how many points along the lower lid this
-; crying sheds from, 1 to 4; each tear picks one at random, so several streaks form
-; over time. 0 uses the player's setting, as Cry does. It holds until the next Cry
-; or CryEx for the actor.
-Function CryEx(Actor akActor, Float afIntensity = 0.6, Float afSeconds = 20.0, Int aiStreams = 0) global native
+; Cry with two more arguments, which hold until the next Cry or CryEx for the actor.
+; aiStreams: how many points along the lower lid this crying sheds from, 1 to 4;
+; each tear picks one at random, so several streaks form over time; 0 uses the
+; player's setting, as Cry does. afMascara: running mascara for this crying, 0.0 to
+; 1.0; a negative value uses the actor's SetMascara, else the player's setting, as
+; Cry does.
+Function CryEx(Actor akActor, Float afIntensity = 0.6, Float afSeconds = 20.0, Int aiStreams = 0, Float afMascara = -1.0) global native
 
 ; Running mascara for this actor, 0.0 to 1.0: each tear leaves a dark streak down
 ; its path that outlives the water and fades after a few minutes. 0.0 is none; a
 ; negative value goes back to the player's setting (0.0 unless they changed it).
-; It belongs to the actor rather than to one cry, since the streaks outlive the
-; crying; it lasts for this session, not past loading a save.
+; It belongs to the actor, so every cry uses it unless the CryEx call gives its own;
+; it lasts for this session, not past loading a save.
 Function SetMascara(Actor akActor, Float afStrength) global native
 
 Bool Function IsCrying(Actor akActor) global native

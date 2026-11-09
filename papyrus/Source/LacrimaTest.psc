@@ -29,18 +29,21 @@ Bool Function Loaded() global
 	Return Lacrima.GetAPIVersion() > 0
 EndFunction
 
-; Params in YAML order: intensity, seconds, streams
-String Function Cry(Float intensity, Float seconds, Int streams) global
+; Params in YAML order: intensity, seconds, streams, mascara
+String Function Cry(Float intensity, Float seconds, Int streams, Float mascara) global
 	If !Loaded()
 		Return "Lacrima.dll is not loaded."
 	EndIf
 	If !Lacrima.IsEnabled()
 		Return "Lacrima is off; turn it on with: tears enable 1"
 	EndIf
-	Lacrima.CryEx(Target(), intensity, seconds, streams)
+	Lacrima.CryEx(Target(), intensity, seconds, streams, mascara)
 	String from = ""
 	If streams > 0
 		from = ", from " + streams + " point(s) per eye"
+	EndIf
+	If mascara >= 0.0
+		from += ", mascara " + mascara
 	EndIf
 	If seconds > 0.0
 		Return Who() + " cries at intensity " + intensity + " for " + seconds + " s" + from + "."

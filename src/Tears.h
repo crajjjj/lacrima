@@ -26,8 +26,10 @@ namespace Lacrima
 		};
 
 		// a_streams: how many points along the lower lid this crying sheds from, 1 to 4;
-		// 0 uses the setting. It lasts until the next Cry for the actor.
-		void Cry(RE::ActorHandle a_actor, float a_intensity, float a_seconds, int a_streams = 0);
+		// 0 uses the setting. a_mascara: running mascara for this crying, 0 to 1;
+		// negative uses the actor's SetMascara, else the setting. Both last until the
+		// next Cry for the actor.
+		void Cry(RE::ActorHandle a_actor, float a_intensity, float a_seconds, int a_streams = 0, float a_mascara = -1.0f);
 		void Stop(RE::ActorHandle a_actor, bool a_wipe);
 		void Shed(RE::ActorHandle a_actor, int a_eye);
 		void Wipe(RE::ActorHandle a_actor);
@@ -72,7 +74,8 @@ namespace Lacrima
 			bool             wipe{ false };
 			float            radius{ 0.0f };
 			RE::TESIdleForm* idle{ nullptr };
-			int              streams{ 0 };  // kCry: 0 = the setting
+			int              streams{ 0 };      // kCry: 0 = the setting
+			float            mascara{ -1.0f };  // kCry: negative = the actor's SetMascara, else the setting
 		};
 
 		struct Blob
@@ -242,6 +245,7 @@ namespace Lacrima
 			bool                                       frozen{ false };
 			float                                      wipeArm{ 0.0f };
 			int                                        callStreams{ 0 }; // what the last Cry asked for; 0 = the setting
+			float                                      callMascara{ -1.0f };  // what the last Cry asked for; negative = the actor's or the setting
 			int                                        streams{ 1 };     // per eye, that or the setting, this frame
 			float                                      mascara{ 0.0f };  // the override or the setting, this frame
 			RE::NiPointer<RE::NiAVObject>              skeleton;   // the 3D the bones below came from
@@ -265,7 +269,7 @@ namespace Lacrima
 		void        Apply(const Request& a_request, const Settings& a_settings);
 		Crier*      CrierFor(RE::ActorHandle a_actor, const Settings& a_settings, bool a_create, bool a_evict = true);
 		static bool Enabled();
-		void        StartCrying(Crier& a_crier, float a_intensity, float a_seconds, int a_streams, const Settings& a_settings);
+		void        StartCrying(Crier& a_crier, float a_intensity, float a_seconds, int a_streams, float a_mascara, const Settings& a_settings);
 		void        StopCrying(Crier& a_crier);
 		void        SendEvent(const char* a_name, RE::ActorHandle a_actor, float a_value);
 

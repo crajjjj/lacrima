@@ -130,13 +130,14 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   (`DryFace`), smears it (wider, at most 35% of its lifetime left); `Clear` (WipeTears,
   StopCrying with wipe) removes it. An actor with streaks stays a crier (busy, not
   idle) until they fade. The streak mesh is optional: without it tears still show.
-- **Streams per call, mascara per actor.** `CryEx` (and `Cry`, with 0) carries a
-  stream count in the `kCry` request; `StartCrying` keeps it as `Crier::callStreams`
-  until the next cry, and `PlacementOf(settings, crier.streams)` gives Face that
-  count. Mascara is an attribute of the actor rather than of one cry (the streaks
-  outlive the crying), so it is a session override in `Tears::_overrides`, set
-  through the `kMascara` request (negative = the setting) and resolved into
-  `Crier::mascara` each frame; cleared on load with everything else.
+- **Per call, then per actor, then the setting.** `CryEx` (and `Cry`, with 0 / -1)
+  carries a stream count and a mascara strength in the `kCry` request; `StartCrying`
+  keeps them as `Crier::callStreams` / `Crier::callMascara` until the next cry, and
+  `PlacementOf(settings, crier.streams)` gives Face the count. Mascara also has a
+  per-actor session override, `SetMascara` (`Tears::_overrides`, the `kMascara`
+  request), since whether an actor wears makeup outlives any one cry. Each frame
+  `Crier::mascara` = the call's if not negative, else the actor's, else the setting;
+  overrides clear on load with everything else.
 - **Settings** (`Settings.cpp`): one field table drives the toml reader, the user-file
   writer and the menu pages. `Lacrima.toml` holds the shipped defaults;
   `Lacrima_User.toml` holds only what the player changed (written by the menu).

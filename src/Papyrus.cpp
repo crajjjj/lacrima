@@ -82,9 +82,9 @@ namespace Lacrima::Papyrus
 			return Tears::Get().Status(HandleOf(a_actor));
 		}
 
-		void CryEx(RE::StaticFunctionTag*, RE::Actor* a_actor, float a_intensity, float a_seconds, std::int32_t a_streams)
+		void CryEx(RE::StaticFunctionTag*, RE::Actor* a_actor, float a_intensity, float a_seconds, std::int32_t a_streams, float a_mascara)
 		{
-			Tears::Get().Cry(HandleOf(a_actor), a_intensity, a_seconds, a_streams);
+			Tears::Get().Cry(HandleOf(a_actor), a_intensity, a_seconds, a_streams, a_mascara);
 		}
 
 		void SetMascara(RE::StaticFunctionTag*, RE::Actor* a_actor, float a_strength)

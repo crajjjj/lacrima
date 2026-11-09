@@ -14,7 +14,7 @@ help: Lacrima tears test harness
 subs:
   - name: cry
     func: Cry
-    help: Make the target cry (seconds 0 = until stopped; streams 0 = the setting)
+    help: Make the target cry (seconds 0 = until stopped; streams 0 = the setting; mascara -1 = the actor's or the setting)
     args:
       - name: intensity
         type: float
@@ -28,6 +28,10 @@ subs:
         type: int
         default: 0
         help: Points per eye tears start from, 1 to 4; 0 uses the setting
+      - name: mascara
+        type: float
+        default: -1
+        help: Running mascara for this crying, 0 to 1; -1 uses the actor's or the setting
   - name: stop
     func: Stop
     help: Stop crying; the tears on the face dry up (wipe 1 removes them at once)

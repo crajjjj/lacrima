@@ -54,10 +54,11 @@ namespace RE
 //   and dries the face once a hand comes near the eyes, or after a few seconds if it
 //   never does. An idle that cannot play (the actor is busy) dries the face at once.
 //   Running mascara is smeared, not removed: wider, fainter, gone sooner.
-// - CryEx (10100) is Cry with one more argument: streams, how many points along the
-//   lower lid this crying sheds from, 1 to 4; each tear picks one at random. 0 uses
-//   the player's setting, as Cry does. It holds until the next Cry or CryEx for the
-//   actor.
+// - CryEx (10100) is Cry with two more arguments, which hold until the next Cry or
+//   CryEx for the actor. streams: how many points along the lower lid this crying
+//   sheds from, 1 to 4; each tear picks one at random; 0 uses the player's setting,
+//   as Cry does. mascara: running mascara for this crying, 0.0-1.0; negative uses
+//   the actor's SetMascara, else the player's setting, as Cry does.
 // - SetMascara (10100): running mascara for this actor, 0.0-1.0. Each tear leaves a
 //   dark streak down its path that outlives the water and fades after a few minutes
 //   (the player sets how long). 0 = none; a negative value goes back to the player's
@@ -92,6 +93,6 @@ void  Lacrima_Wipe(RE::Actor* actor);
 void  Lacrima_WipeTearsWithHand(RE::Actor* actor, RE::TESIdleForm* idle);
 
 // 10100
-void Lacrima_CryEx(RE::Actor* actor, float intensity, float seconds, std::int32_t streams);
+void Lacrima_CryEx(RE::Actor* actor, float intensity, float seconds, std::int32_t streams, float mascara);
 void Lacrima_SetMascara(RE::Actor* actor, float strength);
 }

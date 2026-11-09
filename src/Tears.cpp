@@ -215,7 +215,7 @@ namespace Lacrima
 
 	// ------------------------------------------------------------------ requests
 
-	void Tears::Cry(RE::ActorHandle a_actor, float a_intensity, float a_seconds, int a_streams)
+	void Tears::Cry(RE::ActorHandle a_actor, float a_intensity, float a_seconds, int a_streams, float a_mascara)
 	{
 		if (!a_actor) {
 			return;
@@ -227,6 +227,7 @@ namespace Lacrima
 		}
 		Request request{ Request::Kind::kCry, a_actor, intensity, seconds };
 		request.streams = std::clamp(a_streams, 0, static_cast<int>(Face::kMaxStreams));
+		request.mascara = std::isfinite(a_mascara) ? std::min(a_mascara, 1.0f) : -1.0f;
 		std::scoped_lock guard(_lock);
 		_pending.push_back(request);
 		auto& state = _states[a_actor.native_handle()];
@@ -418,11 +419,12 @@ namespace Lacrima
 		return _criers.emplace(key, std::move(crier)).first->second.get();
 	}
 
-	void Tears::StartCrying(Crier& a_crier, float a_intensity, float a_seconds, int a_streams, const Settings& a_settings)
+	void Tears::StartCrying(Crier& a_crier, float a_intensity, float a_seconds, int a_streams, float a_mascara, const Settings& a_settings)
 	{
 		std::uniform_real_distribution<float> unit(0.0f, 1.0f);
 		const bool                            started = !a_crier.crying;
 		a_crier.callStreams = a_streams;
+		a_crier.callMascara = a_mascara;
 		a_crier.target = a_intensity;
 		a_crier.forever = a_seconds <= 0.0f;
 		a_crier.timeLeft = a_crier.forever ? -1.0f : a_seconds;
@@ -460,7 +462,7 @@ namespace Lacrima
 					StopCrying(*crier);
 				}
 			} else if (auto* crier = CrierFor(a_request.actor, a_settings, true)) {
-				StartCrying(*crier, a_request.intensity, a_request.seconds, a_request.streams, a_settings);
+				StartCrying(*crier, a_request.intensity, a_request.seconds, a_request.streams, a_request.mascara, a_settings);
 			}
 			break;
 		case Request::Kind::kStop:
@@ -535,7 +537,7 @@ namespace Lacrima
 						continue;
 					}
 					if (auto* crier = CrierFor(handle, a_settings, true, false)) {
-						StartCrying(*crier, a_request.intensity, a_request.seconds, 0, a_settings);
+						StartCrying(*crier, a_request.intensity, a_request.seconds, 0, -1.0f, a_settings);
 						++started;
 					} else {
 						++skipped;
@@ -649,7 +651,9 @@ namespace Lacrima
 			{
 				const auto over = OverrideOf(it->first);
 				crier.streams = std::clamp(crier.callStreams > 0 ? crier.callStreams : settings.streams, 1, static_cast<int>(Face::kMaxStreams));
-				crier.mascara = std::clamp(over.mascara >= 0.0f ? over.mascara : settings.mascara, 0.0f, 1.0f);
+				// this cry's own mascara, else the actor's, else the player's setting
+				const float mascara = crier.callMascara >= 0.0f ? crier.callMascara : (over.mascara >= 0.0f ? over.mascara : settings.mascara);
+				crier.mascara = std::clamp(mascara, 0.0f, 1.0f);
 			}
 			const auto placement = PlacementOf(settings, crier.streams);
 			const float goal = crier.crying ? crier.target : 0.0f;

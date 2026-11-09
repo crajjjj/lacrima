@@ -62,7 +62,7 @@ or on the player when none is selected.
 
 | Command | What it does |
 |---|---|
-| `tears cry 0.7 30` | Cry at intensity 0.7 for 30 seconds (0 seconds = until stopped); `tears cry 0.7 30 3` sheds from 3 points per eye |
+| `tears cry 0.7 30` | Cry at intensity 0.7 for 30 seconds (0 seconds = until stopped); `tears cry 0.7 30 3 1` sheds from 3 points per eye with running mascara |
 | `tears stop` | Stop crying; `tears stop 1` also wipes the face |
 | `tears tear` | Shed a single tear (`tears tear 0` left eye, `1` right, `2` both) |
 | `tears wipe` / `tears wipeall` | Dry this face / every face, at once |
@@ -95,14 +95,15 @@ Bool  crying = Lacrima.IsCrying(akActor)
 Float left   = Lacrima.GetTimeLeft(akActor)   ; -1 = until stopped
 
 If Lacrima.GetAPIVersion() >= 2
-    Lacrima.CryEx(akActor, 0.7, 20.0, 3)      ; Cry, shedding from 3 points per eye (0 = the setting)
-    Lacrima.SetMascara(akActor, 1.0)          ; running mascara for this actor (0 = none, negative = the setting)
+    Lacrima.CryEx(akActor, 0.7, 20.0, 3, 1.0) ; Cry from 3 points per eye, with running mascara
+                                              ; (0 streams = the setting; negative mascara = the actor's or the setting)
+    Lacrima.SetMascara(akActor, 1.0)          ; running mascara for every cry of this actor (negative = the setting)
 EndIf
 ```
 
 `Cry` on an actor who already cries replaces the intensity and the time left. Crying
 does not survive loading a save, and no `Lacrima_CryStop` is sent then; nor does
-`SetMascara`. `CryEx`'s stream count lasts until the actor's next `Cry` or `CryEx`.
+`SetMascara`. `CryEx`'s streams and mascara last until the actor's next `Cry` or `CryEx`.
 `WipeTears` also takes off running mascara, while
 `WipeTearsWithHand` smears it. Calling a global function of a script that is not
 installed only logs an error, so the `GetAPIVersion` check is all an optional
