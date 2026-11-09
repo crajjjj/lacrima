@@ -43,7 +43,9 @@ namespace Lacrima
 		void SetMascara(RE::ActorHandle a_actor, float a_strength);
 
 		State       Query(RE::ActorHandle a_actor) const;
-		std::string Status(RE::ActorHandle a_actor);
+		// a_log also writes the line to Lacrima.log: the console command does, the
+		// menu, which asks every frame, does not.
+		std::string Status(RE::ActorHandle a_actor, bool a_log = false);
 		std::size_t CryingCount() const;
 
 		void Update(float a_delta, bool a_paused);

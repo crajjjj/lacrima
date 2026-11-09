@@ -79,7 +79,7 @@ namespace Lacrima::Papyrus
 
 		RE::BSFixedString GetStatus(RE::StaticFunctionTag*, RE::Actor* a_actor)
 		{
-			return Tears::Get().Status(HandleOf(a_actor));
+			return Tears::Get().Status(HandleOf(a_actor), true);
 		}
 
 		void CryEx(RE::StaticFunctionTag*, RE::Actor* a_actor, float a_intensity, float a_seconds, std::int32_t a_streams, float a_mascara)

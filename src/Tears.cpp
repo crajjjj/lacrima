@@ -349,7 +349,7 @@ namespace Lacrima
 		return static_cast<std::size_t>(std::ranges::count_if(_states, [](const auto& a_entry) { return a_entry.second.crying; }));
 	}
 
-	std::string Tears::Status(RE::ActorHandle a_actor)
+	std::string Tears::Status(RE::ActorHandle a_actor, bool a_log)
 	{
 		if (!a_actor) {
 			return "No actor.";
@@ -361,8 +361,11 @@ namespace Lacrima
 			return "Reading this actor; run the command again in a moment.";
 		}
 		// The same line goes to Lacrima.log, so a report can carry it as text instead
-		// of a screenshot of the console. Only on the command, so it cannot spam.
-		logger::info("tears status: {}", it->second);
+		// of a screenshot of the console. Only on the command: the menu's Test page
+		// asks every frame (0.2.2 logged a line per frame while it was open).
+		if (a_log) {
+			logger::info("tears status: {}", it->second);
+		}
 		return it->second;
 	}
 
