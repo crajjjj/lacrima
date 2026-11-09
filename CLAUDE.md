@@ -126,16 +126,24 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   the last 30% of it. They are drawn with `meshes\Lacrima\tear_stain.nif` (the trail
   rope's geometry and RopeNN bones, a matte near-black material, its own pool
   `stainRopes` / `_spareStains`, at most 16 streaks + the smudge and 160 points per
-  cheek, oldest run dropped first), **sunk into the skin** (`OntoSkin` / `OntoFace`
-  with a depth from `SinkOf`): the face writes depth and the mark does not, so only a
-  flat cap shows, which reads as pigment rather than a tube. The smudge is one rope
-  along Face's `lids` (6 points under the lashes, `kLidBelow`), fullest in the middle;
-  a streak starts in it and tapers down the cheek. **Smearing** (`SmearStains`): a hand
+  cheek, oldest run dropped first), as **flat ribbons lying 0.3 mm above the skin**:
+  the stain mesh's cross-section is squashed to 15% along z, and `BendFlat` poses each
+  bone with y along the path and z along the skin's normal (kept per stain, the lid's
+  for the smudge). Sinking a round rope into the skin was tried first and failed: the
+  visible cap depended on the view angle (marks came and went as the head turned) and
+  the straight rope between points dipped under the convex cheek (dabs instead of a
+  streak). For the same reason `LayStain` lays intermediate points every
+  `kStainSpacing` along the skin (`OntoSkin`) from the run's previous point, or the
+  tear's `Cheek::seat` for the first, so no segment is long enough to leave the
+  surface; stain `order` is the particle's x16 so they sort between deposits. The
+  smudge is one ribbon along Face's `lids` (6 points under the lashes, `kLidBelow`,
+  on the skin below the lid margin, which curls under), fullest in the middle; a
+  streak starts in it and tapers down the cheek. **Smearing** (`SmearStains`): a hand
   capsule over a mark drags it along the skin the way the hand moves (its velocity in
   the skin plane; a resting hand drags outward, `Cheek::outward` = away from the other
   eye), `kSmearDrag` per wipe and `kSmearMax` in all at `kSmearSpeed`, widening to
-  `kSmearWidth` and sinking deeper (`kSmearSink`) so it gets flatter, with at most 35%
-  of its lifetime left; the hand-wipe gesture (`DryFace`) smears everything outward.
+  `kSmearWidth`, with at most 35% of its lifetime left; the hand-wipe gesture
+  (`DryFace`) smears everything outward.
   Dragging marks are re-projected onto the posed face each frame and `Bounds` poses
   skin under them. `Clear` (WipeTears, StopCrying with wipe) removes it all. An actor
   with marks stays a crier (busy, not idle) until they fade. The mark mesh is optional:
