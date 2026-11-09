@@ -8,7 +8,8 @@ WHAT IT DOES
 
 - Tears on the real face. Each eye runs a small fluid simulation on the face mesh as the game has posed it this frame, so tears follow the face's shape as the head turns and the expression changes.
 - How a tear behaves. It wells up on the lower lid and clings there for a moment, then runs down as a small bead and leaves a thin wet streak that dries after a while. A drop that reaches the underside of the chin hangs there briefly before it falls.
-- Several streams per eye. Tears start from up to four points along the lower lid, from the inner corner beside the nose to the outer corner, so trails build up over time.
+- Several streams per eye. Tears start from up to four points along the lower lid, from the inner corner beside the nose to the outer corner, each a little to one side of the last, so trails build up over time instead of retracing one line.
+- Running mascara (optional). Each tear leaves a dark streak down the exact path it ran, which builds up as the actor keeps crying, outlives the water and fades after a few minutes. A hand wiping the face smears it. Off by default; other mods can turn it on per actor.
 - Wet eyes. While an actor cries, their eyes glisten.
 - Hands wipe tears. A crying actor's own fingers and palms take away the tears they touch, in any animation that brings a hand to the face. There is also a wipe gesture you can trigger (the vanilla brow wipe, or any idle you pass in).
 - Player and NPCs alike, on vanilla and high-poly heads.
@@ -51,13 +52,15 @@ SETTINGS
 
 With SKSE Menu Framework, the Lacrima pages change everything live and save your changes when the menu closes:
 
-- Tears - how often and how heavily the eyes shed, where tears start, how many streams per eye, how many actors may cry at once.
-- Look - tear size, trail width, opacity, highlight, reflection, glow, wet eyes, how long a trail stays wet.
+- Tears - how often and how heavily the eyes shed, where tears start, how many streams per eye, how much one tear differs from the next, how many actors may cry at once.
+- Look - the look style, tear size, trail width, opacity, highlight, reflection, glow, wet eyes, how long a trail stays wet, running mascara.
 - Physics - how firmly tears stick, how fast they run, how far a tear runs before it stops, how long a drop clings under the chin.
 - Wipe - hands taking tears away, the wipe gesture.
 - Test - make the player cry, shed one tear, stop or wipe; make nearby actors cry; show where tears start; reset everything to the shipped defaults.
 
 Without the menu, put the values you want to change into Data\SKSE\Plugins\Lacrima_User.toml, using the sections and keys of Lacrima.toml, which lists every setting with its default.
+
+Tears look white and solid? Some ENB presets amplify materials that reflect or give off a little light of their own, which the default water look does. Set Look style to 1 (plain), and lower Opacity if they still look milky.
 
 
 CONSOLE (ConsoleUtil Extended)
@@ -72,6 +75,8 @@ Commands act on the actor selected in the console, or on the player when none is
 - tears nearby 0.7 30 1500 - every actor within 1500 units of the player cries
 - tears status - what Lacrima found on the head and what the tears are doing
 - tears ducts 1 - mark where tears start (0 to hide)
+- tears streams 3 - this actor's tears start from 3 points per eye (0 = the setting)
+- tears mascara 1 - running mascara on this actor (0 none, -1 = the setting)
 - tears enable 0 - turn Lacrima off for this session (1 on)
 
 
@@ -89,6 +94,11 @@ Lacrima does nothing on its own; it is meant to be driven by your mod. Every cal
     Lacrima.WipeTears(akActor)
     Lacrima.WipeTearsWithHand(akActor)      ; optional second argument: your own Idle
     Bool crying = Lacrima.IsCrying(akActor)
+
+    If Lacrima.GetAPIVersion() >= 2         ; per-actor overrides, for the session
+        Lacrima.SetStreams(akActor, 3)      ; tears from 3 points per eye (0 = the setting)
+        Lacrima.SetMascara(akActor, 1.0)    ; running mascara (0 = none, negative = the setting)
+    EndIf
 
 Mod events, with the crying actor as the sender, so an expression mod can react to crying it did not start:
 - Lacrima_CryStart (numArg = intensity)
