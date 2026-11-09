@@ -2,7 +2,8 @@
 
 Procedural tears for Skyrim SE/AE. Tears well up at the lower lid, cling, then run
 down the face and follow its shape as the head moves and the expression changes. They
-leave a wet trail that dries up, and a drop that reaches the chin falls off.
+leave a wet trail that dries up, and a drop that reaches the chin clings for a moment,
+then falls off. Optionally, each tear leaves a streak of running mascara behind.
 
 Lacrima is a framework: it makes an actor cry when another mod, a script, the console
 or its own settings menu asks it to. On its own it does nothing in game.
@@ -24,15 +25,16 @@ nothing. The particles are drawn as beads, as wet trails, and as drops that fall
 the face. Actors far from the camera keep their tears paused until they come closer.
 
 Tears start just below each eye, from one or more points along the lower lid
-(`streams`), anywhere from the inner corner beside the nose to the outer corner. A tear
-wells on the lid, runs as a small bead and leaves a thin wet streak behind it; a drop
-that reaches the underside of the chin clings there for a moment before it falls. While
-an actor cries, their eyes glisten.
+(`streams`), anywhere from the inner corner beside the nose to the outer corner, each a
+little to one side of the last, so trails build up instead of retracing one line. A
+tear wells on the lid, runs as a small bead and leaves a thin wet streak behind it; a
+drop that reaches the underside of the chin clings there for a moment before it falls.
+While an actor cries, their eyes glisten.
 
-Running mascara is optional (`mascara`, off by default, and settable per actor by other
-mods): each tear then leaves a dark streak down the exact path it ran. The streak builds
-up as the actor keeps crying, outlives the water and fades after a few minutes. A hand
-wiping the face smears it wider and fainter instead of taking it off.
+Running mascara is optional (`mascara`, off by default; other mods can turn it on per
+actor or per cry): each tear then leaves a dark streak down the exact path it ran. The
+streak builds up as the actor keeps crying, outlives the water and fades after a few
+minutes. A hand wiping the face smears it wider and fainter instead of taking it off.
 
 Hands take tears away. A crying actor's own fingers and palms absorb the tears they
 touch, in any animation that brings a hand to the face. `WipeTearsWithHand` plays a
@@ -101,13 +103,20 @@ If Lacrima.GetAPIVersion() >= 2
 EndIf
 ```
 
-`Cry` on an actor who already cries replaces the intensity and the time left. Crying
-does not survive loading a save, and no `Lacrima_CryStop` is sent then; nor does
-`SetMascara`. `CryEx`'s streams and mascara last until the actor's next `Cry` or `CryEx`.
-`WipeTears` also takes off running mascara, while
-`WipeTearsWithHand` smears it. Calling a global function of a script that is not
-installed only logs an error, so the `GetAPIVersion` check is all an optional
-integration needs.
+- `Cry` on an actor who already cries replaces the intensity and the time left.
+- `CryEx` (API version 2) is `Cry` with two optional arguments, which hold until the
+  actor's next `Cry` or `CryEx`: how many points per eye the tears start from (1 to 4;
+  0 uses the player's setting) and running mascara for this crying (0.0 to 1.0;
+  negative uses the actor's `SetMascara`, else the player's setting).
+- `SetMascara` (API version 2) sets running mascara for every cry of one actor, unless a
+  `CryEx` call gives its own. So the order is: the call, then the actor, then the
+  player's setting.
+- `WipeTears` also takes off running mascara; `WipeTearsWithHand` smears it.
+- Crying and `SetMascara` do not survive loading a save, and no `Lacrima_CryStop` is
+  sent then: forget the actors you track on load, or ask `IsCrying` again.
+- Calling a global function of a script that is not installed only logs an error, so
+  the `GetAPIVersion` check is all an optional integration needs; check for 2 before
+  calling `CryEx` or `SetMascara`.
 
 Lacrima sends `Lacrima_CryStart` (numArg = intensity) and `Lacrima_CryStop` mod events,
 with the actor as the sender, so an expression mod can react to crying it did not start:
@@ -124,7 +133,17 @@ EndEvent
 
 `include/API/LacrimaAPI.h` declares the same calls as C exports of `Lacrima.dll`.
 Resolve them at run time with `GetModuleHandleA("Lacrima.dll")` and `GetProcAddress`;
-there is nothing to link. Every call is safe from any thread.
+there is nothing to link. Every call is safe from any thread. `Lacrima_CryEx` and
+`Lacrima_SetMascara` arrived in 0.2.0 (interface version 10100): null-check the
+pointer, or gate on `Lacrima_GetInterfaceVersion()`.
+
+## Add-ons
+
+Two small optional add-ons make Lacrima react to SexLab on its own: an actor SexLab
+marks as a victim cries while being penetrated, and keeps crying, more quietly, for a
+while after it stops or the scene ends. One is for SexLab P+, which on 2.19 or newer
+follows P+'s live penetration detection; the other is for classic SexLab, which goes by
+the animation's tags. They are separate downloads on the mod page.
 
 ## Building
 
