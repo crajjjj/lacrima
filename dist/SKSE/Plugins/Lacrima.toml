@@ -29,7 +29,7 @@ style = 0              # 0 water (reflective, faint glow); 1 plain (no glow, no 
 refraction = 0.3       # in the refraction style, how strongly the scene behind bends through a tear
 size = 0.8             # drop size; real tears are about 1, bigger reads better from afar
 trail = 1.2            # width of the wet trail a tear leaves
-opacity = 0.3          # how much the water hides the skin; the rest shows through
+opacity = 0.2          # how much the water hides the skin; the rest shows through
 shine = 6.0            # strength of the wet highlight
 gloss = 300.0          # sharpness of the highlight
 reflection = 1.0       # how much of the surroundings the water reflects; 0 is matte
@@ -46,13 +46,13 @@ mascara_length = 3.0   # cm down the face a streak runs: 3 stops above the nose,
 mascara_lifetime = 300.0  # seconds a streak stays before it has faded away; a hand wipe smears it and it goes sooner
 
 [physics]
-stickiness = 2.0       # how firmly a tear sticks to the skin; a full bead still runs, the thin trail behind it stops
+stickiness = 1.5       # how firmly a tear sticks to the skin; a full bead still runs, the thin trail behind it stops
 friction = 30.0        # drag on a tear running over skin; higher runs slower (30: a bead runs about 2 cm a second)
 viscosity = 20.0       # how much a tear moves as one; water is low
 cohesion = 2.5         # how strongly a tear holds together as a bead
 stretch = 3.0          # how easily a running tear stretches into a trail
 trail_step = 2.5       # a running tear leaves a drop behind every this many cm, so a 4-drop tear runs about 7 cm and stops
-cling = 2.0            # seconds a drop hangs under the chin before it falls (a lone drop twice this, a heavy bead less)
+cling = 1.0            # seconds a drop hangs under the chin before it falls (a lone drop twice this, a heavy bead less)
 fall = 0.6             # seconds a drop that falls off the face stays visible
 
 [wipe]

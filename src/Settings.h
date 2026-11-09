@@ -34,7 +34,7 @@ namespace Lacrima
 		float refraction{ 0.3f };
 		float size{ 0.8f };
 		float trail{ 1.2f };
-		float opacity{ 0.3f };
+		float opacity{ 0.2f };
 		float shine{ 6.0f };
 		float gloss{ 300.0f };
 		float reflection{ 1.0f };
@@ -50,13 +50,13 @@ namespace Lacrima
 		float mascaraLength{ 3.0f };  // cm down the face a streak runs at most; 0 as far as the tear goes
 		float mascaraLifetime{ 300.0f };
 
-		float stickiness{ 2.0f };
+		float stickiness{ 1.5f };
 		float friction{ 30.0f };
 		float viscosity{ 20.0f };
 		float cohesion{ 2.5f };
 		float stretch{ 3.0f };
 		float trailStep{ 2.5f };
-		float cling{ 2.0f };
+		float cling{ 1.0f };
 		float fall{ 0.6f };
 
 		bool  hands{ true };
