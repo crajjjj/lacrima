@@ -87,14 +87,15 @@ namespace Lacrima
 		constexpr const char* kRopePath = "Lacrima\\tear_rope.nif";
 		constexpr const char* kStainPath = "Lacrima\\tear_stain.nif";
 
-		// Running mascara. A mark is a rope sunk into the skin so that only a flat cap
-		// shows above it (the face writes depth, the mark does not), which reads as
-		// pigment on the skin rather than a tube lying on it.
-		constexpr float       kStainRadius = 0.0022f;   // metres at width 1: a streak about 3.8 mm wide once sunk
-		constexpr float       kStainSink = 0.5f;        // share of the radius below the skin
-		constexpr float       kSmearSink = 0.8f;        // ... once fully smeared: wider still, and flatter
-		constexpr float       kSmudgeRadius = 0.0036f;  // the band under the lid: about 6.5 mm tall once sunk
-		constexpr float       kSmudgeSink = 0.45f;
+		// Running mascara. A mark is a flat ribbon lying just above the skin, its thin
+		// side along the skin's normal, so it shows from every angle. (Sinking a round
+		// rope into the skin instead made the marks come and go as the head turned, and
+		// dip out of sight between their points on the curve of the cheek.) Its points
+		// are laid densely along the skin for the same reason.
+		constexpr float       kStainRadius = 0.0020f;   // metres at width 1: a streak 4 mm wide
+		constexpr float       kStainLift = 0.0003f;     // how far above the skin a mark lies
+		constexpr float       kStainSpacing = 0.006f;   // metres between the points of a streak along the skin
+		constexpr float       kSmudgeRadius = 0.0036f;  // the band under the lid: 7 mm tall
 		constexpr float       kSmudgeFirst = 0.45f;     // how much the first tear leaves under the lid, at full mascara
 		constexpr float       kSmudgeMore = 0.2f;       // ... and each one after
 		constexpr float       kStainFade = 0.3f;        // the last share of its life a mark spends fading
@@ -106,7 +107,7 @@ namespace Lacrima
 		constexpr float       kFaceReach = 0.02f;       // metres: how far from the posed face a mark may be and still be put back on it
 		constexpr float       kSmearLife = 0.35f;       // a smeared mark keeps at most this share of its lifetime
 		constexpr std::size_t kMaxStainRuns = 16;       // streaks per cheek; the oldest goes past this
-		constexpr std::size_t kMaxStains = 160;         // points per cheek
+		constexpr std::size_t kMaxStains = 400;         // points per cheek
 		constexpr std::uint32_t kBeadOrder = 0x7FFFFFFF; // where the bead came to rest: the end of its streak
 
 		struct MeshNames
@@ -214,14 +215,6 @@ namespace Lacrima
 			}
 			const float height = Fluid::Dot(a_point - patch.position, patch.normal);
 			return a_point - patch.normal * (height + a_depth);
-		}
-
-		// How deep a mark of a_radius sinks: deeper the more it has been smeared, so a
-		// smear gets wider and flatter instead of standing up more.
-		float SinkOf(float a_radius, float a_widen, float a_sink)
-		{
-			const float t = std::clamp((a_widen - 1.0f) / (kSmearWidth - 1.0f), 0.0f, 1.0f);
-			return a_radius * a_widen * (a_sink + (kSmearSink - a_sink) * t);
 		}
 
 		std::string NameOf(RE::Actor* a_actor)
@@ -1121,6 +1114,8 @@ namespace Lacrima
 		const float lift = 0.6f * spacing;
 		const Vec3  side = Fluid::Normalize(Fluid::Cross(a_spot.normal, a_spot.down), { 1.0f, 0.0f, 0.0f });
 		const Vec3  seat = LidPoint(a_spot, a_cheek.startOffset) + a_spot.normal * lift;
+		a_cheek.seat = seat;
+		a_cheek.seatKnown = true;
 		auto&       particles = a_cheek.particles;
 		bool        born = false;
 		a_cheek.slot -= a_delta;
@@ -1464,15 +1459,45 @@ namespace Lacrima
 			std::erase_if(stains, [&](const Stain& a_stain) { return a_stain.run == oldest; });
 		}
 		Stain stain;
-		stain.position = OntoSkin(a_cheek.skin, a_particle.position, SinkOf(kStainRadius * a_settings.mascaraWidth, 1.0f, kStainSink), &stain.normal);
 		stain.lifetime = a_settings.mascaraLifetime;
 		stain.strength = a_mascara;
 		stain.run = a_particle.run;
-		stain.order = a_order;
 		stain.stream = a_particle.stream;
 		stain.start = a_particle.start;
 		stain.smeared = a_particle.wiped;
 		stain.life = stain.smeared ? stain.lifetime * kSmearLife : stain.lifetime;
+		// The streak follows the skin between where the tear last left a drop (or the
+		// lid it welled on) and here: points every kStainSpacing along the way, each
+		// put onto the skin, so the ribbon between them cannot dip under the cheek.
+		const Vec3    here = OntoSkin(a_cheek.skin, a_particle.position, -kStainLift, &stain.normal);
+		std::uint32_t fromOrder = 0;
+		Vec3          from{};
+		bool          known = false;
+		for (const auto& other : stains) {
+			if (other.run == a_particle.run && other.order != kBeadOrder && (!known || other.order > fromOrder)) {
+				fromOrder = other.order;
+				from = other.position;
+				known = true;
+			}
+		}
+		if (!known && a_cheek.seatKnown) {
+			from = a_cheek.seat;
+			known = true;
+		}
+		const std::uint32_t order = a_order == kBeadOrder ? kBeadOrder : a_order * 16;
+		if (known && order > fromOrder) {
+			const float       span = Fluid::Length(here - from);
+			const std::size_t between = std::min<std::size_t>(14, span > kStainSpacing ? static_cast<std::size_t>(span / kStainSpacing) : 0);
+			for (std::size_t k = 1; k <= between && stains.size() < kMaxStains; ++k) {
+				const float t = static_cast<float>(k) / static_cast<float>(between + 1);
+				Stain       step = stain;
+				step.position = OntoSkin(a_cheek.skin, from + (here - from) * t, -kStainLift, &step.normal);
+				step.order = fromOrder + std::max<std::uint32_t>(1, static_cast<std::uint32_t>(static_cast<float>(order - fromOrder) * t));
+				stains.push_back(step);
+			}
+		}
+		stain.position = here;
+		stain.order = order;
 		stains.push_back(stain);
 		a_cheek.dirty = true;
 	}
@@ -1608,7 +1633,7 @@ namespace Lacrima
 			stain.dragged += move;
 			stain.widen = std::min(kSmearWidth, 1.0f + (kSmearWidth - 1.0f) * stain.dragged / kSmearDrag);
 			if (a_view) {
-				stain.position = OntoFace(a_frame, *a_view, stain.position, SinkOf(kStainRadius, stain.widen, kStainSink), &stain.normal);
+				stain.position = OntoFace(a_frame, *a_view, stain.position, -kStainLift, &stain.normal);
 			}
 			a_cheek.dirty = true;
 		}
@@ -2233,24 +2258,26 @@ namespace Lacrima
 		}
 		std::size_t shown = 0;
 		auto&       path = _stainPath;
+		auto&       normals = _stainNormal;
 		auto&       radius = _stainRadius;
 
-		// The band under the lower lid: a rope along the lid points, fullest in the
+		// The band under the lower lid: a ribbon along the lid points, fullest in the
 		// middle, moved as a whole by smearing.
 		const auto& smudge = a_cheek.smudge;
 		if (smudge.strength > 0.0f && a_settings.mascaraSmudge > 0.0f) {
 			path.clear();
+			normals.clear();
 			radius.clear();
 			const float fade = std::clamp(smudge.life / std::max(smudge.lifetime * kStainFade, 1e-3f), 0.0f, 1.0f);
 			const float base = kSmudgeRadius * a_settings.mascaraWidth * a_settings.mascaraSmudge * (0.5f + 0.5f * smudge.strength) * smudge.widen * std::sqrt(fade);
-			const float sink = SinkOf(kSmudgeRadius * a_settings.mascaraWidth * a_settings.mascaraSmudge * (0.5f + 0.5f * smudge.strength), smudge.widen, kSmudgeSink);
 			for (std::size_t i = 0; i < a_lids.size(); ++i) {
 				const auto& lid = a_lids[i];
 				if (!lid) {
 					continue;
 				}
 				const float bell = 0.75f + 0.25f * std::sin(std::numbers::pi_v<float> * (static_cast<float>(i) + 0.5f) / static_cast<float>(a_lids.size()));
-				path.push_back(lid->point + smudge.offset - lid->normal * sink);
+				path.push_back(lid->point + smudge.offset + lid->normal * kStainLift);
+				normals.push_back(lid->normal);
 				radius.push_back(base * bell);
 			}
 			if (path.size() >= 2) {
@@ -2283,16 +2310,19 @@ namespace Lacrima
 				const Stain& first = stains[order[begin]];
 				const Stain& last = stains[order[end - 1]];
 				path.clear();
+				normals.clear();
 				radius.clear();
 				// the streak starts in the smudge under the lid, where the tear welled
 				const auto& origin = a_spots[std::min<std::size_t>(first.stream, Face::kMaxStreams - 1)];
 				if (origin) {
 					const Vec3 lid = LidPoint(*origin, first.start) + (first.smeared ? first.dragDir * first.dragged : Vec3{});
-					path.push_back(lid - origin->normal * SinkOf(width, first.widen, kStainSink));
+					path.push_back(lid + origin->normal * kStainLift);
+					normals.push_back(origin->normal);
 					radius.push_back(radiusOf(first));
 				}
 				for (std::size_t i = begin; i < end; ++i) {
 					path.push_back(stains[order[i]].position);
+					normals.push_back(stains[order[i]].normal);
 					radius.push_back(radiusOf(stains[order[i]]));
 				}
 				// a tear still running: its streak reaches the bead
@@ -2306,7 +2336,9 @@ namespace Lacrima
 						}
 					}
 					if (count > 0) {
-						path.push_back(OntoSkin(a_cheek.skin, sum * (1.0f / static_cast<float>(count)), SinkOf(width, 1.0f, kStainSink)));
+						Vec3 normal = last.normal;
+						path.push_back(OntoSkin(a_cheek.skin, sum * (1.0f / static_cast<float>(count)), -kStainLift, &normal));
+						normals.push_back(normal);
 						radius.push_back(radiusOf(last));
 					}
 				}
@@ -2329,11 +2361,13 @@ namespace Lacrima
 		a_cheek.shownStains = shown;
 	}
 
-	// Poses a mark along _stainPath with _stainRadius: a streak (a_taper) thins toward
-	// its end, a smudge keeps its width and rounds off at both ends.
+	// Poses a mark along _stainPath with _stainRadius, flat on the skin along
+	// _stainNormal: a streak (a_taper) thins toward its end, a smudge keeps its width
+	// and rounds off at both ends.
 	void Tears::PoseStain(const Mount& a_mount, Rope& a_rope, bool a_taper)
 	{
 		const auto&       path = _stainPath;
+		const auto&       pathNormals = _stainNormal;
 		const auto&       radius = _stainRadius;
 		const std::size_t count = path.size();
 		auto&             along = _ropeAlong;
@@ -2343,6 +2377,7 @@ namespace Lacrima
 		}
 		const float total = std::max(along.back(), 1e-6f);
 		std::array<RE::NiPoint3, kRopeBones> positions{};
+		std::array<RE::NiPoint3, kRopeBones> normals{};
 		std::array<float, kRopeBones>        radii{};
 		std::size_t                          segment = 0;
 		for (std::size_t b = 0; b < kRopeBones; ++b) {
@@ -2359,9 +2394,36 @@ namespace Lacrima
 				r *= a_taper ? 0.6f : 0.7f;
 			}
 			positions[b] = a_mount.Point(path[segment] + (path[next] - path[segment]) * u);
+			const Vec3 normal = Fluid::Normalize(pathNormals[segment] + (pathNormals[next] - pathNormals[segment]) * u, pathNormals[segment]);
+			normals[b] = ToPoint(a_mount.Direction(normal));
 			radii[b] = a_mount.Radius(r);
 		}
-		Bend(a_rope, positions, radii);
+		BendFlat(a_rope, positions, radii, normals);
+	}
+
+	// A ribbon: y along the path, z along the skin's normal (its thin side), x across.
+	void Tears::BendFlat(Rope& a_rope, const std::array<RE::NiPoint3, kRopeBones>& a_positions, const std::array<float, kRopeBones>& a_radii,
+		const std::array<RE::NiPoint3, kRopeBones>& a_normals)
+	{
+		for (std::size_t b = 0; b < kRopeBones; ++b) {
+			const std::size_t before = b > 0 ? b - 1 : b;
+			const std::size_t after = std::min(b + 1, kRopeBones - 1);
+			RE::NiPoint3      y = a_positions[after] - a_positions[before];
+			if (y.Unitize() <= 1e-6f) {
+				y = { 0.0f, 0.0f, -1.0f };
+			}
+			RE::NiPoint3 z = a_normals[b] - y * a_normals[b].Dot(y);
+			if (z.Unitize() <= 1e-6f) {
+				z = y.Cross(std::abs(y.x) < 0.9f ? RE::NiPoint3{ 1.0f, 0.0f, 0.0f } : RE::NiPoint3{ 0.0f, 1.0f, 0.0f });
+				z.Unitize();
+			}
+			RE::NiTransform world;
+			world.rotate = Rotation({ y.Cross(z), y, z });
+			world.translate = a_positions[b];
+			world.scale = std::max(a_radii[b], 0.0005f);
+			a_rope.bones[b]->local = world;
+		}
+		a_rope.root->SetAppCulled(false);
 	}
 
 	void Tears::Draw(Cheek& a_cheek, const Mount& a_mount, const Settings& a_settings, const Spots& a_spots, const LidSpots& a_lids, bool a_markers)

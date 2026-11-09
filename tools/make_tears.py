@@ -77,13 +77,17 @@ def blob_vertices(points):
     return result
 
 
-def rope_geometry():
+def rope_geometry(flat=1.0):
+    # flat < 1 squashes the cross-section along z into a ribbon (the mascara marks lie
+    # flat on the skin with their thin side along the skin's normal)
     verts = []
     for i in range(ROPE_BONES):
         for j in range(ROPE_SIDES + 1):
             a = 2 * math.pi * j / ROPE_SIDES
             c, s = math.cos(a), math.sin(a)
-            verts.append(((c, float(i), s), (j / ROPE_SIDES, i / (ROPE_BONES - 1)), (c, 0.0, s), (-s, 0.0, c), (0.0, 1.0, 0.0), i))
+            n = normalize((c, 0.0, s / flat)) if flat < 1.0 else (c, 0.0, s)
+            t = normalize((-s, 0.0, c * flat))
+            verts.append(((c, float(i), s * flat), (j / ROPE_SIDES, i / (ROPE_BONES - 1)), n, t, (0.0, 1.0, 0.0), i))
     caps = []
     for i, ny in ((0, -1.0), (ROPE_BONES - 1, 1.0)):
         caps.append(len(verts))
@@ -141,6 +145,7 @@ def build_rope():
 # opacity from [look] mascara_opacity.
 STAIN_COLOR = (20, 16, 18)
 STAIN_ALPHA = 0.5
+STAIN_FLAT = 0.15  # the ribbon's thickness as a share of its half-width
 
 
 def stain_shader(texset):
@@ -159,7 +164,7 @@ STAIN_TEXTURES = [TEXTURE_DIR + 'stain.dds', TEXTURE_DIR + 'stain_n.dds']
 
 
 def build_stain():
-    verts, tris = rope_geometry()
+    verts, tris = rope_geometry(STAIN_FLAT)
     length = ROPE_BONES - 1
     return build_skinned_nif('StainRoot', ['Rope%02d' % i for i in range(ROPE_BONES)], [(0.0, float(i), 0.0) for i in range(ROPE_BONES)],
                              'StainShape', verts, tris, (0.0, length / 2, 0.0, length / 2 + 1.0), 1.0, stain_shader, STAIN_TEXTURES,

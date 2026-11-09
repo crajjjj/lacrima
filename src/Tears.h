@@ -220,6 +220,8 @@ namespace Lacrima
 			std::size_t                    shownStains{ 0 };
 			Fluid::Vec3                    outward;  // along the lid, away from the nose, head space
 			bool                           outwardKnown{ false };
+			Fluid::Vec3                    seat;     // where the current tear wells, head space: a streak starts there
+			bool                           seatKnown{ false };
 			float                          opacity{ -1.0f };
 			float                          shine{ -1.0f };
 			float                          gloss{ -1.0f };
@@ -351,8 +353,11 @@ namespace Lacrima
 		void    ShadeStain(RE::NiAVObject* a_root, const Settings& a_settings);
 		void    Reshade(Cheek& a_cheek, const Settings& a_settings);
 		void    DrawStains(Cheek& a_cheek, const Mount& a_mount, const Settings& a_settings, const Spots& a_spots, const LidSpots& a_lids);
-		// Poses a_rope along _stainPath with _stainRadius; a_taper thins it toward the end.
+		// Poses a_rope as a ribbon along _stainPath with _stainRadius, lying on the skin
+		// along _stainNormal; a_taper thins it toward the end.
 		void    PoseStain(const Mount& a_mount, Rope& a_rope, bool a_taper);
+		void    BendFlat(Rope& a_rope, const std::array<RE::NiPoint3, kRopeBones>& a_positions, const std::array<float, kRopeBones>& a_radii,
+			   const std::array<RE::NiPoint3, kRopeBones>& a_normals);
 		void    PoseBlob(const Mount& a_mount, Blob& a_blob);
 		void    PoseDrop(const Mount& a_mount, Blob& a_blob, Fluid::Vec3 a_center, float a_radius, Fluid::Vec3 a_up, Fluid::Vec3 a_velocity = {},
 			   std::optional<Fluid::Vec3> a_contact = std::nullopt);
@@ -390,6 +395,7 @@ namespace Lacrima
 		std::vector<Rope>                                          _spareRopes;
 		std::vector<Rope>                                          _spareStains;
 		std::vector<Fluid::Vec3>                                   _stainPath;
+		std::vector<Fluid::Vec3>                                   _stainNormal;
 		std::vector<float>                                         _stainRadius;
 		std::vector<std::size_t>                                   _stainOrder;
 		// Draw and Expire scratch, kept across frames so a frame allocates nothing.
