@@ -8,11 +8,11 @@ WHAT IT DOES
 
 - Tears on the real face. Each eye runs a small fluid simulation on the face mesh as the game has posed it this frame, so tears follow the face's shape as the head turns and the expression changes.
 - How a tear behaves. It wells up on the lower lid and clings there for a moment, then runs down as a small bead and leaves a thin wet streak that dries after a while. A drop that reaches the underside of the chin hangs there briefly before it falls.
-- Several streams per eye. Tears start from up to four points along the lower lid, from the inner corner beside the nose to the outer corner, each a little to one side of the last, so trails build up over time instead of retracing one line.
-- Running mascara (optional). Each tear carries pigment out of the lashes: a dark band builds up under the lower lid, spreading over the skin under the eye as far as you set, and a streak runs down the exact path the tear took, both outliving the water and fading after a few minutes. A hand wiping the face smears them along the skin. Off by default; other mods can turn it on per actor or per cry.
+- Several streams per eye. Tears start from up to four points along the lower lid, from the inner corner beside the nose to the outer corner, each a little to one side of the last, so trails build up over time instead of retracing one line. No two tears are quite alike: size, start point and timing vary, and now and then a second tear follows right behind.
+- Running mascara (optional). Each tear carries pigment out of the lashes: a thin dark band builds up under the lower lid, into both corners of the eye, and spreads down over the skin where the tears ran, as far as you set. Each tear leaves a dark streak down the exact path it took, stopping at a length you choose (above the nose by default, each streak a little shorter or longer than the next). Both outlive the water and fade after a few minutes. A hand wiping the face smears them along the skin. Off by default; other mods can turn it on per actor or per cry.
 - Wet eyes. While an actor cries, their eyes glisten.
 - Hands wipe tears. A crying actor's own fingers and palms take away the tears they touch, in any animation that brings a hand to the face. There is also a wipe gesture you can trigger (the vanilla brow wipe, or any idle you pass in).
-- Player and NPCs alike, on vanilla and high-poly heads.
+- Player and NPCs alike, on vanilla, high-poly and UBE heads.
 - Light on performance. A tear at rest costs nothing until an expression, a tilt of the head or a hand stirs it, only the skin around the tears is read each frame, actors far from the camera keep their tears paused, and the number of actors crying at once is capped.
 
 
@@ -43,7 +43,7 @@ OPTIONAL ADD-ON: VICTIMS CRY IN SEXLAB SCENES
 Two optional files make Lacrima react to SexLab on its own; install the one for your SexLab alongside Lacrima. During a scene, an actor SexLab marks as a victim cries while being penetrated (vaginal, anal or oral) and keeps crying, more quietly, for a while after it stops or the scene ends. Partners who are not victims never cry from it.
 
 - "Lacrima add-on - SexLab P+ victims cry while penetrated", for SexLab P+. On P+ 2.19 or newer it follows P+'s live penetration detection, so the tears start and stop with what actually happens in the scene. On older P+ it goes by the stage tags.
-- "Lacrima add-on - classic SexLab victims cry in penetration scenes", for classic SexLab. Classic SexLab cannot tell when a penetration happens, so victims cry through a whole vaginal, anal or oral animation. A setting lets them start only from a later stage, to skip an animation's opening stages.
+- "Lacrima add-on - classic SexLab victims cry in penetration scenes", for classic SexLab. Classic SexLab cannot tell when a penetration happens, so victims cry through any stage of a vaginal, anal or oral animation, from a stage you choose on.
 - Both need Lacrima 0.1.1 or newer and PapyrusUtil, and add one small ESL-flagged plugin and two scripts.
 - Settings are in Data\SKSE\Plugins\StorageUtilData\ (LacrimaSexLab.json for P+, LacrimaSexLabClassic.json for classic): on/off, how hard victims cry, how long they keep crying afterwards, whether oral counts, and whether the player and NPCs take part. Edits apply from the next scene.
 
@@ -53,14 +53,16 @@ SETTINGS
 With SKSE Menu Framework, the Lacrima pages change everything live and save your changes when the menu closes:
 
 - Tears - how often and how heavily the eyes shed, where tears start, how many streams per eye, how much one tear differs from the next, how many actors may cry at once.
-- Look - the look style, tear size, trail width, opacity, highlight, reflection, glow, wet eyes, how long a trail stays wet, running mascara.
+- Look - the look style, tear size, trail width, opacity, highlight, reflection, glow, wet eyes, how long a trail stays wet; running mascara: on or off, how dark and wide, how much gathers under the lid and how far it spreads under the eye, how far a streak runs, how long it lasts.
 - Physics - how firmly tears stick, how fast they run, how far a tear runs before it stops, how long a drop clings under the chin.
 - Wipe - hands taking tears away, the wipe gesture.
-- Test - make the player cry, shed one tear, stop or wipe; make nearby actors cry; show where tears start; reset everything to the shipped defaults.
+- Test - make the player cry, shed one tear, stop or wipe; make nearby actors cry; show where tears start; a detailed log; two settings for a head Lacrima reads wrongly; reset everything to the shipped defaults.
 
 Without the menu, put the values you want to change into Data\SKSE\Plugins\Lacrima_User.toml, using the sections and keys of Lacrima.toml, which lists every setting with its default.
 
 Tears look white and solid? Some ENB presets amplify materials that reflect or give off a little light of their own, which the default water look does. Set Look style to 1 (plain), and lower Opacity if they still look milky.
+
+Tears start in the wrong place (by the ears, on the neck)? Lacrima reads the head's eye and face meshes to find the lower lids, and a head built differently can be read wrongly. On the Test page, Face forward set to the value "tears status" does not show will most likely fix it; Eyes mesh space (try 1, then 2) is the other. Please also report it: turn on Detailed log, make your character cry once, and post Documents\My Games\Skyrim Special Edition\SKSE\Lacrima.log with the names of your head and eye mods, so the next version handles that head on its own.
 
 
 CONSOLE (ConsoleUtil Extended)
@@ -71,9 +73,9 @@ Commands act on the actor selected in the console, or on the player when none is
 - tears stop - stop crying; "tears stop 1" also wipes the face
 - tears tear - shed a single tear
 - tears wipe / tears wipeall - dry this face / every face at once
-- tears wipehand - wipe the tears away with a hand gesture
+- tears wipehand - wipe the tears away with a hand gesture (smears mascara)
 - tears nearby 0.7 30 1500 - every actor within 1500 units of the player cries
-- tears status - what Lacrima found on the head and what the tears are doing
+- tears status - what Lacrima found on the head and what the tears are doing; also written to Lacrima.log
 - tears ducts 1 - mark where tears start (0 to hide)
 - tears mascara 1 - this actor wears running mascara (0 none; -1 forgets it, so the player's setting applies)
 - tears enable 0 - turn Lacrima off for this session (1 on)
@@ -90,14 +92,15 @@ Lacrima does nothing on its own; it is meant to be driven by your mod. Every cal
     Lacrima.StopCrying(akActor)             ; the tears on the face dry up
     Lacrima.StopCrying(akActor, true)       ; or vanish at once
     Lacrima.ShedTear(akActor)               ; one tear, also when not crying
-    Lacrima.WipeTears(akActor)
-    Lacrima.WipeTearsWithHand(akActor)      ; optional second argument: your own Idle
+    Lacrima.WipeTears(akActor)              ; also takes the mascara off
+    Lacrima.WipeTearsWithHand(akActor)      ; optional second argument: your own Idle; smears the mascara
     Bool crying = Lacrima.IsCrying(akActor)
 
     If Lacrima.GetAPIVersion() >= 2
         Lacrima.CryEx(akActor, 0.7, 20.0, 3, 1.0)  ; from 3 points per eye, with full running mascara
         Lacrima.CryEx(akActor, 0.7, 20.0, 3)       ; the same, mascara left to the actor or the player
         Lacrima.SetMascara(akActor, 1.0)           ; this actor wears mascara: every cry shows it
+        Lacrima.SetMascara(akActor, -1.0)          ; forget that: the player's setting again
     EndIf
 
 Mod events, with the crying actor as the sender, so an expression mod can react to crying it did not start:
@@ -106,7 +109,7 @@ Mod events, with the crying actor as the sender, so an expression mod can react 
 
 SKSE plugins get the same calls as C exports of Lacrima.dll (include/API/LacrimaAPI.h in the source); there is nothing to link, and every call is safe from any thread.
 
-Crying does not survive loading a save, and no Lacrima_CryStop is sent then.
+Crying and SetMascara do not survive loading a save, and no Lacrima_CryStop is sent then.
 
 
 SOURCE AND LICENSE
