@@ -64,7 +64,8 @@ read wrongly. Two settings on the Test page correct it: Face forward (`face_forw
 `tears status` does not show) and Eyes mesh space (`eyes_space`, try 1, then 2, if the
 tears start far from the eyes). Both apply at once. `tears status` prints what was
 read, where each eye was measured and which way the face was taken to look; please
-paste that line in a report, with the head and eye mods you use.
+paste that line in a report (it is also written to `Lacrima.log`), with the head and eye
+mods you use.
 
 Variety (Tears page) sets how much one tear differs from the next: where on the lid it
 starts, how big it is, and whether another follows right behind. At 0 every tear runs
@@ -83,7 +84,7 @@ or on the player when none is selected.
 | `tears wipe` / `tears wipeall` | Dry this face / every face, at once |
 | `tears wipehand` | Wipe the tears away with a hand gesture |
 | `tears nearby 0.7 30 1500` | Every loaded actor within 1500 units of the player cries |
-| `tears status` | What Lacrima found on the head and what the tears are doing |
+| `tears status` | What Lacrima found on the head and what the tears are doing; the line is also written to `Lacrima.log` |
 | `tears ducts 1` | Mark where tears start (`tears ducts 0` to hide) |
 | `tears mount 1` | Draw the tears in world space instead of under the head bone (debug; a frame behind a turning head; `tears mount 0` is the default) |
 | `tears mascara 1` | Running mascara on this actor (`0` none, `-1` = the setting) |

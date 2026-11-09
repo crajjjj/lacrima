@@ -59,7 +59,7 @@ subs:
     help: Remove the tears on every face
   - name: status
     func: Status
-    help: What Lacrima found on the target's head and what its tears are doing (run twice for a new target)
+    help: What Lacrima found on the target's head and what its tears are doing (run twice for a new target); also written to Lacrima.log
   - name: count
     func: Count
     help: How many actors are crying

@@ -355,7 +355,13 @@ namespace Lacrima
 		std::scoped_lock guard(_lock);
 		_wanted[a_actor.native_handle()] = std::chrono::steady_clock::now();
 		const auto it = _statuses.find(a_actor.native_handle());
-		return it != _statuses.end() ? it->second : "Reading this actor; run the command again in a moment.";
+		if (it == _statuses.end()) {
+			return "Reading this actor; run the command again in a moment.";
+		}
+		// The same line goes to Lacrima.log, so a report can carry it as text instead
+		// of a screenshot of the console. Only on the command, so it cannot spam.
+		logger::info("tears status: {}", it->second);
+		return it->second;
 	}
 
 	// ---------------------------------------------------------------- lifecycle
