@@ -129,7 +129,7 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   physics: they sit in head space, age for `[look] mascara_lifetime` and thin out over
   the last 30% of it. They are drawn with `meshes\Lacrima\tear_stain.nif` (the trail
   rope's geometry and RopeNN bones, a matte near-black material, its own pool
-  `stainRopes` / `_spareStains`, at most 16 streaks + the smudge and 160 points per
+  `stainRopes` / `_spareStains`, at most 16 streaks + 3 smudge ribbons and 160 points per
   cheek, oldest run dropped first), as **flat ribbons lying 0.3 mm above the skin**:
   the stain mesh's cross-section is squashed to 15% along z, and `BendFlat` poses each
   bone with y along the path and z along the skin's normal (kept per stain, the lid's
@@ -140,9 +140,15 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   `kStainSpacing` along the skin (`OntoSkin`) from the run's previous point, or the
   tear's `Cheek::seat` for the first, so no segment is long enough to leave the
   surface; stain `order` is the particle's x16 so they sort between deposits. The
-  smudge is one ribbon along Face's `lids` (6 points under the lashes, `kLidBelow`,
-  on the skin below the lid margin, which curls under), fullest in the middle; a
-  streak starts in it and tapers down the cheek. **Smearing** (`SmearStains`): a hand
+  smudge is a ribbon per row of Face's `lids` (`kLidRows` = 3 rows of 6 points, the
+  first just under the lashes at `kLidBelow`, on the skin below the lid margin, which
+  curls under, then `kLidRowStep` eye radii apart down to the top of the cheek). The
+  top row is the band; the rows below are tiled onto its lower edge, each as tall as
+  `[look] mascara_spread` exposes (0 the band only, 1 the whole area under the eye;
+  the first tear shows 60% of it, every tear more, a wipe widens it) and narrower
+  toward the corners (`corners` 0.75 / 0.45 / 0.15 of the middle), so the dark area
+  rounds off downward like a shadow under the eye. A streak starts in it and tapers
+  down the cheek. **Smearing** (`SmearStains`): a hand
   capsule over a mark drags it along the skin the way the hand moves (its velocity in
   the skin plane; a resting hand drags outward, `Cheek::outward` = away from the other
   eye), `kSmearDrag` per wipe and `kSmearMax` in all at `kSmearSpeed`, widening to

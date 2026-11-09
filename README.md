@@ -33,7 +33,9 @@ While an actor cries, their eyes glisten.
 
 Running mascara is optional (`mascara`, off by default; other mods can turn it on per
 actor or per cry). Each tear then carries pigment out of the lashes: a dark band builds
-up under the lower lid, and a streak runs down the exact path the tear took. Both
+up under the lower lid and spreads over the skin under the eye (`mascara_spread`: a
+band along the lid only, or the whole area under the eye), and a streak runs down the
+exact path the tear took. Both
 outlive the water and fade after a few minutes. A hand wiping the face smears them:
 it drags them along the skin the way it moves, wider and flatter, and they go sooner.
 

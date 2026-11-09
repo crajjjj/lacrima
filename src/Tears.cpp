@@ -758,9 +758,11 @@ namespace Lacrima
 							spots[e][s] = SpotOf(crier.frame, view->ducts[e][s]);
 						}
 					}
-					for (std::size_t i = 0; i < Face::kLidPoints; ++i) {
-						if (view->lids[e][i].valid) {
-							lids[e][i] = SpotOf(crier.frame, view->lids[e][i]);
+					for (std::size_t row = 0; row < Face::kLidRows; ++row) {
+						for (std::size_t i = 0; i < Face::kLidPoints; ++i) {
+							if (view->lids[e][row][i].valid) {
+								lids[e][row][i] = SpotOf(crier.frame, view->lids[e][row][i]);
+							}
 						}
 					}
 				}
@@ -1609,14 +1611,17 @@ namespace Lacrima
 				}
 			}
 			if (smudge.strength > 0.0f) {
-				for (const auto& lid : a_lids) {
-					if (!lid) {
-						continue;
-					}
-					if (const auto* capsule = touching(lid->point + smudge.offset, kSmudgeRadius * 2.0f)) {
-						SmearSmudge(smudge, direction(*capsule, lid->normal));
-						a_cheek.dirty = true;
-						break;
+				bool touched = false;
+				for (const auto& row : a_lids) {
+					for (const auto& lid : row) {
+						if (!lid || touched) {
+							continue;
+						}
+						if (const auto* capsule = touching(lid->point + smudge.offset, kSmudgeRadius * 2.0f)) {
+							SmearSmudge(smudge, direction(*capsule, lid->normal));
+							a_cheek.dirty = true;
+							touched = true;
+						}
 					}
 				}
 			}
@@ -2104,7 +2109,7 @@ namespace Lacrima
 				return &rope;
 			}
 		}
-		if (a_cheek.stainRopes.size() >= kMaxStainRuns + 1 || MeshesFor().stainFailed) {  // + 1: the smudge
+		if (a_cheek.stainRopes.size() >= kMaxStainRuns + Face::kLidRows || MeshesFor().stainFailed) {  // + kLidRows: the smudge, a ribbon per row
 			return nullptr;
 		}
 		Rope rope;
@@ -2261,29 +2266,60 @@ namespace Lacrima
 		auto&       normals = _stainNormal;
 		auto&       radius = _stainRadius;
 
-		// The band under the lower lid: a ribbon along the lid points, fullest in the
-		// middle, moved as a whole by smearing.
+		// The mascara under the eye: a ribbon along each row of lid points, tiled
+		// top to bottom so they read as one dark area. The top row is the band under
+		// the lashes; each row below it is as tall as the spread exposes (the setting,
+		// grown by every tear and by a wipe) and shorter toward the corners, so the
+		// area rounds off downward like a shadow under the eye. The whole moves as one
+		// when smeared.
 		const auto& smudge = a_cheek.smudge;
 		if (smudge.strength > 0.0f && a_settings.mascaraSmudge > 0.0f) {
-			path.clear();
-			normals.clear();
-			radius.clear();
-			const float fade = std::clamp(smudge.life / std::max(smudge.lifetime * kStainFade, 1e-3f), 0.0f, 1.0f);
-			const float base = kSmudgeRadius * a_settings.mascaraWidth * a_settings.mascaraSmudge * (0.5f + 0.5f * smudge.strength) * smudge.widen * std::sqrt(fade);
-			for (std::size_t i = 0; i < a_lids.size(); ++i) {
-				const auto& lid = a_lids[i];
-				if (!lid) {
-					continue;
+			const float fade = std::sqrt(std::clamp(smudge.life / std::max(smudge.lifetime * kStainFade, 1e-3f), 0.0f, 1.0f));
+			const float band = kSmudgeRadius * a_settings.mascaraWidth * a_settings.mascaraSmudge * (0.5f + 0.5f * smudge.strength) * smudge.widen * fade;
+			// rows below the band exposed, 0 to kLidRows - 1
+			const float spread = std::clamp(a_settings.mascaraSpread * (0.6f + 0.4f * smudge.strength) * smudge.widen, 0.0f, 1.0f) * static_cast<float>(Face::kLidRows - 1);
+			std::array<float, Face::kLidPoints> bottom{};  // where the row above ends: along the skin below the lid point above this one
+			for (std::size_t row = 0; row < Face::kLidRows; ++row) {
+				const float exposed = row == 0 ? 1.0f : std::clamp(spread - static_cast<float>(row - 1), 0.0f, 1.0f);
+				if (exposed <= 0.0f) {
+					break;
 				}
-				const float bell = 0.75f + 0.25f * std::sin(std::numbers::pi_v<float> * (static_cast<float>(i) + 0.5f) / static_cast<float>(a_lids.size()));
-				path.push_back(lid->point + smudge.offset + lid->normal * kStainLift);
-				normals.push_back(lid->normal);
-				radius.push_back(base * bell);
-			}
-			if (path.size() >= 2) {
-				if (Rope* rope = AcquireStainRope(a_cheek)) {
-					PoseStain(a_mount, *rope, false);
-					++shown;
+				path.clear();
+				normals.clear();
+				radius.clear();
+				// fullest in the middle; the lower the row, the more it narrows toward the corners
+				const float corners = 0.75f - 0.3f * static_cast<float>(row);
+				for (std::size_t i = 0; i < Face::kLidPoints; ++i) {
+					const auto& lid = a_lids[row][i];
+					if (!lid) {
+						continue;
+					}
+					const float bell = corners + (1.0f - corners) * std::sin(std::numbers::pi_v<float> * (static_cast<float>(i) + 0.5f) / static_cast<float>(Face::kLidPoints));
+					Vec3        center = lid->point;
+					float       half = band * bell;
+					if (row > 0) {
+						// from the row above's lower edge down, along the skin toward this row's point
+						const auto& above = a_lids[row - 1][i];
+						if (!above) {
+							continue;
+						}
+						const Vec3  down = Fluid::Normalize(lid->point - above->point, lid->down);
+						const float step = Fluid::Length(lid->point - above->point);
+						half = 0.5f * exposed * step * bell * fade;
+						center = above->point + down * (bottom[i] + half);
+						bottom[i] += 2.0f * half - step;  // now below this row's point
+					} else {
+						bottom[i] = half;
+					}
+					path.push_back(center + smudge.offset + lid->normal * kStainLift);
+					normals.push_back(lid->normal);
+					radius.push_back(half);
+				}
+				if (path.size() >= 2) {
+					if (Rope* rope = AcquireStainRope(a_cheek)) {
+						PoseStain(a_mount, *rope, false);
+						++shown;
+					}
 				}
 			}
 		}

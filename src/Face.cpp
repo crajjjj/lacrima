@@ -20,6 +20,7 @@ namespace Lacrima::Face
 		constexpr float         kDuctSide = 0.8f;
 		constexpr float         kLidSide = 0.85f;   // the lid line spans this much of the eye either side
 		constexpr float         kLidBelow = 0.78f;  // eye radii under the centre: on the skin just under the lower lashes, clear of the lid margin, which curls under
+		constexpr float         kLidRowStep = 0.4f; // eye radii between the rows under the lid: three rows reach the top of the cheek
 		constexpr float         kFacingFloor = -0.2f;
 		constexpr std::size_t   kMinFacePoints = 200;
 		constexpr std::size_t   kMinEyePoints = 8;
@@ -105,7 +106,7 @@ namespace Lacrima::Face
 			RE::NiTransform                                     boneToFace;
 			std::array<std::array<std::size_t, kMaxStreams>, kEyes> duct{ { { kNone, kNone, kNone, kNone }, { kNone, kNone, kNone, kNone } } };
 			Ducts                                               ducts{};
-			std::array<std::array<std::size_t, kLidPoints>, kEyes> lid{};
+			std::array<std::array<std::array<std::size_t, kLidPoints>, kLidRows>, kEyes> lid{};
 			Lids                                                lids{};
 			float                                               scale{ 1.0f };
 			bool                                                morphing{ false };
@@ -538,29 +539,35 @@ namespace Lacrima::Face
 						eye.center.z - inBone.z, streams, a_head.forward);
 				}
 			}
-			// The lower lid, inner corner to outer, for the mascara smudge.
+			// The skin under the lower lid, inner corner to outer, in rows downward, for
+			// the mascara smudge.
 			for (std::size_t e = 0; e < kEyes; ++e) {
-				a_head.lid[e].fill(kNone);
+				for (auto& row : a_head.lid[e]) {
+					row.fill(kNone);
+				}
 				const auto& eye = a_head.eyes[e];
 				if (!eye.valid) {
 					continue;
 				}
 				const float out = eye.center.x >= 0.0f ? 1.0f : -1.0f;
 				const float r = eye.radius;
-				for (std::size_t i = 0; i < kLidPoints; ++i) {
-					const float        along = (static_cast<float>(i) + 0.5f) / static_cast<float>(kLidPoints);
-					const RE::NiPoint3 inBone = eye.center + RE::NiPoint3{ out * r * kLidSide * (2.0f * along - 1.0f), a_head.forward * r * kDuctFront, -r * kLidBelow };
-					const RE::NiPoint3 target = a_head.boneToFace * inBone;
-					float              best = std::numeric_limits<float>::max();
-					for (std::size_t k = 0; k < a_head.points.size(); ++k) {
-						const auto& point = a_head.points[k];
-						if (point.normal.Dot(facing) < kFacingFloor) {
-							continue;
-						}
-						const float distance = point.position.GetSquaredDistance(target);
-						if (distance < best) {
-							best = distance;
-							a_head.lid[e][i] = k;
+				for (std::size_t row = 0; row < kLidRows; ++row) {
+					const float below = kLidBelow + kLidRowStep * static_cast<float>(row);
+					for (std::size_t i = 0; i < kLidPoints; ++i) {
+						const float        along = (static_cast<float>(i) + 0.5f) / static_cast<float>(kLidPoints);
+						const RE::NiPoint3 inBone = eye.center + RE::NiPoint3{ out * r * kLidSide * (2.0f * along - 1.0f), a_head.forward * r * kDuctFront, -r * below };
+						const RE::NiPoint3 target = a_head.boneToFace * inBone;
+						float              best = std::numeric_limits<float>::max();
+						for (std::size_t k = 0; k < a_head.points.size(); ++k) {
+							const auto& point = a_head.points[k];
+							if (point.normal.Dot(facing) < kFacingFloor) {
+								continue;
+							}
+							const float distance = point.position.GetSquaredDistance(target);
+							if (distance < best) {
+								best = distance;
+								a_head.lid[e][row][i] = k;
+							}
 						}
 					}
 				}
@@ -585,8 +592,10 @@ namespace Lacrima::Face
 				}
 			}
 			for (const auto& perEye : a_head.lid) {
-				for (const auto l : perEye) {
-					around(l);
+				for (const auto& row : perEye) {
+					for (const auto l : row) {
+						around(l);
+					}
 				}
 			}
 			std::ranges::sort(a_head.aroundDucts);
@@ -894,8 +903,10 @@ namespace Lacrima::Face
 				for (std::size_t s = 0; s < kMaxStreams; ++s) {
 					poseSpot(a_head.duct[e][s], a_head.ducts[e][s]);
 				}
-				for (std::size_t i = 0; i < kLidPoints; ++i) {
-					poseSpot(a_head.lid[e][i], a_head.lids[e][i]);
+				for (std::size_t row = 0; row < kLidRows; ++row) {
+					for (std::size_t i = 0; i < kLidPoints; ++i) {
+						poseSpot(a_head.lid[e][row][i], a_head.lids[e][row][i]);
+					}
 				}
 			}
 		}

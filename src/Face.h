@@ -30,10 +30,11 @@ namespace Lacrima::Face
 	constexpr std::size_t kMaxStreams = 4;
 	using Ducts = std::array<std::array<Duct, kMaxStreams>, kEyes>;
 
-	// The lower lid itself, inner corner to outer, just under the lashes: where
-	// running mascara gathers. The same shape as a duct.
+	// The skin under the lower lid, inner corner to outer, in rows from just under the
+	// lashes downward: where running mascara gathers. The same shape as a duct.
 	constexpr std::size_t kLidPoints = 6;
-	using Lids = std::array<std::array<Duct, kLidPoints>, kEyes>;
+	constexpr std::size_t kLidRows = 3;
+	using Lids = std::array<std::array<std::array<Duct, kLidPoints>, kLidRows>, kEyes>;
 
 	// A box in world units: where the fluid is this frame.
 	struct Region
@@ -50,7 +51,7 @@ namespace Lacrima::Face
 		// The skin inside the watch region moved this frame under an expression
 		// (facegen morphs), so fluid resting on it must be stirred.
 		bool morphing{ false };
-		Lids lids;  // [eye][point along the lid]
+		Lids lids;  // [eye][row down from the lashes][point along the lid]
 	};
 
 	// Call once per frame before Of().

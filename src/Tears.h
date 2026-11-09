@@ -125,8 +125,9 @@ namespace Lacrima
 
 		// One eye's ducts, one per stream; a stream whose duct was not found is empty.
 		using Spots = std::array<std::optional<Spot>, Face::kMaxStreams>;
-		// One eye's lower lid, inner corner to outer, in head space.
-		using LidSpots = std::array<std::optional<Spot>, Face::kLidPoints>;
+		// The skin under one eye in head space: rows down from the lashes, each inner
+		// corner to outer.
+		using LidSpots = std::array<std::array<std::optional<Spot>, Face::kLidPoints>, Face::kLidRows>;
 
 		// Where the tear nodes hang and what their transforms are expressed in: under
 		// the head bone in head-bone units (the default, `tears mount 0`), or under the
@@ -176,8 +177,10 @@ namespace Lacrima
 			float         widen{ 1.0f };     // how much wider the smearing made it
 		};
 
-		// The band of mascara under one lower lid, which the tears carry out of the
-		// lashes. Drawn along the lid points Face finds; a smear shifts it as a whole.
+		// The mascara under one eye, which the tears carry out of the lashes: a band
+		// along the lower lid that spreads down over the skin under the eye with
+		// [look] mascara_spread and with every tear. Drawn as a ribbon per lid row
+		// Face finds; a smear shifts it as a whole and spreads it further down.
 		struct Smudge
 		{
 			float       strength{ 0.0f };  // 0 none, 1 full
