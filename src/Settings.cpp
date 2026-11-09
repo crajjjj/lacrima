@@ -21,7 +21,7 @@ namespace Lacrima
 			Field{ "general", "enabled", &Settings::enabled, 0, 1, "Test", "Tears enabled", nullptr,
 				"Off removes every tear at once and ignores new requests." },
 			Field{ "general", "debug_log", &Settings::debugLog, 0, 1, "Test", "Detailed log", nullptr,
-				"Writes face, duct and fluid details to Lacrima.log." },
+				"Writes face, duct and fluid details to Lacrima.log, and the status line (what tears status prints) when a crying starts and every 10 s while it lasts." },
 
 			Field{ "tears", "rate", &Settings::rate, 0.5f, 40.0f, "Tears", "Tears per minute", "%.1f",
 				"How many tears each eye sheds per minute at full intensity. Lower intensity sheds fewer." },

@@ -64,8 +64,9 @@ read wrongly. Two settings on the Test page correct it: Face forward (`face_forw
 `tears status` does not show) and Eyes mesh space (`eyes_space`, try 1, then 2, if the
 tears start far from the eyes). Both apply at once. `tears status` prints what was
 read, where each eye was measured and which way the face was taken to look; please
-paste that line in a report (it is also written to `Lacrima.log`), with the head and eye
-mods you use.
+paste that line in a report, with the head and eye mods you use. It is also written to
+`Lacrima.log` when you run the command, and, with Detailed log on (Test page), by itself
+whenever a crying starts.
 
 Variety (Tears page) sets how much one tear differs from the next: where on the lid it
 starts, how big it is, and whether another follows right behind. At 0 every tear runs

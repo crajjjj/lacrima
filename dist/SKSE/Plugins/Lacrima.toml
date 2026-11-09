@@ -7,7 +7,7 @@
 
 [general]
 enabled = true
-debug_log = false      # face, duct and fluid details in Lacrima.log, and a status line every 10 s while anyone cries
+debug_log = false      # face, duct and fluid details in Lacrima.log, and the status line (what `tears status` prints) when a crying starts and every 10 s while it lasts
 
 [tears]
 rate = 12.0            # tears per minute from each eye at full intensity

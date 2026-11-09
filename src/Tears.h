@@ -276,6 +276,7 @@ namespace Lacrima
 			bool                                       forever{ false };
 			bool                                       crying{ false };
 			bool                                       watched{ false };
+			bool                                       statusLogged{ false };  // [general] debug_log: the status line went to the log since this crying started
 			bool                                       frozen{ false };
 			float                                      wipeArm{ 0.0f };
 			int                                        callStreams{ 0 }; // what the last Cry asked for; 0 = the setting

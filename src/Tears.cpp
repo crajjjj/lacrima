@@ -449,6 +449,7 @@ namespace Lacrima
 		const bool                            started = !a_crier.crying;
 		a_crier.callStreams = a_streams;
 		a_crier.callMascara = a_mascara;
+		a_crier.statusLogged = false;
 		a_crier.target = a_intensity;
 		a_crier.forever = a_seconds <= 0.0f;
 		a_crier.timeLeft = a_crier.forever ? -1.0f : a_seconds;
@@ -861,17 +862,22 @@ namespace Lacrima
 		Publish();
 		RefreshStatus(settings);
 
+		// With the detailed log on, the status line (what tears status prints, head
+		// geometry included) goes to the log by itself: once as soon as a crying starts,
+		// the head read by then, and every 10 s while anyone cries or is watched.
 		if (settings.debugLog) {
 			_statTime += a_delta;
-			if (_statTime >= 10.0f) {
+			const bool tick = _statTime >= 10.0f;
+			if (tick) {
 				_statTime = 0.0f;
-				for (const auto& [key, crier] : _criers) {
-					if (!crier->crying && !crier->watched) {
-						continue;
-					}
-					const auto actor = crier->actor.get();
-					logger::info("{}", Describe(actor.get(), crier.get(), settings));
+			}
+			for (auto& [key, crier] : _criers) {
+				if ((!crier->crying && !crier->watched) || (!tick && crier->statusLogged)) {
+					continue;
 				}
+				crier->statusLogged = true;
+				const auto actor = crier->actor.get();
+				logger::info("{}", Describe(actor.get(), crier.get(), settings));
 			}
 		}
 	}
