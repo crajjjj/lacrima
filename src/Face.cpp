@@ -19,7 +19,7 @@ namespace Lacrima::Face
 		constexpr float         kDuctFront = 0.8f;
 		constexpr float         kDuctSide = 0.8f;
 		constexpr float         kLidSide = 0.85f;   // the lid line spans this much of the eye either side
-		constexpr float         kLidBelow = 0.62f;  // eye radii under the centre: just under the lower lashes
+		constexpr float         kLidBelow = 0.78f;  // eye radii under the centre: on the skin just under the lower lashes, clear of the lid margin, which curls under
 		constexpr float         kFacingFloor = -0.2f;
 		constexpr std::size_t   kMinFacePoints = 200;
 		constexpr std::size_t   kMinEyePoints = 8;

@@ -90,11 +90,11 @@ namespace Lacrima
 		// Running mascara. A mark is a rope sunk into the skin so that only a flat cap
 		// shows above it (the face writes depth, the mark does not), which reads as
 		// pigment on the skin rather than a tube lying on it.
-		constexpr float       kStainRadius = 0.0015f;   // metres at width 1: a streak about 2.5 mm wide once sunk
-		constexpr float       kStainSink = 0.55f;       // share of the radius below the skin
+		constexpr float       kStainRadius = 0.0022f;   // metres at width 1: a streak about 3.8 mm wide once sunk
+		constexpr float       kStainSink = 0.5f;        // share of the radius below the skin
 		constexpr float       kSmearSink = 0.8f;        // ... once fully smeared: wider still, and flatter
-		constexpr float       kSmudgeRadius = 0.0028f;  // the band under the lid
-		constexpr float       kSmudgeSink = 0.7f;
+		constexpr float       kSmudgeRadius = 0.0036f;  // the band under the lid: about 6.5 mm tall once sunk
+		constexpr float       kSmudgeSink = 0.45f;
 		constexpr float       kSmudgeFirst = 0.45f;     // how much the first tear leaves under the lid, at full mascara
 		constexpr float       kSmudgeMore = 0.2f;       // ... and each one after
 		constexpr float       kStainFade = 0.3f;        // the last share of its life a mark spends fading
@@ -2249,7 +2249,7 @@ namespace Lacrima
 				if (!lid) {
 					continue;
 				}
-				const float bell = 0.55f + 0.45f * std::sin(std::numbers::pi_v<float> * (static_cast<float>(i) + 0.5f) / static_cast<float>(a_lids.size()));
+				const float bell = 0.75f + 0.25f * std::sin(std::numbers::pi_v<float> * (static_cast<float>(i) + 0.5f) / static_cast<float>(a_lids.size()));
 				path.push_back(lid->point + smudge.offset - lid->normal * sink);
 				radius.push_back(base * bell);
 			}
@@ -2356,7 +2356,7 @@ namespace Lacrima
 			const float       u = length > 1e-6f ? std::clamp((s - along[segment]) / length, 0.0f, 1.0f) : 0.0f;
 			float r = (radius[segment] + (radius[next] - radius[segment]) * u) * (a_taper ? 1.0f - 0.35f * t : 1.0f);
 			if (b == 0 || b + 1 == kRopeBones) {
-				r *= a_taper ? 0.6f : 0.45f;
+				r *= a_taper ? 0.6f : 0.7f;
 			}
 			positions[b] = a_mount.Point(path[segment] + (path[next] - path[segment]) * u);
 			radii[b] = a_mount.Radius(r);
