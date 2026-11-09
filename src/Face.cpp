@@ -99,6 +99,7 @@ namespace Lacrima::Face
 			std::vector<Box>                                    watchBoxes;
 			std::array<EyeShape, kEyes>                         eyes{};  // in head-bone space
 			float                                               forward{ 1.0f };
+			RE::NiPoint3                                        faceCentre;  // the face mesh's centroid, head-bone space: what decided forward
 			Placement                                           placement{ -1.0f, -1.0f, 0, -1.0f };
 			// The face mesh's own space is not the eyes mesh's (a vanilla eyes part is
 			// authored around the head bone, a face part around the skeleton root), so
@@ -714,6 +715,7 @@ namespace Lacrima::Face
 			}
 			eyesMiddle = eyesMiddle / static_cast<float>(valid);
 			a_head.forward = eyesMiddle.y >= centroidInBone.y ? 1.0f : -1.0f;
+			a_head.faceCentre = centroidInBone;
 			a_head.eyes[kRight] = a_head.forward > 0.0f ? sides[1] : sides[0];
 			a_head.eyes[kLeft] = a_head.forward > 0.0f ? sides[0] : sides[1];
 
@@ -1038,8 +1040,17 @@ namespace Lacrima::Face
 		const auto ducts = [&](std::size_t a_eye) {
 			return std::ranges::count_if(head->duct[a_eye], [](std::size_t a_index) { return a_index != kNone; });
 		};
-		return std::format("face {}, eyes {}; {}; left ducts {}, right ducts {} (of {} streams)", head->faceName, head->eyesName, head->report,
-			ducts(kLeft), ducts(kRight), std::clamp(a_placement.streams, 1, static_cast<int>(kMaxStreams)));
+		// The geometry behind the placement, for a report of tears in the wrong place:
+		// where the eyes were measured, the face's centre and which way it was taken to
+		// look, all in head-bone space (game units). A healthy head has the eyes a few
+		// units apart on x, in front of the face centre on y and above it on z.
+		const auto eye = [&](std::size_t a_eye) {
+			const auto& shape = head->eyes[a_eye];
+			return shape.valid ? std::format("({:.1f}, {:.1f}, {:.1f}) r {:.2f}", shape.center.x, shape.center.y, shape.center.z, shape.radius) : std::string("not found");
+		};
+		return std::format("face {}, eyes {}; {}; left ducts {}, right ducts {} (of {} streams); left eye {}, right eye {}, face centre ({:.1f}, {:.1f}, {:.1f}), forward {:+.0f}y",
+			head->faceName, head->eyesName, head->report, ducts(kLeft), ducts(kRight), std::clamp(a_placement.streams, 1, static_cast<int>(kMaxStreams)),
+			eye(kLeft), eye(kRight), head->faceCentre.x, head->faceCentre.y, head->faceCentre.z, head->forward);
 	}
 
 	void Reset()
