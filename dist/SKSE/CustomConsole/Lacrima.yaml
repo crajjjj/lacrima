@@ -89,12 +89,12 @@ subs:
         help: 1 on, 0 off
   - name: mount
     func: Mount
-    help: A/B for invisible tears - 1 draws them in world space under the cell node (the 0.1.0 way), 0 under the head bone
+    help: A/B - 0 (default) hangs the tears under the head bone, 1 draws them in world space under the cell node (a frame behind a turning head)
     args:
       - name: world
         type: int
-        default: 1
-        help: 1 world space, 0 head bone
+        default: 0
+        help: 0 head bone, 1 world space
   - name: mascara
     func: Mascara
     help: The target wears running mascara (0 none, up to 1 full; -1 forgets it, so the player's setting applies)

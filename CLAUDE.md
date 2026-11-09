@@ -85,12 +85,16 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   `[tears] max_distance` from the camera, or whose 3D is app-culled (the player in
   first person), is **frozen**: no emission, no solver, no draw, its tears hidden;
   trail life still ticks.
-- **Mounts.** The shipped default (`[debug] mount_world = true`, `tears mount 1`) hangs
-  each cheek's tear root under the cell node with the inverse of its transform and
-  poses the nodes in world units, as 0.1.0 did; it is the mount seen working in game.
-  `tears mount 0` hangs the root under the head bone with identity transforms, so the
-  engine carries the tears and a cheek whose tears all sleep skips the draw
-  (`Cheek::dirty`); a mount switch re-poses every bead. Drawing is OStrands' blob /
+- **Mounts.** The shipped default (`[debug] mount_world = false`, `tears mount 0`) hangs
+  each cheek's tear root under the head bone with identity transforms, so the engine
+  carries the tears with the head in the same frame and a cheek whose tears all sleep
+  skips the draw (`Cheek::dirty`). `tears mount 1` hangs the root under the cell node
+  with the inverse of its transform and poses the nodes in world units, as 0.1.0 did.
+  That was the shipped default through 0.2.0, and it is a frame behind a turning head:
+  Lacrima's update runs before the engine moves the skeleton, so the head transform it
+  poses from is the previous frame's. Water beads survived that; the flat mascara
+  marks dipped under the skin on those frames and flickered, which is why the default
+  changed in 0.2.1. A mount switch re-poses every bead. Drawing is OStrands' blob /
   rope / drop pass on persistent scratch buffers. The tear meshes use a plain
   `NiSkinInstance`: the engine hides a dismember partition whenever an equipped item
   covers its slot (TNG uses slot 52). The material is an environment-mapped,

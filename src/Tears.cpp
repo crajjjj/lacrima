@@ -93,7 +93,7 @@ namespace Lacrima
 		// dip out of sight between their points on the curve of the cheek.) Its points
 		// are laid densely along the skin for the same reason.
 		constexpr float       kStainRadius = 0.0020f;   // metres at width 1: a streak 4 mm wide
-		constexpr float       kStainLift = 0.0003f;     // how far above the skin a mark lies
+		constexpr float       kStainLift = 0.0005f;     // how far above the skin a mark lies (the posed skin can lag the rendered one by a frame on an expression change)
 		constexpr float       kStainSpacing = 0.006f;   // metres between the points of a streak along the skin
 		constexpr float       kSmudgeRadius = 0.0036f;  // the band under the lid: 7 mm tall
 		constexpr float       kSmudgeFirst = 0.45f;     // how much the first tear leaves under the lid, at full mascara

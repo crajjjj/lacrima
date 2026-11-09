@@ -73,7 +73,7 @@ or on the player when none is selected.
 | `tears nearby 0.7 30 1500` | Every loaded actor within 1500 units of the player cries |
 | `tears status` | What Lacrima found on the head and what the tears are doing |
 | `tears ducts 1` | Mark where tears start (`tears ducts 0` to hide) |
-| `tears mount 0` | Hang the tears under the head bone, the cheaper way (`tears mount 1`, the default, draws them in world space) |
+| `tears mount 1` | Draw the tears in world space instead of under the head bone (debug; a frame behind a turning head; `tears mount 0` is the default) |
 | `tears mascara 1` | Running mascara on this actor (`0` none, `-1` = the setting) |
 | `tears count` | How many actors are crying |
 | `tears enable 0` | Turn Lacrima off for this session (`1` on) |

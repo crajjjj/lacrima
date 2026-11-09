@@ -63,7 +63,7 @@ namespace Lacrima
 		float gestureWait{ 3.5f };
 
 		bool showDucts{ false };
-		bool mountWorld{ true };  // tears under the cell node (the proven 0.1.0 way); false hangs them under the head bone (cheaper)
+		bool mountWorld{ false };  // false: tears under the head bone, carried by the engine in the same frame; true: under the cell node in world space (a frame behind a turning head)
 
 		static std::unique_lock<std::recursive_mutex> Lock();
 		static Settings&                              Get();

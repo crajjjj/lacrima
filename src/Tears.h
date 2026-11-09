@@ -129,12 +129,13 @@ namespace Lacrima
 		using LidSpots = std::array<std::optional<Spot>, Face::kLidPoints>;
 
 		// Where the tear nodes hang and what their transforms are expressed in: under
-		// the cell node in world units as 0.1.0 did (the shipped default, [debug]
-		// mount_world, `tears mount 1`), or under the head bone in head-bone units
-		// (`tears mount 0`). The head-bone mount is the cheaper one: the engine carries
-		// the tears with the head, so a cheek whose tears all sleep skips Draw. The
-		// world mount re-poses every bead each frame and hides the tears while the
-		// actor is frozen (first person, far away).
+		// the head bone in head-bone units (the default, `tears mount 0`), or under the
+		// cell node in world units as 0.1.0 did ([debug] mount_world, `tears mount 1`).
+		// Under the head bone the engine carries the tears with the head in the same
+		// frame, and a cheek whose tears all sleep skips Draw. The world mount poses
+		// from the head transform Lacrima read before the engine moved the skeleton, so
+		// it runs a frame behind a turning head: flat mascara marks dipped under the
+		// skin on those frames and flickered. It stays as an A/B.
 		struct Mount
 		{
 			bool         world{ false };

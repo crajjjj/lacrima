@@ -115,7 +115,7 @@ namespace Lacrima
 			Field{ "debug", "show_ducts", &Settings::showDucts, 0, 1, "Test", "Show tear starts", nullptr,
 				"Marks where tears start on the console-selected actor, or on the player." },
 			Field{ "debug", "mount_world", &Settings::mountWorld, 0, 1, "Test", "Draw tears in world space", nullptr,
-				"Debug A/B: hang the tear meshes under the cell node in world coordinates, as 0.1.0 did, instead of under the head bone." },
+				"Debug A/B. Off, the tears hang under the head bone and move with it in the same frame. On, they are drawn in world space under the cell node, which runs a frame behind a turning head, so the marks flicker." },
 		};
 		// clang-format on
 
