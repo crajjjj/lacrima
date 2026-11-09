@@ -2268,10 +2268,11 @@ namespace Lacrima
 
 		// The mascara under the eye: a ribbon along each row of lid points, tiled
 		// top to bottom so they read as one dark area. The top row is the band under
-		// the lashes; each row below it is as tall as the spread exposes (the setting,
-		// grown by every tear and by a wipe) and shorter toward the corners, so the
-		// area rounds off downward like a shadow under the eye. The whole moves as one
-		// when smeared.
+		// the lashes, full all the way into both corners of the eye, where the lid line
+		// curves up and mascara pools; each row below it is as tall as the spread
+		// exposes (the setting, grown by every tear and by a wipe) and shorter toward
+		// the corners, so the area rounds off downward like a shadow under the eye.
+		// The whole moves as one when smeared.
 		const auto& smudge = a_cheek.smudge;
 		if (smudge.strength > 0.0f && a_settings.mascaraSmudge > 0.0f) {
 			const float fade = std::sqrt(std::clamp(smudge.life / std::max(smudge.lifetime * kStainFade, 1e-3f), 0.0f, 1.0f));
@@ -2287,8 +2288,8 @@ namespace Lacrima
 				path.clear();
 				normals.clear();
 				radius.clear();
-				// fullest in the middle; the lower the row, the more it narrows toward the corners
-				const float corners = 0.75f - 0.3f * static_cast<float>(row);
+				// the band keeps its height into the corners; the rows below narrow toward them
+				const float corners = row == 0 ? 1.0f : 0.55f - 0.35f * static_cast<float>(row - 1);
 				for (std::size_t i = 0; i < Face::kLidPoints; ++i) {
 					const auto& lid = a_lids[row][i];
 					if (!lid) {

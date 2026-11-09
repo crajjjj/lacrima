@@ -18,8 +18,9 @@ namespace Lacrima::Face
 		constexpr float         kDynamicDrift = 3.0f;
 		constexpr float         kDuctFront = 0.8f;
 		constexpr float         kDuctSide = 0.8f;
-		constexpr float         kLidSide = 0.85f;   // the lid line spans this much of the eye either side
-		constexpr float         kLidBelow = 0.78f;  // eye radii under the centre: on the skin just under the lower lashes, clear of the lid margin, which curls under
+		constexpr float         kLidSide = 1.1f;    // eye radii from the centre to the corners of the eye, where the lid line ends
+		constexpr float         kLidBelow = 0.78f;  // eye radii under the centre, at the middle of the lid: on the skin just under the lower lashes, clear of the lid margin, which curls under
+		constexpr float         kLidCorner = 0.15f; // ... and at the corners, where the lid line has curved up to the eye's own height
 		constexpr float         kLidRowStep = 0.4f; // eye radii between the rows under the lid: three rows reach the top of the cheek
 		constexpr float         kFacingFloor = -0.2f;
 		constexpr std::size_t   kMinFacePoints = 200;
@@ -540,7 +541,8 @@ namespace Lacrima::Face
 				}
 			}
 			// The skin under the lower lid, inner corner to outer, in rows downward, for
-			// the mascara smudge.
+			// the mascara smudge. The lid line follows the eye: lowest under the middle,
+			// curving up into both corners, which is where the mascara pools.
 			for (std::size_t e = 0; e < kEyes; ++e) {
 				for (auto& row : a_head.lid[e]) {
 					row.fill(kNone);
@@ -552,10 +554,11 @@ namespace Lacrima::Face
 				const float out = eye.center.x >= 0.0f ? 1.0f : -1.0f;
 				const float r = eye.radius;
 				for (std::size_t row = 0; row < kLidRows; ++row) {
-					const float below = kLidBelow + kLidRowStep * static_cast<float>(row);
 					for (std::size_t i = 0; i < kLidPoints; ++i) {
-						const float        along = (static_cast<float>(i) + 0.5f) / static_cast<float>(kLidPoints);
-						const RE::NiPoint3 inBone = eye.center + RE::NiPoint3{ out * r * kLidSide * (2.0f * along - 1.0f), a_head.forward * r * kDuctFront, -r * below };
+						const float        across = 2.0f * static_cast<float>(i) / static_cast<float>(kLidPoints - 1) - 1.0f;  // -1 inner corner .. 1 outer
+						const float        curve = std::sqrt(std::max(0.0f, 1.0f - across * across));
+						const float        below = kLidCorner + (kLidBelow - kLidCorner) * curve + kLidRowStep * static_cast<float>(row);
+						const RE::NiPoint3 inBone = eye.center + RE::NiPoint3{ out * r * kLidSide * across, a_head.forward * r * kDuctFront, -r * below };
 						const RE::NiPoint3 target = a_head.boneToFace * inBone;
 						float              best = std::numeric_limits<float>::max();
 						for (std::size_t k = 0; k < a_head.points.size(); ++k) {

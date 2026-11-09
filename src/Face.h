@@ -30,9 +30,10 @@ namespace Lacrima::Face
 	constexpr std::size_t kMaxStreams = 4;
 	using Ducts = std::array<std::array<Duct, kMaxStreams>, kEyes>;
 
-	// The skin under the lower lid, inner corner to outer, in rows from just under the
-	// lashes downward: where running mascara gathers. The same shape as a duct.
-	constexpr std::size_t kLidPoints = 6;
+	// The skin under the lower lid, inner corner to outer along the curve of the eye,
+	// in rows from just under the lashes downward: where running mascara gathers. The
+	// same shape as a duct.
+	constexpr std::size_t kLidPoints = 8;
 	constexpr std::size_t kLidRows = 3;
 	using Lids = std::array<std::array<std::array<Duct, kLidPoints>, kLidRows>, kEyes>;
 
