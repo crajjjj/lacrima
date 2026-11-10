@@ -127,6 +127,7 @@ namespace Lacrima::Face
 			std::string                                         faceName;
 			std::string                                         eyesName;
 			std::string                                         eyesNote;  // when the eyes were measured on another geometry than the eyes part
+			bool                                                candidatesLogged{ false };  // the candidate listing goes to the log once per head, not on every 2 s rebuild of one that stays broken
 			std::string                                         report;
 			RE::NiPointer<RE::BSGeometry>                       eyesGeometry;
 			float                                               eyeEnv{ -1.0f };    // the eyes material's own values, restored after glistening
@@ -862,8 +863,10 @@ namespace Lacrima::Face
 					return name.find("eye") != std::string::npos && name.find("brow") == std::string::npos && name.find("lash") == std::string::npos &&
 					       name.find("liner") == std::string::npos && name.find("shadow") == std::string::npos;
 				};
-				logger::info("{}: the eyes part {} does not look like two eyes ({}); measuring the other geometry on the head", a_actor->GetDisplayFullName(), nameOf(eyes),
-					named ? describe(read) : "unreadable");
+				if (!a_head.candidatesLogged) {
+					logger::info("{}: the eyes part {} does not look like two eyes ({}); measuring the other geometry on the head", a_actor->GetDisplayFullName(), nameOf(eyes),
+						named ? describe(read) : "unreadable");
+				}
 				std::vector<RE::BSGeometry*> candidates;
 				if (auto* npc = a_actor->GetActorBase()) {
 					if (auto* part = npc->GetCurrentHeadPartByType(RE::BGSHeadPart::HeadPartType::kEyes)) {
@@ -885,7 +888,7 @@ namespace Lacrima::Face
 				});
 				EyesRead                                            best;
 				std::vector<std::pair<RE::BSGeometry*, EyesRead>>   halves;
-				std::size_t                                         logged = 0;
+				std::size_t                                         logged = a_head.candidatesLogged ? 60 : 0;
 				for (auto* candidate : candidates) {
 					EyesRead   measured;
 					const bool readable = MeasureEyes(candidate, toBone, measured);
@@ -908,6 +911,7 @@ namespace Lacrima::Face
 						chosen = candidate;
 					}
 				}
+				a_head.candidatesLogged = true;
 				// a left and a right mesh: the pair that looks most like two eyes
 				RE::BSGeometry* other = nullptr;
 				for (const auto& [lg, left] : halves) {
