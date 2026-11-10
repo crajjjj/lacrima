@@ -2,7 +2,7 @@ set_xmakever("3.0.0")  -- the commonlibsse-ng submodule requires 3.0
 
 -- Globals
 PROJECT_NAME = "Lacrima"
-PROJECT_VERSION = "0.2.4"
+PROJECT_VERSION = "0.2.5"
 PROJECT_AUTHOR = "crajjjj"
 
 -- Project

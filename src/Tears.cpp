@@ -2902,7 +2902,7 @@ namespace Lacrima
 				text += "Paused: out of sight or too far from the camera. ";
 			}
 			if (!a_crier->head) {
-				text += "No head bone; using the actor's root. ";
+				text += a_crier->skeleton ? "No head bone; using the actor's root. " : "Head bone not looked up yet (first update pending). ";
 			}
 			// Where the first drawn drop actually is, for a "nothing shows" report.
 			for (const auto& cheek : a_crier->cheeks) {

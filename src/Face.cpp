@@ -270,6 +270,70 @@ namespace Lacrima::Face
 			return false;
 		}
 
+		// A morphing shape keeps its posed positions in a dynamic buffer (float4 per
+		// vertex); when it holds one, those replace the stored positions.
+		void ReadDynamic(RE::BSGeometry* a_geometry, std::uint32_t a_count, bool a_stored, Mesh& a_out)
+		{
+			auto* dynamic = a_geometry->AsDynamicTriShape();
+			if (!dynamic) {
+				return;
+			}
+			std::vector<RE::NiPoint3> moved(a_count);
+			bool                      read = false;
+			{
+				auto&               runtime = dynamic->GetDynamicTrishapeRuntimeData();
+				RE::BSSpinLockGuard guard(runtime.lock);
+				if (runtime.dynamicData && runtime.dataSize >= a_count * kDynamicStride) {
+					const auto* source = static_cast<const std::uint8_t*>(runtime.dynamicData);
+					for (std::uint32_t v = 0; v < a_count; ++v) {
+						std::array<float, 3> xyz{};
+						std::memcpy(xyz.data(), source + static_cast<std::size_t>(v) * kDynamicStride, sizeof(xyz));
+						moved[v] = { xyz[0], xyz[1], xyz[2] };
+					}
+					read = true;
+				}
+			}
+			float drift = 0.0f;
+			for (std::uint32_t v = 0; read && a_stored && v < a_count; ++v) {
+				drift += moved[v].GetDistance(a_out.positions[v]);
+			}
+			if (read && (!a_stored || drift < kDynamicDrift * static_cast<float>(a_count))) {
+				a_out.positions = std::move(moved);
+				a_out.dynamic = true;
+			}
+		}
+
+		// A shape with no skin, hung under a bone as it is: its positions come from
+		// the renderer's copy of its vertex buffer (or its dynamic data), in its own
+		// space; the caller takes them into head-bone space through the node
+		// transforms. Only used to measure eyes: it reads no normals or weights.
+		bool ReadLoose(RE::BSGeometry* a_geometry, Mesh& a_out)
+		{
+			auto* tri = a_geometry ? a_geometry->AsTriShape() : nullptr;
+			auto* renderer = a_geometry ? a_geometry->GetGeometryRuntimeData().rendererData : nullptr;
+			const std::uint32_t count = tri ? tri->GetTrishapeRuntimeData().vertexCount : 0u;
+			if (!renderer || count == 0 || count > kVertexBudget) {
+				return false;
+			}
+			const auto&         desc = renderer->vertexDesc;
+			const std::uint32_t stride = StrideOf(desc);
+			const bool          stored = desc.HasFlag(RE::BSGraphics::Vertex::VF_VERTEX) && renderer->rawVertexData && stride >= 8 && stride <= 128;
+			const bool          full = FullPrecision(desc);
+			a_out = {};
+			a_out.positions.assign(count, RE::NiPoint3{});
+			for (std::uint32_t v = 0; stored && v < count; ++v) {
+				a_out.positions[v] = PositionOf(renderer->rawVertexData + static_cast<std::size_t>(v) * stride, full);
+			}
+			ReadDynamic(a_geometry, count, stored, a_out);
+			return stored || a_out.dynamic;
+		}
+
+		std::uint32_t LooseVerticesOf(RE::BSGeometry* a_geometry)
+		{
+			auto* tri = a_geometry ? a_geometry->AsTriShape() : nullptr;
+			return tri ? tri->GetTrishapeRuntimeData().vertexCount : 0u;
+		}
+
 		bool ReadMesh(RE::BSGeometry* a_geometry, Mesh& a_out)
 		{
 			auto* skin = a_geometry->GetGeometryRuntimeData().skinInstance.get();
@@ -305,31 +369,7 @@ namespace Lacrima::Face
 					a_out.weights[v][j] = Half(halves[j]);
 				}
 			}
-			if (auto* dynamic = a_geometry->AsDynamicTriShape()) {
-				std::vector<RE::NiPoint3> moved(count);
-				bool                      read = false;
-				{
-					auto&               runtime = dynamic->GetDynamicTrishapeRuntimeData();
-					RE::BSSpinLockGuard guard(runtime.lock);
-					if (runtime.dynamicData && runtime.dataSize >= count * kDynamicStride) {
-						const auto* source = static_cast<const std::uint8_t*>(runtime.dynamicData);
-						for (std::uint32_t v = 0; v < count; ++v) {
-							std::array<float, 3> xyz{};
-							std::memcpy(xyz.data(), source + static_cast<std::size_t>(v) * kDynamicStride, sizeof(xyz));
-							moved[v] = { xyz[0], xyz[1], xyz[2] };
-						}
-						read = true;
-					}
-				}
-				float drift = 0.0f;
-				for (std::uint32_t v = 0; read && stored && v < count; ++v) {
-					drift += moved[v].GetDistance(a_out.positions[v]);
-				}
-				if (read && (!stored || drift < kDynamicDrift * static_cast<float>(count))) {
-					a_out.positions = std::move(moved);
-					a_out.dynamic = true;
-				}
-			}
+			ReadDynamic(a_geometry, count, stored, a_out);
 			if (!stored && !a_out.dynamic) {
 				return false;
 			}
@@ -384,6 +424,22 @@ namespace Lacrima::Face
 			return geometry && VerticesOf(geometry) > 0 ? geometry : nullptr;
 		}
 
+		// The head bone node: the one the face is skinned to, else by name under the root.
+		RE::NiAVObject* HeadBoneOf(RE::BSGeometry* a_face, RE::NiAVObject* a_root)
+		{
+			auto* skin = a_face ? a_face->GetGeometryRuntimeData().skinInstance.get() : nullptr;
+			if (skin && skin->skinData && skin->bones) {
+				const std::uint32_t bones = skin->skinData->GetBoneCount();
+				for (std::uint32_t i = 0; i < bones; ++i) {
+					auto* bone = skin->bones[i];
+					if (bone && bone->name.c_str() && std::string_view(bone->name.c_str()) == kHeadBone) {
+						return bone;
+					}
+				}
+			}
+			return a_root ? a_root->GetObjectByName(kHeadBone) : nullptr;
+		}
+
 		// The transform from a head part's mesh space into the head bone's space: the
 		// skin-to-bone transform its skin carries for that bone (bone 0 when the head
 		// bone is not among its bones). Identity when the mesh has no skin data.
@@ -431,33 +487,44 @@ namespace Lacrima::Face
 			return best;
 		}
 
-		// One eyes geometry measured in head-bone space: the mesh split by side of
-		// the midline, each side's centre and mean spread. score says how far it is
-		// from two eyeballs (0 = exactly), plausible whether it is within reason. The
-		// eyes part named on the record is not always the eyeballs: CVEO's part is a
-		// 176-vertex mesh spread 3.6 units around a point behind the eyes (an eye
-		// socket or shadow shell; LL report 2026-11-09), which put the ducts on the
-		// jaw by the ears.
+		// One geometry measured in head-bone space: the mesh split by side of the
+		// midline, each side's centre and mean spread. score says how far it is from
+		// two eyeballs (0 = exactly), plausible whether it is within reason; half
+		// marks a geometry holding ONE eye (an eye system with a left and a right
+		// mesh), which the caller pairs with its other half. The eyes part named on
+		// the record is not always the eyeballs: CVEO's part is a 176-vertex mesh
+		// spread 3.6 units around a point behind the eyes (an eye socket or shadow
+		// shell; LL report 2026-11-09), which put the ducts on the jaw by the ears,
+		// and its eyeballs are elsewhere on the head.
 		struct EyesRead
 		{
 			std::array<EyeShape, 2> sides{};
 			Mesh                    mesh;
 			float                   score{ std::numeric_limits<float>::max() };
 			bool                    plausible{ false };
+			bool                    half{ false };   // one eye only; sides[0] is a left eye, sides[1] a right one
+			bool                    loose{ false };  // read as an unskinned shape
 		};
 
-		bool MeasureEyes(RE::BSGeometry* a_eyes, const RE::NiTransform& a_toBone, EyesRead& a_out)
+		bool MeasureEyes(RE::BSGeometry* a_eyes, const std::function<RE::NiTransform(RE::BSGeometry*, bool)>& a_toBone, EyesRead& a_out)
 		{
 			a_out = {};
-			if (!a_eyes || !ReadMesh(a_eyes, a_out.mesh)) {
+			if (!a_eyes) {
 				return false;
 			}
+			if (!ReadMesh(a_eyes, a_out.mesh)) {
+				if (!ReadLoose(a_eyes, a_out.mesh)) {
+					return false;
+				}
+				a_out.loose = true;
+			}
+			const RE::NiTransform     toBone = a_toBone(a_eyes, a_out.loose);
 			std::vector<RE::NiPoint3> points;
 			points.reserve(a_out.mesh.positions.size());
 			std::array<RE::NiPoint3, 2> sum{};
 			std::array<std::size_t, 2>  count{};
 			for (const auto& position : a_out.mesh.positions) {
-				const RE::NiPoint3 p = a_toBone * position;
+				const RE::NiPoint3 p = toBone * position;
 				points.push_back(p);
 				const std::size_t side = p.x >= 0.0f ? 1 : 0;
 				sum[side] += p;
@@ -482,10 +549,9 @@ namespace Lacrima::Face
 				return false;
 			}
 			float score = 0.0f;
-			bool  plausible = sides[0].valid && sides[1].valid;
+			bool  plausible = true;
 			for (const auto& side : sides) {
 				if (!side.valid) {
-					score += 1.0f;
 					continue;
 				}
 				score += std::abs(std::log(side.radius / kEyeRadius));
@@ -495,6 +561,12 @@ namespace Lacrima::Face
 				const float apart = sides[0].center.GetDistance(sides[1].center);
 				score += std::abs(std::log(std::max(apart, 1e-3f) / kEyeApart));
 				plausible = plausible && apart >= kEyeApartMin && apart <= kEyeApartMax;
+			} else {
+				// one eye: a left mesh lies on -x, a right one on +x; a single eye sitting
+				// astride the midline is not an eye
+				const auto& eye = sides[0].valid ? sides[0] : sides[1];
+				a_out.half = true;
+				plausible = plausible && std::abs(eye.center.x) > eye.radius;
 			}
 			a_out.score = score;
 			a_out.plausible = plausible;
@@ -743,7 +815,13 @@ namespace Lacrima::Face
 			// eyes are measured and the ducts aimed.
 			a_head.faceToBone = ToHeadBone(face);
 			a_head.boneToFace = a_head.faceToBone.Invert();
-			const auto toBone = [&](RE::BSGeometry* a_geometry) {
+			RE::NiAVObject* headBone = HeadBoneOf(face, root);
+			const auto      toBone = [&](RE::BSGeometry* a_geometry, bool a_loose) -> RE::NiTransform {
+				if (a_loose) {
+					// an unskinned shape hangs under a bone as it is: node transforms take
+					// it to the world and the head bone's take it back into bone space
+					return headBone ? headBone->world.Invert() * a_geometry->world : RE::NiTransform{};
+				}
 				if (a_head.eyesSpace == 1) {
 					return a_head.faceToBone;  // [debug] eyes_space: the eyes drawn in the face mesh's space
 				}
@@ -756,17 +834,36 @@ namespace Lacrima::Face
 			// Eyes: one mesh holds both, split by side of the midline. They only place
 			// the ducts; the eyeball is not a surface tears run on. The eyes part named
 			// on the record first; when it does not measure as two eyeballs, the part's
-			// extra parts and every other geometry on the actor are measured and the
-			// most eyeball-like taken (one not called an eye only if it measures very
-			// close), so an eyes system whose named part is a shell still places the
-			// ducts on the lids.
+			// extra parts and every other geometry on the actor are measured, skinned or
+			// not, and the most eyeball-like taken: one mesh with both eyes, or a left
+			// and a right mesh paired (one not called an eye only if it measures very
+			// close). So an eyes system whose named part is a shell still places the
+			// ducts on the lids. Every candidate measured is logged, for the next head
+			// that fails.
 			EyesRead        read;
 			RE::BSGeometry* chosen = nullptr;
-			const bool      named = MeasureEyes(eyes, toBone(eyes), read);
+			const bool      named = MeasureEyes(eyes, toBone, read);
 			a_head.eyesNote.clear();
-			if (named && read.plausible) {
+			if (named && read.plausible && !read.half) {
 				chosen = eyes;
 			} else {
+				const auto describe = [](const EyesRead& a_read) {
+					if (a_read.half) {
+						const auto& eye = a_read.sides[0].valid ? a_read.sides[0] : a_read.sides[1];
+						return std::format("one eye, radius {:.2f} at x {:+.1f}", eye.radius, eye.center.x);
+					}
+					return std::format("radius {:.2f} / {:.2f}, {:.1f} apart", a_read.sides[0].radius, a_read.sides[1].radius,
+						a_read.sides[0].valid && a_read.sides[1].valid ? a_read.sides[0].center.GetDistance(a_read.sides[1].center) : 0.0f);
+				};
+				const auto nameOf = [](RE::BSGeometry* a_geometry) { return a_geometry && a_geometry->name.c_str() ? a_geometry->name.c_str() : "?"; };
+				const auto eyeNamed = [](RE::BSGeometry* a_geometry) {
+					const char* raw = a_geometry->name.c_str();
+					const std::string name = raw ? Lower(raw) : std::string{};
+					return name.find("eye") != std::string::npos && name.find("brow") == std::string::npos && name.find("lash") == std::string::npos &&
+					       name.find("liner") == std::string::npos && name.find("shadow") == std::string::npos;
+				};
+				logger::info("{}: the eyes part {} does not look like two eyes ({}); measuring the other geometry on the head", a_actor->GetDisplayFullName(), nameOf(eyes),
+					named ? describe(read) : "unreadable");
 				std::vector<RE::BSGeometry*> candidates;
 				if (auto* npc = a_actor->GetActorBase()) {
 					if (auto* part = npc->GetCurrentHeadPartByType(RE::BGSHeadPart::HeadPartType::kEyes)) {
@@ -780,35 +877,70 @@ namespace Lacrima::Face
 					}
 				}
 				RE::BSVisit::TraverseScenegraphGeometries(root, [&](RE::BSGeometry* a_geometry) {
-					if (a_geometry != eyes && a_geometry != face && VerticesOf(a_geometry) > 0 && !Hidden(a_geometry, root) &&
-						std::ranges::find(candidates, a_geometry) == candidates.end()) {
+					if (a_geometry != eyes && a_geometry != face && (VerticesOf(a_geometry) > 0 || LooseVerticesOf(a_geometry) > 0) &&
+						!Hidden(a_geometry, root) && std::ranges::find(candidates, a_geometry) == candidates.end()) {
 						candidates.push_back(a_geometry);
 					}
 					return RE::BSVisit::BSVisitControl::kContinue;
 				});
-				EyesRead best;
+				EyesRead                                            best;
+				std::vector<std::pair<RE::BSGeometry*, EyesRead>>   halves;
+				std::size_t                                         logged = 0;
 				for (auto* candidate : candidates) {
-					const char*       raw = candidate->name.c_str();
-					const std::string name = raw ? Lower(raw) : std::string{};
-					const bool        eyeNamed = name.find("eye") != std::string::npos && name.find("brow") == std::string::npos &&
-					                      name.find("lash") == std::string::npos && name.find("liner") == std::string::npos &&
-					                      name.find("shadow") == std::string::npos;
-					EyesRead measured;
-					if (!MeasureEyes(candidate, toBone(candidate), measured) || !measured.plausible) {
+					EyesRead   measured;
+					const bool readable = MeasureEyes(candidate, toBone, measured);
+					if (logged < 60) {
+						++logged;
+						logger::info("  {}: {} vertices{}{}{}", nameOf(candidate), measured.mesh.positions.size(), measured.loose ? " (unskinned)" : "",
+							readable ? ", " + describe(measured) : ", unreadable", readable && measured.plausible ? ", plausible" : "");
+					}
+					if (!readable || !measured.plausible) {
 						continue;
 					}
-					if ((eyeNamed || measured.score < kEyeScoreUnnamed) && measured.score < best.score) {
+					const bool trusted = eyeNamed(candidate) || measured.score < kEyeScoreUnnamed;
+					if (!trusted) {
+						continue;
+					}
+					if (measured.half) {
+						halves.emplace_back(candidate, std::move(measured));
+					} else if (measured.score < best.score) {
 						best = std::move(measured);
 						chosen = candidate;
 					}
 				}
-				const auto describe = [](const EyesRead& a_read) {
-					return std::format("radius {:.2f} / {:.2f}, {:.1f} apart", a_read.sides[0].radius, a_read.sides[1].radius,
-						a_read.sides[0].valid && a_read.sides[1].valid ? a_read.sides[0].center.GetDistance(a_read.sides[1].center) : 0.0f);
-				};
+				// a left and a right mesh: the pair that looks most like two eyes
+				RE::BSGeometry* other = nullptr;
+				for (const auto& [lg, left] : halves) {
+					if (!left.sides[0].valid) {
+						continue;
+					}
+					for (const auto& [rg, right] : halves) {
+						if (!right.sides[1].valid) {
+							continue;
+						}
+						const float apart = left.sides[0].center.GetDistance(right.sides[1].center);
+						const float alike = std::abs(std::log(left.sides[0].radius / right.sides[1].radius));
+						if (apart < kEyeApartMin || apart > kEyeApartMax || alike > 0.5f) {
+							continue;
+						}
+						const float score = left.score + right.score + alike + std::abs(std::log(apart / kEyeApart));
+						if (score < best.score) {
+							best = {};
+							best.sides = { left.sides[0], right.sides[1] };
+							best.mesh = right.mesh;
+							best.score = score;
+							best.plausible = true;
+							best.loose = left.loose || right.loose;
+							chosen = rg;
+							other = lg;
+						}
+					}
+				}
 				if (chosen) {
-					a_head.eyesNote = std::format(" (measured on {}: the eyes part {} does not look like two eyes, {})", chosen->name.c_str() ? chosen->name.c_str() : "?",
-						eyes->name.c_str() ? eyes->name.c_str() : "?", named ? describe(read) : "unreadable");
+					a_head.eyesNote = other ? std::format(" (measured on {} + {}: the eyes part {} does not look like two eyes, {})", nameOf(other), nameOf(chosen), nameOf(eyes),
+												  named ? describe(read) : "unreadable") :
+					                          std::format(" (measured on {}: the eyes part {} does not look like two eyes, {})", nameOf(chosen), nameOf(eyes),
+												  named ? describe(read) : "unreadable");
 					read = std::move(best);
 				} else if (named) {
 					chosen = eyes;
@@ -816,6 +948,11 @@ namespace Lacrima::Face
 				} else {
 					a_head.report = "the eyes mesh has no readable vertices";
 					return;
+				}
+				// two separate eye meshes: the wet-eye glisten, which works on one eye
+				// material, stays off rather than wetting one eye
+				if (other) {
+					chosen = nullptr;
 				}
 			}
 			a_head.eyesGeometry.reset(chosen);

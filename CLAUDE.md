@@ -134,6 +134,13 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   most eyeball-like one taken (one not called an eye only below `kEyeScoreUnnamed`),
   the report says so (`eyesNote`), and `Glisten` works on the chosen geometry. The
   placement clamps the radius to that range whatever was measured.
+  The reporter's 0.2.4 log then said "nothing better on the head": the eyeballs of
+  that system are not one skinned mesh with both eyes. 0.2.5 measures unskinned shapes
+  too (`ReadLoose` from the renderer's vertex copy, taken into bone space through
+  `headBone->world.Invert() * geometry->world`), accepts a mesh holding ONE eye
+  (`EyesRead::half`, off the midline by more than its radius) and pairs a left and a
+  right half, logs every candidate measured (name, vertices, radius, apart) when the
+  named part fails, and turns the glisten off for a paired head (one eye material).
 - **Placement overrides** (`[debug] face_forward`, `eyes_space`, carried in `Face::Placement`,
   stored on the `Head` it was built with; a change rebuilds the head through `HeadOf`'s
   `retune`): two LoversLab users (11-09) had tears start by the ears. The ducts are aimed
