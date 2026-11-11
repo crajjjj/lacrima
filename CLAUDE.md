@@ -196,7 +196,7 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   to `kLidCorner` at the corners `kLidSide` radii out, so the band reaches into both
   corners where mascara pools, as the usual overlay textures draw it; the rows below
   sit `kLidRowStep` eye radii apart down to the top of the cheek). The top row is a
-  thin band (`kSmudgeRadius` 2.5 mm), full height into the corners and fuller where
+  thin band (`kSmudgeRadius` 2 mm at half strength), full height into the corners and fuller where
   the tears ran; the rows below are tiled onto its lower edge, each as tall as `[look]
   mascara_spread` exposes (0 the band only, 1 the whole area under the eye; the first
   tear shows 60% of it, every tear more, a wipe widens it), narrower toward the
@@ -205,9 +205,17 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   as the streak is drawn) or the welling tear's seat, a Gaussian over `kPoolReach`
   8 mm, so the spread exists only under the tears' paths and is a 0.2 mm hairline
   elsewhere. Uniform rows read as dark circles under the eyes (user, 0.2.3). The stain
-  texture is a 64 px soft alpha lens across the ribbon (`make_tears.py` `soft`), so no
-  mark has a hard edge and tiled rows blend. A streak starts in it and tapers
-  down the cheek. **Smearing** (`SmearStains`): a hand
+  texture (`make_tears.py` `soft`, 256x128) eases from full on the centre line out to
+  nothing at the edge (raised cosine, `STAIN_CORE` 0 = no flat middle, laid out in the
+  position across the ribbon: the top of the cross-section is four flat facets, so u
+  maps to it piecewise), and eases in and out over `STAIN_END` 10% of the length at
+  each end. Half strength falls at half the half-width, so `PoseStain`
+  poses each ribbon 1 / `kStainHalf` wider than the mark's radius: a radius is where
+  the mark is half strength (`kStainRadius` 1.9 mm, `kSmudgeRadius` 2 mm), and rows
+  tiled edge to edge meet at half strength each. Before 0.2.7 the alpha was a sine in
+  u, which on the facets made a semicircle across the ribbon (half strength at 0.8 of
+  the half-width, steep at the edge) with a straight cut at both ends; the user asked
+  for smoother edges. A streak starts in the band and tapers down the cheek. **Smearing** (`SmearStains`): a hand
   capsule over a mark drags it along the skin the way the hand moves (its velocity in
   the skin plane; a resting hand drags outward, `Cheek::outward` = away from the other
   eye), `kSmearDrag` per wipe and `kSmearMax` in all at `kSmearSpeed`, widening to

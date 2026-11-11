@@ -154,6 +154,12 @@ def build_rope():
 STAIN_COLOR = (20, 16, 18)
 STAIN_ALPHA = 0.5
 STAIN_FLAT = 0.15  # the ribbon's thickness as a share of its half-width
+# The mark's soft edges: full strength over the middle STAIN_CORE of the half-width
+# (0: only on the centre line), easing out to nothing at the edge, half strength at
+# (1 + STAIN_CORE) / 2 of it, 0.5 (src/Tears.cpp kStainHalf must match); and easing
+# in and out over STAIN_END of the length at each end, so a streak has no blunt end.
+STAIN_CORE = 0.0
+STAIN_END = 0.1
 
 
 def stain_shader(texset):
@@ -199,14 +205,32 @@ def main():
     # the environment mask: reflect everywhere, scaled at run time by [look] reflection
     open(os.path.join(tex_dir, 'tear_m.dds'), 'wb').write(dds_bgra(8, 8, lambda x, y: (255, 255, 255, 255)))
     r, g, b = STAIN_COLOR
-    # Across the ribbon (u = the texture's x, 0 at one edge, 0.25 at the top centre,
-    # 0.5 at the other edge, the rest the underside) the alpha is a soft lens: nothing
-    # at the edges, full at the centre, so no mark has a hard edge and tiled ribbons
-    # blend into one another.
+    # Across the ribbon (u = the texture's x: 0 at one edge, 0.25 at the top centre,
+    # 0.5 at the other edge, the rest the underside, never seen) the alpha is full over
+    # the middle and eases out to nothing at the edge; along it (v = the texture's y,
+    # 0 at the first bone, 1 at the last) it eases in and out at both ends. The ease is
+    # a raised cosine, flat where it starts and ends, so no edge line shows. The top of
+    # the cross-section is four flat facets, so u maps to the position across the
+    # ribbon piecewise: the profile is laid out in that position, not in u. (Before
+    # 0.2.7 the alpha was a sine in u, which on the facets came out as a semicircle
+    # across the ribbon, steep at its edges, with a straight cut at both ends.)
+    width, height = 256, 128
+    facets = [math.cos(2.0 * math.pi * j / ROPE_SIDES) for j in range(ROPE_SIDES // 2 + 1)]
+
+    def ease(t):
+        return 0.5 - 0.5 * math.cos(math.pi * max(0.0, min(1.0, t)))
+
     def soft(x, y):
-        a = max(0.0, math.sin(2.0 * math.pi * (x + 0.5) / 64.0))
+        u = (x + 0.5) / width
+        v = (y + 0.5) / height
+        if u >= 0.5:
+            return (r, g, b, 0)
+        f = u * ROPE_SIDES
+        j = min(int(f), ROPE_SIDES // 2 - 1)
+        across = abs(facets[j] + (facets[j + 1] - facets[j]) * (f - j))
+        a = ease((1.0 - across) / (1.0 - STAIN_CORE)) * ease(min(v, 1.0 - v) / STAIN_END)
         return (r, g, b, int(round(255 * a)))
-    open(os.path.join(tex_dir, 'stain.dds'), 'wb').write(dds_bgra(64, 4, soft))
+    open(os.path.join(tex_dir, 'stain.dds'), 'wb').write(dds_bgra(width, height, soft))
     open(os.path.join(tex_dir, 'stain_n.dds'), 'wb').write(dds_bgra(4, 4, lambda x, y: (128, 128, 255, 255), normal=True))
     print('tear.dds, tear_n.dds, tear_m.dds, stain.dds, stain_n.dds')
 

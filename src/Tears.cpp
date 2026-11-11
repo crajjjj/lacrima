@@ -94,10 +94,17 @@ namespace Lacrima
 		// rope into the skin instead made the marks come and go as the head turned, and
 		// dip out of sight between their points on the curve of the cheek.) Its points
 		// are laid densely along the skin for the same reason.
-		constexpr float       kStainRadius = 0.0024f;   // metres at width 1: a streak about 4 mm wide (the stain texture fades to nothing at the ribbon's edges)
+		constexpr float       kStainRadius = 0.0019f;   // metres at width 1: a streak about 4 mm wide at half strength, its soft edges past that
 		constexpr float       kStainLift = 0.0005f;     // how far above the skin a mark lies (the posed skin can lag the rendered one by a frame on an expression change)
 		constexpr float       kStainSpacing = 0.006f;   // metres between the points of a streak along the skin
-		constexpr float       kSmudgeRadius = 0.0025f;  // the band under the lid: 5 mm tall
+		constexpr float       kSmudgeRadius = 0.002f;   // the band under the lid: 4 mm tall at half strength
+		constexpr float       kSmudgeReach = 0.005f;    // metres from a lid point a hand smears the band
+		// A mark's radius is where it is at half strength. The stain texture eases from
+		// full on the ribbon's centre line out to nothing at its edge, reaching half at
+		// this share of the half-width (make_tears.py STAIN_CORE), so a ribbon is posed
+		// wider than its radius by 1 / kStainHalf: the soft edge lies past the radius, and
+		// rows tiled edge to edge meet at half strength each instead of leaving a gap.
+		constexpr float       kStainHalf = 0.5f;
 		constexpr float       kPoolReach = 0.008f;      // metres along the lid from where a tear started that the mascara spreads below the band
 		constexpr float       kSmudgeFirst = 0.45f;     // how much the first tear leaves under the lid, at full mascara
 		constexpr float       kSmudgeMore = 0.2f;       // ... and each one after
@@ -1662,7 +1669,7 @@ namespace Lacrima
 						if (!lid || touched) {
 							continue;
 						}
-						if (const auto* capsule = touching(lid->point + smudge.offset, kSmudgeRadius * 2.0f)) {
+						if (const auto* capsule = touching(lid->point + smudge.offset, kSmudgeReach)) {
 							SmearSmudge(smudge, direction(*capsule, lid->normal));
 							a_cheek.dirty = true;
 							touched = true;
@@ -2516,7 +2523,8 @@ namespace Lacrima
 
 	// Poses a mark along _stainPath with _stainRadius, flat on the skin along
 	// _stainNormal: a streak (a_taper) thins toward its end, a smudge keeps its width
-	// and rounds off at both ends.
+	// and rounds off at both ends. The texture fades every mark in and out at its ends
+	// and softly at its sides, past the radius (kStainHalf).
 	void Tears::PoseStain(const Mount& a_mount, Rope& a_rope, bool a_taper)
 	{
 		const auto&       path = _stainPath;
@@ -2549,7 +2557,7 @@ namespace Lacrima
 			positions[b] = a_mount.Point(path[segment] + (path[next] - path[segment]) * u);
 			const Vec3 normal = Fluid::Normalize(pathNormals[segment] + (pathNormals[next] - pathNormals[segment]) * u, pathNormals[segment]);
 			normals[b] = ToPoint(a_mount.Direction(normal));
-			radii[b] = a_mount.Radius(r);
+			radii[b] = a_mount.Radius(r / kStainHalf);
 		}
 		BendFlat(a_rope, positions, radii, normals);
 	}
