@@ -256,7 +256,7 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
 - **Menu** (`Menu.cpp`): SKSE Menu Framework pages. The vendored header's wrappers do
   not null-check their `GetProcAddress` results, so every wrapper used is on
   `kFrameworkExports`, probed at `kDataLoaded`.
-- **Factions** (`Factions.cpp`, 0.3.1, a LoversLab request: let NPCs react in dialogue):
+- **Factions** (`Factions.cpp`, 0.4.0, a LoversLab request: let NPCs react in dialogue):
   `dist\Lacrima.esp` (written by `tools/make_plugin.py`, ESL, master Skyrim.esm) holds
   `LacrimaCryingFaction` 0x800 and `LacrimaMascaraFaction` 0x801. `Tears::SyncFactions`
   hands `Factions::Sync` the whole membership each update (crying rank = target x 100,
