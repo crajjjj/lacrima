@@ -256,6 +256,19 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
 - **Menu** (`Menu.cpp`): SKSE Menu Framework pages. The vendored header's wrappers do
   not null-check their `GetProcAddress` results, so every wrapper used is on
   `kFrameworkExports`, probed at `kDataLoaded`.
+- **Factions** (`Factions.cpp`, 0.3.1, a LoversLab request: let NPCs react in dialogue):
+  `dist\Lacrima.esp` (written by `tools/make_plugin.py`, ESL, master Skyrim.esm) holds
+  `LacrimaCryingFaction` 0x800 and `LacrimaMascaraFaction` 0x801. `Tears::SyncFactions`
+  hands `Factions::Sync` the whole membership each update (crying rank = target x 100,
+  mascara rank = smudge strength in steps of 10); Sync diffs it against its own map and
+  adds, re-ranks or removes, so every way a crier ends (stop, timeout, eviction,
+  disable, session reset) is covered without a call at each. Faction membership is
+  saved and crying is not, so the member list goes into the SKSE co-save (`LCRM` /
+  `FACT`) and the load callback takes those actors out; the revert callback only
+  forgets the map. Without the esp the module is dormant except for the
+  `Lacrima_MascaraStart` / `Stop` mod events, which it sends on the same transitions
+  (not on a session reset). Keywords were asked for as an alternative and rejected:
+  a keyword sits on the base record, shared by every actor made from it.
 - **APIs**: `Lacrima.psc` (natives in `Papyrus.cpp`, `kAPIVersion`: 2 added
   `CryEx` / `SetMascara`), C exports in `Api.cpp` / `include/API/LacrimaAPI.h` /
   `exports.def` (interface version packed MMmmpp: 10100 added the same two). Never

@@ -149,8 +149,28 @@ EndIf
   the `GetAPIVersion` check is all an optional integration needs; check for 2 before
   calling `CryEx` or `SetMascara`.
 
+## Factions for conditions
+
+`Lacrima.esp` (ESL-flagged, optional: without it tears work the same) holds two
+factions, so dialogue, packages, animation replacers and anything else that takes
+conditions can tell who is crying without a script:
+
+| Faction | Form ID | Member while | Rank |
+|---|---|---|---|
+| `LacrimaCryingFaction` | `xx000800` | the actor cries | 0 to 100: the intensity asked for |
+| `LacrimaMascaraFaction` | `xx000801` | run mascara shows on the face | 0 to 100: how much has gathered, in steps of 10 |
+
+In a dialogue condition: `GetInFaction LacrimaCryingFaction == 1` on the subject or the
+target, or `GetFactionRank LacrimaCryingFaction >= 60` for someone crying hard. From a
+script: `Game.GetFormFromFile(0x800, "Lacrima.esp") as Faction`. An actor leaves the
+crying faction when the crying stops, and the mascara faction when the last mark has
+faded or been wiped off. A save never keeps an actor in either: Lacrima takes them
+out when the save loads, since crying does not survive a load.
+
 Lacrima sends `Lacrima_CryStart` (numArg = intensity) and `Lacrima_CryStop` mod events,
-with the actor as the sender, so an expression mod can react to crying it did not start:
+with the actor as the sender, so an expression mod can react to crying it did not start,
+and `Lacrima_MascaraStart` (numArg = how much, 0 to 1) and `Lacrima_MascaraStop` when
+run mascara appears on a face and when the last of it is gone:
 
 ```papyrus
 RegisterForModEvent("Lacrima_CryStart", "OnCryStart")

@@ -30,7 +30,7 @@ Optional:
 
 INSTALLATION
 
-Install with a mod manager (MO2 recommended). Lacrima is one SKSE plugin plus meshes, textures, two small scripts and a config file. There is no ESP, nothing to build and nothing to configure first.
+Install with a mod manager (MO2 recommended). Lacrima is one SKSE plugin plus meshes, textures, two small scripts, a config file and a tiny ESL-flagged plugin holding two factions (optional: tears work without it). There is nothing to build and nothing to configure first.
 
 To see it working: open the console, click an NPC (or click nothing for the player) and type
     tears cry 0.8 30
@@ -109,6 +109,13 @@ Lacrima does nothing on its own; it is meant to be driven by your mod. Every cal
 Mod events, with the crying actor as the sender, so an expression mod can react to crying it did not start:
 - Lacrima_CryStart (numArg = intensity)
 - Lacrima_CryStop
+- Lacrima_MascaraStart (numArg = how much mascara has run, 0 to 1)
+- Lacrima_MascaraStop (the last mark has faded or been wiped off)
+
+Factions, for dialogue and other conditions (Lacrima.esp, ESL-flagged):
+- LacrimaCryingFaction (xx000800) - the actor is in it while crying; rank 0 to 100 is the intensity. Condition: GetInFaction LacrimaCryingFaction == 1.
+- LacrimaMascaraFaction (xx000801) - the actor is in it while run mascara shows on the face; rank 0 to 100 is how much.
+- A save never keeps an actor in either: Lacrima takes them out when the save loads.
 
 SKSE plugins get the same calls as C exports of Lacrima.dll (include/API/LacrimaAPI.h in the source); there is nothing to link, and every call is safe from any thread.
 

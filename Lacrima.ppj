@@ -24,6 +24,7 @@
          tear meshes and textures. -->
     <ZipFiles Output=".\Release">
         <ZipFile Name="@ModName" RootDir=".\dist" Compression="deflate">
+            <Include>Lacrima.esp</Include>
             <Match In="Scripts">*.pex</Match>
             <Match In="Scripts\Source">*.psc</Match>
             <Match In="SKSE">*.*</Match>

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Factions.h"
 #include "Face.h"
 #include "GeometryMath.h"
 #include "Settings.h"
@@ -340,6 +341,9 @@ namespace Lacrima
 		static void Smear(Stain& a_stain, Fluid::Vec3 a_direction);
 		static void SmearSmudge(Smudge& a_smudge, Fluid::Vec3 a_direction);
 		static bool HasMascara(const Cheek& a_cheek);
+		// Tells Factions who cries and whose mascara has run right now.
+		void SyncFactions(bool a_events = true);
+		std::vector<Factions::Member> _factionMembers;
 		// The point on the posed face nearest a_point (head space), a_depth metres under
 		// the skin; a_point itself when no skin is near. The skin's normal in a_normal.
 		static Fluid::Vec3 OntoFace(const Frame& a_frame, const Face::View& a_view, Fluid::Vec3 a_point, float a_depth, Fluid::Vec3* a_normal);

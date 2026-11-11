@@ -3,14 +3,21 @@ Scriptname Lacrima Hidden
 
 Every function is global: Lacrima.Cry(akActor, 0.7, 20.0).
 
-Lacrima sends two mod events with the crying actor as the sender:
-  Lacrima_CryStart   numArg = intensity
+Lacrima sends mod events with the crying actor as the sender:
+  Lacrima_CryStart       numArg = intensity
   Lacrima_CryStop
+  Lacrima_MascaraStart   numArg = how much mascara has run, 0 to 1
+  Lacrima_MascaraStop    the last mark has faded or been wiped off
 Register with RegisterForModEvent("Lacrima_CryStart", "OnCryStart") and handle
   Event OnCryStart(String asEventName, String asUnused, Float afIntensity, Form akSender)
 
 Crying does not survive loading a save, and no Lacrima_CryStop is sent then. A mod
-that tracks crying actors should forget them on load, or ask IsCrying again.}
+that tracks crying actors should forget them on load, or ask IsCrying again.
+
+With the optional Lacrima.esp, conditions can tell too: a crying actor is in
+LacrimaCryingFaction (0x800, rank 0 to 100 = intensity), one whose mascara has run
+in LacrimaMascaraFaction (0x801, rank 0 to 100 = how much).
+  Faction crying = Game.GetFormFromFile(0x800, "Lacrima.esp") as Faction}
 
 ; Bumped whenever a function is added. 0 means Lacrima.dll did not load.
 Int Function GetAPIVersion() global native

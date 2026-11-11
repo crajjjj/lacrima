@@ -8,6 +8,7 @@ compile_commands.json
 
 # generated: DLL from xmake, pex + psc mirror from Pyro
 dist/**
+!dist/Lacrima.esp
 !dist/SKSE/
 !dist/SKSE/Plugins/
 !dist/SKSE/Plugins/Lacrima.toml

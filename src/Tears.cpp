@@ -1,3 +1,4 @@
+#include "Factions.h"
 #include "Tears.h"
 
 // The fluid rendering here (clusters wrapped into blobs, linked runs posed as
@@ -400,11 +401,45 @@ namespace Lacrima
 			}
 		}
 		_criers.clear();
+		SyncFactions(false);
 		_order.clear();
 		_overrides.clear();
 		_spareBlobs.clear();
 		_spareRopes.clear();
 		_spareStains.clear();
+	}
+
+	// Ranks are 0 to 100. Crying: the intensity asked for. Mascara: how much has
+	// gathered under the lid, in steps of 10 so a rank does not change with every tear.
+	void Tears::SyncFactions(bool a_events)
+	{
+		auto& members = _factionMembers;
+		members.clear();
+		for (const auto& [key, crier] : _criers) {
+			Factions::Member member;
+			if (crier->crying) {
+				member.crying = static_cast<std::int8_t>(std::clamp(std::lround(crier->target * 100.0f), 0L, 100L));
+			}
+			float strength = -1.0f;
+			for (const auto& cheek : crier->cheeks) {
+				if (HasMascara(cheek)) {
+					strength = std::max({ strength, 0.0f, cheek.smudge.strength });
+				}
+			}
+			if (strength >= 0.0f) {
+				member.mascara = static_cast<std::int8_t>(std::clamp(std::lround(strength * 10.0f) * 10L, 0L, 100L));
+			}
+			if (member.crying < 0 && member.mascara < 0) {
+				continue;
+			}
+			const auto actor = crier->actor.get();
+			if (!actor) {
+				continue;
+			}
+			member.actor = actor->GetFormID();
+			members.push_back(member);
+		}
+		Factions::Sync(members, a_events);
 	}
 
 	void Tears::SendEvent(const char* a_name, RE::ActorHandle a_actor, float a_value)
@@ -631,6 +666,7 @@ namespace Lacrima
 				}
 			}
 			_criers.clear();
+			SyncFactions();
 			_order.clear();
 			Face::Reset();  // puts back eyes left glistening; BeginFrame, which would lapse them, does not run while off
 			{
@@ -878,6 +914,7 @@ namespace Lacrima
 			++it;
 		}
 
+		SyncFactions();
 		Publish();
 		RefreshStatus(settings);
 

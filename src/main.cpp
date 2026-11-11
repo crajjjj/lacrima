@@ -1,3 +1,4 @@
+#include "Factions.h"
 #include "Hooks.h"
 #include "Menu.h"
 #include "Papyrus.h"
@@ -13,6 +14,7 @@ namespace
 			break;
 		case SKSE::MessagingInterface::kDataLoaded:
 			Lacrima::Menu::Register();
+			Lacrima::Factions::Load();
 			break;
 		case SKSE::MessagingInterface::kPreLoadGame:
 		case SKSE::MessagingInterface::kNewGame:
@@ -40,6 +42,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse)
 	if (!papyrus || !papyrus->Register(Lacrima::Papyrus::Register)) {
 		logger::error("could not register the Papyrus functions");
 	}
+	Lacrima::Factions::RegisterSerialization();
 	auto* messaging = SKSE::GetMessagingInterface();
 	if (!messaging || !messaging->RegisterListener(OnMessage)) {
 		logger::error("could not register the SKSE message listener; Lacrima stays off");
