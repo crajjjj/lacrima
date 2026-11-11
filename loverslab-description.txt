@@ -38,14 +38,15 @@ To see it working: open the console, click an NPC (or click nothing for the play
 Updating: install the new version over the old one. Your saved settings are kept. No clean save needed.
 
 
-OPTIONAL ADD-ON: VICTIMS CRY IN SEXLAB SCENES
+OPTIONAL ADD-ONS: VICTIMS CRY IN SEXLAB AND OSTIM SCENES
 
-Two optional files make Lacrima react to SexLab on its own; install the one for your SexLab alongside Lacrima. During a scene, an actor SexLab marks as a victim cries while being penetrated (vaginal, anal or oral), or while forced to penetrate a partner, and keeps crying, more quietly, for a while after it stops or the scene ends. Partners who are not victims never cry from it.
+Three optional files make Lacrima react to SexLab or OStim on its own; install the one for your framework alongside Lacrima. During a scene, an actor SexLab marks as a victim cries while being penetrated (vaginal, anal or oral), or while forced to penetrate a partner, and keeps crying, more quietly, for a while after it stops or the scene ends. Partners who are not victims never cry from it.
 
 - "Lacrima add-on - SexLab P+ victims cry while penetrated", for SexLab P+. On P+ 2.19 or newer it follows P+'s live penetration detection, so the tears start and stop with what actually happens in the scene. On older P+ it goes by the stage tags.
 - "Lacrima add-on - classic SexLab victims cry in penetration scenes", for classic SexLab. Classic SexLab cannot tell when a penetration happens, so victims cry through any stage of a vaginal, anal or oral animation, from a stage you choose on.
-- Both need Lacrima 0.1.1 or newer and PapyrusUtil, and add one small ESL-flagged plugin and two scripts.
-- Settings are in Data\SKSE\Plugins\StorageUtilData\ (LacrimaSexLab.json for P+, LacrimaSexLabClassic.json for classic): on/off, how hard victims cry, how long they keep crying afterwards, whether oral counts, whether a victim forced to penetrate counts (P+ only; classic goes by animation tags, which carry no roles), and whether the player and NPCs take part. Edits apply from the next scene.
+- "Lacrima add-on - OStim victims cry while penetrated", for OStim Standalone 7.3 or newer. A victim is what OStim calls one: in a scene with a dominant position, everyone who is not dominant; such scenes come with aggressive animation packs, the scenes OStim ships have none, and a setting lets the penetrated side of every scene cry instead. Penetration is read from the scene's actions, so it follows what the animation shows.
+- All three need Lacrima 0.1.1 or newer and PapyrusUtil, and add one small ESL-flagged plugin and two scripts.
+- Settings are in Data\SKSE\Plugins\StorageUtilData\ (LacrimaSexLab.json for P+, LacrimaSexLabClassic.json for classic, LacrimaOStim.json for OStim): on/off, how hard victims cry, how long they keep crying afterwards, whether oral counts, whether a victim forced to penetrate counts (P+ and OStim; classic goes by animation tags, which carry no roles), and whether the player and NPCs take part. Edits apply from the next scene.
 
 
 SETTINGS
