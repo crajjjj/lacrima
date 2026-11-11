@@ -99,6 +99,7 @@ namespace Lacrima
 		constexpr float       kStainSpacing = 0.006f;   // metres between the points of a streak along the skin
 		constexpr float       kSmudgeRadius = 0.002f;   // the band under the lid: 4 mm tall at half strength
 		constexpr float       kSmudgeReach = 0.005f;    // metres from a lid point a hand smears the band
+		constexpr float       kCornerRun = 0.9f;        // how far past its corner points a smudge ribbon runs, in lid-point spacings
 		// No mark belongs far from the eye. A point past these is left out of its ribbon
 		// and logged once per cheek, so a ribbon can never stretch off the face.
 		constexpr float       kLidReach = 0.05f;        // metres from the tears' start a point of the band under the lid may lie
@@ -2442,7 +2443,9 @@ namespace Lacrima
 				normals.clear();
 				radius.clear();
 				// the band keeps its height into the corners; the rows below narrow toward them
-				const float corners = row == 0 ? 1.0f : 0.55f - 0.35f * static_cast<float>(row - 1);
+				// (less so the more mascara gathers in the corners)
+				const float narrow = row == 0 ? 1.0f : 0.55f - 0.35f * static_cast<float>(row - 1);
+				const float corners = narrow + (0.9f - std::min(narrow, 0.9f)) * std::clamp(a_settings.mascaraCorners, 0.0f, 1.0f);
 				for (std::size_t i = 0; i < Face::kLidPoints; ++i) {
 					const auto& lid = a_lids[row][i];
 					if (!lid || stray(lid->point, kLidReach, "lid point", row, i)) {
@@ -2477,6 +2480,18 @@ namespace Lacrima
 					radius.push_back(half);
 				}
 				if (path.size() >= 2) {
+					// The stain texture fades a ribbon out over the last tenth of its length
+					// at each end. Run the ribbon on past both corner points by about that
+					// much, so the fade falls beyond the corners of the eye, not short of them.
+					const std::size_t last = path.size() - 1;
+					const Vec3        before = path[0] + (path[0] - path[1]) * kCornerRun;
+					const Vec3        after = path[last] + (path[last] - path[last - 1]) * kCornerRun;
+					path.insert(path.begin(), before);
+					normals.insert(normals.begin(), normals.front());
+					radius.insert(radius.begin(), radius.front());
+					path.push_back(after);
+					normals.push_back(normals.back());
+					radius.push_back(radius.back());
 					if (Rope* rope = AcquireStainRope(a_cheek)) {
 						PoseStain(a_mount, *rope, false);
 						++shown;
@@ -2599,7 +2614,7 @@ namespace Lacrima
 			const float       u = length > 1e-6f ? std::clamp((s - along[segment]) / length, 0.0f, 1.0f) : 0.0f;
 			float r = (radius[segment] + (radius[next] - radius[segment]) * u) * (a_taper ? 1.0f - 0.35f * t : 1.0f);
 			if (b == 0 || b + 1 == kRopeBones) {
-				r *= a_taper ? 0.6f : 0.7f;
+				r *= a_taper ? 0.6f : 1.0f;  // the texture rounds off a smudge's ends
 			}
 			positions[b] = a_mount.Point(path[segment] + (path[next] - path[segment]) * u);
 			const Vec3 normal = Fluid::Normalize(pathNormals[segment] + (pathNormals[next] - pathNormals[segment]) * u, pathNormals[segment]);

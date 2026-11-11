@@ -208,7 +208,10 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   corner points of the lid (0 inner, 7 outer) pool too, weighted `[look]
   mascara_corners` (default 0.5, 0.2.7; user: mascara only in the middle of the lid,
   "do a bit under the eye edges"), so the band is fuller there and a little spread
-  shows under both corners whether or not a tear ran there. The stain
+  shows under both corners whether or not a tear ran there. The setting also lifts
+  the rows' narrowing toward the corners (`corners` toward 0.9), and every smudge
+  ribbon runs `kCornerRun` 0.9 lid-point spacings past both corner points, because the
+  texture's end fade otherwise ate the corners (user: "it doesn't reach"). The stain
   texture (`make_tears.py` `soft`, 256x128) eases from full on the centre line out to
   nothing at the edge (raised cosine, `STAIN_CORE` 0 = no flat middle, laid out in the
   position across the ribbon: the top of the cross-section is four flat facets, so u
