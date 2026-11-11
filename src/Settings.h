@@ -17,15 +17,15 @@ namespace Lacrima
 		bool debugLog{ false };
 
 		float rate{ 12.0f };
-		int   drop{ 4 };
+		int   drop{ 5 };
 		float well{ 0.9f };
 		float hold{ 0.8f };
 		float ductPosition{ 0.3f };
 		float ductBelow{ 0.9f };
-		int   streams{ 2 };
-		float streamSpread{ 0.6f };
+		int   streams{ 4 };
+		float streamSpread{ 0.75f };
 		float variety{ 0.5f };
-		float cornerTears{ 0.25f };  // chance a tear starts at a corner of the eye
+		float cornerTears{ 0.8f };  // chance a tear starts at a corner of the eye
 		bool  bothEyes{ true };
 		int   maxActors{ 6 };
 		int   maxParticles{ 160 };
@@ -35,23 +35,23 @@ namespace Lacrima
 		float refraction{ 0.3f };
 		float size{ 0.55f };
 		float trail{ 0.6f };
-		float opacity{ 0.05f };
+		float opacity{ 0.2f };
 		float shine{ 1.2f };
 		float gloss{ 400.0f };
 		float reflection{ 0.5f };
-		float glow{ 0.0f };
+		float glow{ 0.06f };
 		bool  envLightFade{ true };  // the water's reflection dims with the light on the face (SLSF2 EnvMap_Light_Fade), so tears do not shine in the dark
-		float eyeShine{ 1.6f };
+		float eyeShine{ 1.8f };
 		float lifetime{ 30.0f };
 		float fade{ 5.0f };
 		float mascara{ 0.0f };
 		float mascaraOpacity{ 0.5f };
 		float mascaraWidth{ 1.0f };
 		float mascaraSmudge{ 1.0f };
-		float mascaraSpread{ 0.6f };
-		float mascaraCorners{ 0.5f };  // how much mascara gathers under both corners of the eye, as a share of under a tear's path
-		int   mascaraLines{ 2 };  // streaks on one cheek at most
-		float mascaraLength{ 4.0f };  // cm down the face a streak runs at most; 0 as far as the tear goes
+		float mascaraSpread{ 1.0f };
+		float mascaraCorners{ 1.0f };  // how much mascara gathers under both corners of the eye, as a share of under a tear's path
+		int   mascaraLines{ 3 };  // streaks on one cheek at most
+		float mascaraLength{ 7.0f };  // cm down the face a streak runs at most; 0 as far as the tear goes
 		float mascaraLifetime{ 300.0f };
 
 		float stickiness{ 1.5f };

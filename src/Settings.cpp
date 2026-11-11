@@ -53,7 +53,7 @@ namespace Lacrima
 				"Tears on an actor farther than this from the camera pause where they are until the actor comes closer; the trails still dry up." },
 
 			Field{ "look", "style", &Settings::style, 0, 2, "Look", "Look style", "%d",
-				"0 water: reflective, with a glow if Glow is set. 1 plain: no glow and no reflection; try it if tears look white and solid under an ENB preset. "
+				"0 water: reflective, with a faint glow. 1 plain: no glow and no reflection; try it if tears look white and solid under an ENB preset. "
 				"2 refraction: plain, and the scene behind bends through the water (experimental)." },
 			Field{ "look", "refraction", &Settings::refraction, 0.0f, 1.0f, "Look", "Refraction", "%.2f",
 				"In the refraction style, how strongly the scene behind bends through a tear." },

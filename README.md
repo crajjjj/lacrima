@@ -37,8 +37,8 @@ up under the lower lid and spreads over the skin under the eye (`mascara_spread`
 band along the lid only, or the whole area under the eye), most where the tears ran and
 a little under both corners of the eye (`mascara_corners`), and a streak runs down the
 exact path the tear took, as far as you let it (`mascara_length`: in cm from the eye, so
-4, the default, stops it beside the nose; 0 as far as the tear goes), with at most
-`mascara_lines` streaks under one eye (2 by default). Both
+7, the default, stops it at the mouth; 0 as far as the tear goes), with at most
+`mascara_lines` streaks under one eye (3 by default). Both
 outlive the water and fade after a few minutes. A hand wiping the face smears them:
 it drags them along the skin the way it moves, wider and flatter, and they go sooner.
 
@@ -54,15 +54,15 @@ change everything live and save your changes when the menu closes. Without it, w
 the values you want to change into `Data\SKSE\Plugins\Lacrima_User.toml`, using the
 sections and keys of `Lacrima.toml`, which lists every setting with its default.
 
-**Tears look white and solid?** Some ENB presets amplify materials that reflect, which
-the default water look does. Set Look style to 1 (plain: no reflection, no glow), and
-lower Opacity if they still look milky. Style 2 adds refraction, so the scene behind
+**Tears look white and solid?** Some ENB presets amplify materials that reflect or
+give off a little light of their own, which the default water look does. Set Look
+style to 1 (plain: no reflection, no glow), and lower Opacity if they still look milky. Style 2 adds refraction, so the scene behind
 bends through the water.
 
 **Tears shine in the dark?** The water reflects a fixed image of surroundings, which the
 game does not dim with the light on the face. Reflection follows the light (Look page,
-on by default) asks it to; if tears still stand out in a dark room, lower Reflection
-and keep Glow at 0.
+on by default) asks it to; if tears still stand out in a dark room, set Glow to 0 and
+lower Reflection.
 
 **Tears start in the wrong place?** (By the ears, say.) Lacrima reads the eyes and
 face meshes of the head to find the lower lids. Eye mods that build the eye from

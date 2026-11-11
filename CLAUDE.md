@@ -99,9 +99,9 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   `NiSkinInstance`: the engine hides a dismember partition whenever an equipped item
   covers its slot (TNG uses slot 52). The material is an environment-mapped,
   translucent lighting shader without depth write, with a glow of its own if set
-  (`[look] glow`, 0 since 0.2.6) so a streak reads as a light wet line from any angle.
+  (`[look] glow`, 0.06) so a streak reads as a light wet line from any angle.
   `[look] style` switches it live in `Shade`: 0 water (that; the own-emit flag only while
-  `glow` > 0, so the 0.2.6 default glow 0 draws no emissive pass), 1 plain (no own-emit flag, emissive 0,
+  `glow` > 0, so glow 0 draws no emissive pass), 1 plain (no own-emit flag, emissive 0,
   envMapScale 0: some ENB presets turn glow or reflection into solid white, a player
   report), 2 refraction (plain + the `kRefraction` flag and `refractionPower`,
   untested on the envmap shader type). Changing the style flips shader flags, so
@@ -110,7 +110,7 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
 - **Corner tears and the line cap** (0.2.7): `Face::kInnerCorner` / `kOuterCorner` are two
   ducts after the streams' (`kMaxDucts` = `kMaxStreams` + 2), placed at `kCornerDuct`
   0.8 of the lid line with the depth-weighted pick; `StartTear` sends a tear there with
-  chance `[tears] corner_tears` (0.25). `[look] mascara_lines` (2): `LayStain` lays no
+  chance `[tears] corner_tears` (0.8). `[look] mascara_lines` (3): `LayStain` lays no
   streak for a new run while that many runs are on the cheek (they stay until they fade;
   dropping the oldest made lines jump).
 - **Variety** (`[tears] variety`, in `StartTear` and at the end of `Emit`): each tear
@@ -160,7 +160,7 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   `tear_blob.nif` / `tear_rope.nif` carry the flag as authored too (`make_tears.py`
   `tear_shader`): NIF checkers report an environment-map shader without it, and
   `Shade` still clears it when the setting is off. Fallback levers are `glow` 0 and
-  a lower `reflection`; the 0.2.6 defaults sit there already (glow 0, reflection 0.5).
+  a lower `reflection` (default 0.5 since 0.2.6).
 - **Placement overrides** (`[debug] face_forward`, `eyes_space`, carried in `Face::Placement`,
   stored on the `Head` it was built with; a change rebuilds the head through `HeadOf`'s
   `retune`): two LoversLab users (11-09) had tears start by the ears. The ducts are aimed
@@ -212,7 +212,7 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   8 mm, so the spread exists only under the tears' paths and is a 0.2 mm hairline
   elsewhere. Uniform rows read as dark circles under the eyes (user, 0.2.3). Both
   corner points of the lid (0 inner, 7 outer) pool too, weighted `[look]
-  mascara_corners` (default 0.5, 0.2.7; user: mascara only in the middle of the lid,
+  mascara_corners` (default 1, 0.2.7; user: mascara only in the middle of the lid,
   "do a bit under the eye edges"), so the band is fuller there and a little spread
   shows under both corners whether or not a tear ran there. The setting also lifts
   the rows' narrowing toward the corners (`corners` toward 0.9), and every smudge

@@ -11,42 +11,42 @@ debug_log = false      # face, duct and fluid details in Lacrima.log, and the st
 
 [tears]
 rate = 12.0            # tears per minute from each eye at full intensity
-drop = 4               # fluid particles in one tear at full intensity (2 to 20); a real tear is small
+drop = 5               # fluid particles in one tear at full intensity (2 to 20); a real tear is small
 well = 0.9             # seconds a tear takes to gather at the lower lid
 hold = 0.8             # seconds a full tear clings to the lid before it runs
 duct_position = 0.3    # where tears start: 0 = inner corner of the eye, 1 = outer corner
 duct_below = 0.9       # how far below the middle of the eye, in eye sizes
-streams = 2            # points along the lower lid tears can start from (1 to 4); each tear picks one at random
-stream_spread = 0.6    # how far apart the streams sit along the lid, as a fraction of its length, centred on duct_position
+streams = 4            # points along the lower lid tears can start from (1 to 4); each tear picks one at random
+stream_spread = 0.75   # how far apart the streams sit along the lid, as a fraction of its length, centred on duct_position
 variety = 0.5          # how much one tear differs from the next: start point on the lid, size, how far its mascara streak runs, a second tear right after; 0 = all alike
-corner_tears = 0.25    # how often a tear starts at a corner of the eye, inner or outer, and not from one of the streams: 0 never, 1 always
+corner_tears = 0.8     # how often a tear starts at a corner of the eye, inner or outer, and not from one of the streams: 0 never, 1 always
 both_eyes = true       # false: one eye, picked at random each time crying starts
 max_actors = 6         # actors crying at once; the oldest stops past this
 max_particles = 160    # fluid on one cheek at most
 max_distance = 3000    # game units from the camera; farther actors' tears pause where they are (trails still dry)
 
 [look]
-style = 0              # 0 water (reflective, with a glow if you set one); 1 plain (no glow, no reflection: try it if tears look white and solid under an ENB preset); 2 refraction (plain + the scene bends through the water, experimental)
+style = 0              # 0 water (reflective, faint glow); 1 plain (no glow, no reflection: try it if tears look white and solid under an ENB preset); 2 refraction (plain + the scene bends through the water, experimental)
 refraction = 0.3       # in the refraction style, how strongly the scene behind bends through a tear
 size = 0.55            # drop size; 1 is about a real tear, smaller is subtler, bigger reads better from afar
 trail = 0.6            # width of the wet trail a tear leaves
-opacity = 0.05         # how much the water hides the skin; the rest shows through
+opacity = 0.2          # how much the water hides the skin; the rest shows through
 shine = 1.2            # strength of the wet highlight
 gloss = 400.0          # sharpness of the highlight
 reflection = 0.5       # how much of the surroundings the water reflects; 0 is matte
 env_light_fade = true  # the reflection dims with the light on the face, so tears do not shine in a dark room; false = as bright in the dark as in daylight (the game's default for reflective surfaces)
-glow = 0.0             # a faint light of the water's own, so a streak reads as a light wet line from any angle; 0 none
-eye_shine = 1.6        # wet eyes: how much brighter and more reflective the eyes get while crying (1 = unchanged)
+glow = 0.06            # a faint light of the water's own, so a streak reads as a light wet line from any angle; 0 none
+eye_shine = 1.8        # wet eyes: how much brighter and more reflective the eyes get while crying (1 = unchanged)
 lifetime = 30.0        # seconds a trail stays wet
 fade = 5.0             # seconds at the end of its life a trail spends thinning out
 mascara = 0.0          # running mascara: tears leave a dark streak that outlives the water; 0 none, up to 1 (mods can set it per actor)
 mascara_opacity = 0.5  # how dark a mascara streak is
 mascara_width = 1.0    # how wide a mascara streak is
 mascara_smudge = 1.0   # how much mascara gathers in a dark band under the lower lid; 0 none
-mascara_spread = 0.6   # how far the smudge spreads down over the skin under the eye: 0 a band along the lid only, 1 the whole area under the eye
-mascara_corners = 0.5  # how much mascara gathers under the inner and outer corners of the eye, where no tear need have run: 0 only where the tears ran, 1 as much as under a tear's path
-mascara_lines = 2      # the most mascara streaks under one eye; with that many there, a tear on a new path leaves none until one has faded
-mascara_length = 4.0   # cm down the face a streak runs: 3 stops above the nose, 4 beside it, 7 at the mouth; each streak a little shorter or longer, by variety; 0 as far as the tear goes
+mascara_spread = 1.0   # how far the smudge spreads down over the skin under the eye: 0 a band along the lid only, 1 the whole area under the eye
+mascara_corners = 1.0  # how much mascara gathers under the inner and outer corners of the eye, where no tear need have run: 0 only where the tears ran, 1 as much as under a tear's path
+mascara_lines = 3      # the most mascara streaks under one eye; with that many there, a tear on a new path leaves none until one has faded
+mascara_length = 7.0   # cm down the face a streak runs: 3 stops above the nose, 4 beside it, 7 at the mouth; each streak a little shorter or longer, by variety; 0 as far as the tear goes
 mascara_lifetime = 300.0  # seconds a streak stays before it has faded away; a hand wipe smears it and it goes sooner
 
 [physics]
@@ -55,7 +55,7 @@ friction = 30.0        # drag on a tear running over skin; higher runs slower (3
 viscosity = 20.0       # how much a tear moves as one; water is low
 cohesion = 2.5         # how strongly a tear holds together as a bead
 stretch = 3.0          # how easily a running tear stretches into a trail
-trail_step = 2.5       # a running tear leaves a drop behind every this many cm, so a 4-drop tear runs about 7 cm and stops
+trail_step = 2.5       # a running tear leaves a drop behind every this many cm, so a 5-drop tear runs about 10 cm and stops
 cling = 1.0            # seconds a drop hangs under the chin before it falls (a lone drop twice this, a heavy bead less)
 fall = 0.6             # seconds a drop that falls off the face stays visible
 

@@ -25,14 +25,14 @@ ROPE_SIDES = 8
 # other. The game sets opacity, highlight, gloss, reflection, glow and the style's
 # flags at run time from the [look] settings; the mesh is authored at the shipped
 # defaults (Lacrima.toml) so it reads the same in a NIF viewer. Own_Emit is authored
-# on with a white emissive colour for a Glow above 0; the game turns the flag off
-# while Glow is 0, the default.
+# on with a white emissive colour for the faint glow; the game turns the flag off
+# while Glow is 0.
 TEAR_COLOR = (225, 230, 238)
-TEAR_ALPHA = 0.05
+TEAR_ALPHA = 0.2
 TEAR_SHINE = 1.2
 TEAR_GLOSS = 400.0
 TEAR_REFLECTION = 0.5
-TEAR_GLOW = 0.0
+TEAR_GLOW = 0.06
 CUBEMAP = 'textures\\cubemaps\\chrome_e.dds'  # vanilla, in Skyrim - Textures3.bsa
 
 
