@@ -52,15 +52,15 @@ change everything live and save your changes when the menu closes. Without it, w
 the values you want to change into `Data\SKSE\Plugins\Lacrima_User.toml`, using the
 sections and keys of `Lacrima.toml`, which lists every setting with its default.
 
-**Tears look white and solid?** Some ENB presets amplify materials that reflect or
-give off a little light of their own, which the default water look does. Set Look
-style to 1 (plain: no glow, no reflection), and lower Opacity if they still look
-milky. Style 2 adds refraction, so the scene behind bends through the water.
+**Tears look white and solid?** Some ENB presets amplify materials that reflect, which
+the default water look does. Set Look style to 1 (plain: no reflection, no glow), and
+lower Opacity if they still look milky. Style 2 adds refraction, so the scene behind
+bends through the water.
 
 **Tears shine in the dark?** The water reflects a fixed image of surroundings, which the
 game does not dim with the light on the face. Reflection follows the light (Look page,
-on by default) asks it to; if tears still stand out in a dark room, set Glow to 0 and
-lower Reflection.
+on by default) asks it to; if tears still stand out in a dark room, lower Reflection
+and keep Glow at 0.
 
 **Tears start in the wrong place?** (By the ears, say.) Lacrima reads the eyes and
 face meshes of the head to find the lower lids. Eye mods that build the eye from

@@ -26,7 +26,7 @@ ROPE_SIDES = 8
 # each other. The game sets opacity, highlight, gloss, reflection and glow at run
 # time from the [look] settings; the values here are only what the mesh starts with.
 TEAR_COLOR = (225, 230, 238)
-TEAR_ALPHA = 0.2
+TEAR_ALPHA = 0.05
 TEAR_REFLECTION = 1.0
 TEAR_GLOW = 0.12
 CUBEMAP = 'textures\\cubemaps\\chrome_e.dds'  # vanilla, in Skyrim - Textures3.bsa

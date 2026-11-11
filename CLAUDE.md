@@ -98,9 +98,9 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   rope / drop pass on persistent scratch buffers. The tear meshes use a plain
   `NiSkinInstance`: the engine hides a dismember partition whenever an equipped item
   covers its slot (TNG uses slot 52). The material is an environment-mapped,
-  translucent lighting shader without depth write, with a faint glow of its own
-  (`[look] glow`) so a streak reads as a light wet line from any angle. `[look] style`
-  switches it live in `Shade`: 0 water (that), 1 plain (no own-emit flag, emissive 0,
+  translucent lighting shader without depth write, with a glow of its own if set
+  (`[look] glow`, 0 since 0.2.6) so a streak reads as a light wet line from any angle.
+  `[look] style` switches it live in `Shade`: 0 water (that), 1 plain (no own-emit flag, emissive 0,
   envMapScale 0: some ENB presets turn glow or reflection into solid white, a player
   report), 2 refraction (plain + the `kRefraction` flag and `refractionPower`,
   untested on the envmap shader type). Changing the style flips shader flags, so
@@ -153,7 +153,7 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   `tear_blob.nif` / `tear_rope.nif` carry the flag as authored too (`make_tears.py`
   `tear_shader`): NIF checkers report an environment-map shader without it, and
   `Shade` still clears it when the setting is off. Fallback levers are `glow` 0 and
-  a lower `reflection`.
+  a lower `reflection`; the 0.2.6 defaults sit there already (glow 0, reflection 0.5).
 - **Placement overrides** (`[debug] face_forward`, `eyes_space`, carried in `Face::Placement`,
   stored on the `Head` it was built with; a change rebuilds the head through `HeadOf`'s
   `retune`): two LoversLab users (11-09) had tears start by the ears. The ducts are aimed

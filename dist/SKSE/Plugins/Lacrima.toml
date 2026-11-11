@@ -25,16 +25,16 @@ max_particles = 160    # fluid on one cheek at most
 max_distance = 3000    # game units from the camera; farther actors' tears pause where they are (trails still dry)
 
 [look]
-style = 0              # 0 water (reflective, faint glow); 1 plain (no glow, no reflection: try it if tears look white and solid under an ENB preset); 2 refraction (plain + the scene bends through the water, experimental)
+style = 0              # 0 water (reflective, with a glow if you set one); 1 plain (no glow, no reflection: try it if tears look white and solid under an ENB preset); 2 refraction (plain + the scene bends through the water, experimental)
 refraction = 0.3       # in the refraction style, how strongly the scene behind bends through a tear
-size = 0.8             # drop size; real tears are about 1, bigger reads better from afar
-trail = 1.2            # width of the wet trail a tear leaves
-opacity = 0.2          # how much the water hides the skin; the rest shows through
-shine = 6.0            # strength of the wet highlight
-gloss = 300.0          # sharpness of the highlight
-reflection = 1.0       # how much of the surroundings the water reflects; 0 is matte
+size = 0.55            # drop size; real tears are about 1, bigger reads better from afar
+trail = 0.6            # width of the wet trail a tear leaves
+opacity = 0.05         # how much the water hides the skin; the rest shows through
+shine = 1.2            # strength of the wet highlight
+gloss = 400.0          # sharpness of the highlight
+reflection = 0.5       # how much of the surroundings the water reflects; 0 is matte
 env_light_fade = true  # the reflection dims with the light on the face, so tears do not shine in a dark room; false = as bright in the dark as in daylight (the game's default for reflective surfaces)
-glow = 0.06            # a faint light of the water's own, so a streak reads as a light wet line from any angle; 0 none
+glow = 0.0             # a faint light of the water's own, so a streak reads as a light wet line from any angle; 0 none
 eye_shine = 1.6        # wet eyes: how much brighter and more reflective the eyes get while crying (1 = unchanged)
 lifetime = 30.0        # seconds a trail stays wet
 fade = 5.0             # seconds at the end of its life a trail spends thinning out
