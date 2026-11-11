@@ -57,6 +57,11 @@ give off a little light of their own, which the default water look does. Set Loo
 style to 1 (plain: no glow, no reflection), and lower Opacity if they still look
 milky. Style 2 adds refraction, so the scene behind bends through the water.
 
+**Tears shine in the dark?** The water reflects a fixed image of surroundings, which the
+game does not dim with the light on the face. Reflection follows the light (Look page,
+on by default) asks it to; if tears still stand out in a dark room, set Glow to 0 and
+lower Reflection.
+
 **Tears start in the wrong place?** (By the ears, say.) Lacrima reads the eyes and
 face meshes of the head to find the lower lids. Eye mods that build the eye from
 several layers are handled: when the part the game lists as the eyes is not the

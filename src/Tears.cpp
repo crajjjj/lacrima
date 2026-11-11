@@ -2045,9 +2045,13 @@ namespace Lacrima
 				}
 			}
 			if (a_restyle) {
-				// the style changes which shader passes draw the tear: rebuild them
+				// the style changes which shader passes draw the tear: rebuild them. The
+				// static cubemap the water reflects is not lit by the scene, so in a dark
+				// room tears shone like lamps; EnvMap_Light_Fade is the game's own switch
+				// for fading a reflection with the light on the surface.
 				shader->SetFlags(Flag::kOwnEmit, water);
 				shader->SetFlags(Flag::kRefraction, refract);
+				shader->SetFlags(Flag::kEnvmapLightFade, water && a_settings.envLightFade);
 				shader->SetupGeometry(geometry);
 				shader->FinishSetupGeometry(geometry);
 			}
@@ -2071,13 +2075,14 @@ namespace Lacrima
 			}
 			a_cheek.stainOpacity = a_settings.mascaraOpacity;
 		}
+		const int envFade = a_settings.envLightFade ? 1 : 0;
 		if (a_cheek.opacity == a_settings.opacity && a_cheek.shine == a_settings.shine && a_cheek.gloss == a_settings.gloss &&
 			a_cheek.reflection == a_settings.reflection && a_cheek.glow == a_settings.glow && a_cheek.style == a_settings.style &&
-			a_cheek.refraction == a_settings.refraction) {
+			a_cheek.refraction == a_settings.refraction && a_cheek.envFade == envFade) {
 			return;
 		}
 		// A new or recycled mesh (opacity reset) may carry another style's flags.
-		const bool restyle = a_cheek.style != a_settings.style || a_cheek.opacity < 0.0f;
+		const bool restyle = a_cheek.style != a_settings.style || a_cheek.envFade != envFade || a_cheek.opacity < 0.0f;
 		for (auto& blob : a_cheek.blobs) {
 			Shade(blob.root.get(), a_settings, restyle);
 		}
@@ -2091,6 +2096,7 @@ namespace Lacrima
 		a_cheek.glow = a_settings.glow;
 		a_cheek.style = a_settings.style;
 		a_cheek.refraction = a_settings.refraction;
+		a_cheek.envFade = envFade;
 	}
 
 	Tears::Blob* Tears::AcquireBlob(Cheek& a_cheek)

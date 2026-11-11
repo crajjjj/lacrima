@@ -67,6 +67,8 @@ namespace Lacrima
 				"Sharpness of the highlight. High is a small bright glint, low a broad sheen." },
 			Field{ "look", "reflection", &Settings::reflection, 0.0f, 3.0f, "Look", "Reflection", "%.2f",
 				"How much of the surroundings the water reflects. 0 is matte." },
+			Field{ "look", "env_light_fade", &Settings::envLightFade, 0, 1, "Look", "Reflection follows the light", nullptr,
+				"The reflection is dimmed with the light falling on the face, so tears do not shine in a dark room. Off, the game draws the reflection as bright in the dark as in daylight, as it does for every reflective surface." },
 			Field{ "look", "glow", &Settings::glow, 0.0f, 1.0f, "Look", "Glow", "%.2f",
 				"A faint light of the water's own, so a streak reads as a light wet line from any angle. 0 is none." },
 			Field{ "look", "eye_shine", &Settings::eyeShine, 1.0f, 4.0f, "Look", "Wet eyes", "%.2f",

@@ -238,6 +238,7 @@ namespace Lacrima
 			float                          glow{ -1.0f };
 			int                            style{ -1 };
 			float                          refraction{ -1.0f };
+			int                            envFade{ -1 };  // [look] env_light_fade the meshes carry; -1 unknown
 			Fluid::Vec3                    restDown;        // where down was when the sleeping tears settled
 			bool                           rested{ false };
 			bool                           dirty{ true };   // the fluid changed since the last draw

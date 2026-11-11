@@ -39,6 +39,7 @@ namespace Lacrima
 		float gloss{ 300.0f };
 		float reflection{ 1.0f };
 		float glow{ 0.06f };
+		bool  envLightFade{ true };  // the water's reflection dims with the light on the face (SLSF2 EnvMap_Light_Fade), so tears do not shine in the dark
 		float eyeShine{ 1.6f };
 		float lifetime{ 30.0f };
 		float fade{ 5.0f };

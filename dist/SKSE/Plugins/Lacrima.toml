@@ -33,6 +33,7 @@ opacity = 0.2          # how much the water hides the skin; the rest shows throu
 shine = 6.0            # strength of the wet highlight
 gloss = 300.0          # sharpness of the highlight
 reflection = 1.0       # how much of the surroundings the water reflects; 0 is matte
+env_light_fade = true  # the reflection dims with the light on the face, so tears do not shine in a dark room; false = as bright in the dark as in daylight (the game's default for reflective surfaces)
 glow = 0.06            # a faint light of the water's own, so a streak reads as a light wet line from any angle; 0 none
 eye_shine = 1.6        # wet eyes: how much brighter and more reflective the eyes get while crying (1 = unchanged)
 lifetime = 30.0        # seconds a trail stays wet
