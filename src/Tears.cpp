@@ -50,6 +50,7 @@ namespace Lacrima
 		constexpr float kFallGrace = 0.2f;
 		constexpr float       kRamp = 1.5f;
 		constexpr float       kMarkerRadius = 1.5f;  // units; big on purpose, it is a "do the meshes show at all" probe
+		constexpr float       kMarkerOpacity = 0.4f;  // the markers are tear blobs in the tears' material: while they show, it is at least this opaque
 		constexpr float       kGravity = 9.81f;
 		constexpr float       kMinScale = 0.05f;
 		// Sleeping tears wake when the head has tilted this far (cos 15 degrees) from
@@ -2011,7 +2012,8 @@ namespace Lacrima
 		return true;
 	}
 
-	// The look style: 0 water (reflection and a faint light of its own), 1 plain (neither:
+	// The look style: 0 water (reflection, and a light of its own while [look] glow is
+	// above 0: at 0 the Own_Emit flag is off, not just dark), 1 plain (neither:
 	// ENB presets that amplify self-lit or reflective materials turn those into solid
 	// white), 2 refraction (plain, and the scene behind bends through the water).
 	void Tears::Shade(RE::NiAVObject* a_root, const Settings& a_settings, bool a_restyle)
@@ -2049,7 +2051,7 @@ namespace Lacrima
 				// static cubemap the water reflects is not lit by the scene, so in a dark
 				// room tears shone like lamps; EnvMap_Light_Fade is the game's own switch
 				// for fading a reflection with the light on the surface.
-				shader->SetFlags(Flag::kOwnEmit, water);
+				shader->SetFlags(Flag::kOwnEmit, water && a_settings.glow > 0.0f);
 				shader->SetFlags(Flag::kRefraction, refract);
 				shader->SetFlags(Flag::kEnvmapLightFade, water && a_settings.envLightFade);
 				shader->SetupGeometry(geometry);
@@ -2075,14 +2077,10 @@ namespace Lacrima
 			}
 			a_cheek.stainOpacity = a_settings.mascaraOpacity;
 		}
-		const int envFade = a_settings.envLightFade ? 1 : 0;
-		if (a_cheek.opacity == a_settings.opacity && a_cheek.shine == a_settings.shine && a_cheek.gloss == a_settings.gloss &&
-			a_cheek.reflection == a_settings.reflection && a_cheek.glow == a_settings.glow && a_cheek.style == a_settings.style &&
-			a_cheek.refraction == a_settings.refraction && a_cheek.envFade == envFade) {
+		if (!Reshades(a_cheek, a_settings)) {
 			return;
 		}
-		// A new or recycled mesh (opacity reset) may carry another style's flags.
-		const bool restyle = a_cheek.style != a_settings.style || a_cheek.envFade != envFade || a_cheek.opacity < 0.0f;
+		const bool restyle = Restyles(a_cheek, a_settings);
 		for (auto& blob : a_cheek.blobs) {
 			Shade(blob.root.get(), a_settings, restyle);
 		}
@@ -2096,7 +2094,25 @@ namespace Lacrima
 		a_cheek.glow = a_settings.glow;
 		a_cheek.style = a_settings.style;
 		a_cheek.refraction = a_settings.refraction;
-		a_cheek.envFade = envFade;
+		a_cheek.envFade = a_settings.envLightFade ? 1 : 0;
+	}
+
+	// Whether the tear meshes carry other shader flags than these settings want, which
+	// rebuilds the passes: a new or recycled mesh (opacity reset) may carry another
+	// style's, and the style, env_light_fade and glow crossing 0 each switch a flag.
+	bool Tears::Restyles(const Cheek& a_cheek, const Settings& a_settings)
+	{
+		return a_cheek.opacity < 0.0f || a_cheek.style != a_settings.style || a_cheek.envFade != (a_settings.envLightFade ? 1 : 0) ||
+		       (a_cheek.glow > 0.0f) != (a_settings.glow > 0.0f);
+	}
+
+	// Whether the tear meshes are shaded with other [look] values than these. Draw asks
+	// it as well, so a change also reaches tears that have settled and skip the draw.
+	bool Tears::Reshades(const Cheek& a_cheek, const Settings& a_settings)
+	{
+		return Restyles(a_cheek, a_settings) || a_cheek.opacity != a_settings.opacity || a_cheek.shine != a_settings.shine ||
+		       a_cheek.gloss != a_settings.gloss || a_cheek.reflection != a_settings.reflection || a_cheek.glow != a_settings.glow ||
+		       a_cheek.refraction != a_settings.refraction;
 	}
 
 	Tears::Blob* Tears::AcquireBlob(Cheek& a_cheek)
@@ -2570,10 +2586,7 @@ namespace Lacrima
 			return;
 		}
 		auto&      particles = a_cheek.particles;
-		const bool restyled = a_cheek.opacity != a_settings.opacity || a_cheek.shine != a_settings.shine || a_cheek.gloss != a_settings.gloss ||
-		                      a_cheek.reflection != a_settings.reflection || a_cheek.glow != a_settings.glow || a_cheek.style != a_settings.style ||
-		                      a_cheek.refraction != a_settings.refraction ||
-		                      (!a_cheek.stainRopes.empty() && a_cheek.stainOpacity != a_settings.mascaraOpacity);
+		const bool restyled = Reshades(a_cheek, a_settings) || (!a_cheek.stainRopes.empty() && a_cheek.stainOpacity != a_settings.mascaraOpacity);
 		if (!a_mount.world && !a_cheek.dirty && !restyled && !a_markers) {
 			// Nothing moved since the last draw, and the nodes hang under the head
 			// bone, so they are already where the tears are. Only a trail thinning
@@ -2866,7 +2879,15 @@ namespace Lacrima
 				rope.root->SetAppCulled(true);
 			}
 		}
-		Reshade(a_cheek, a_settings);
+		if (a_markers && a_settings.opacity < kMarkerOpacity) {
+			// at a faint opacity the probe would not show; the next draw without
+			// markers finds the opacity changed and shades the tears back
+			Settings look = a_settings;
+			look.opacity = kMarkerOpacity;
+			Reshade(a_cheek, look);
+		} else {
+			Reshade(a_cheek, a_settings);
+		}
 		RE::NiUpdateData update{};
 		a_cheek.root->Update(update);
 		a_cheek.shownBlobs = blobs;

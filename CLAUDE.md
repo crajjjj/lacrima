@@ -100,7 +100,8 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   covers its slot (TNG uses slot 52). The material is an environment-mapped,
   translucent lighting shader without depth write, with a glow of its own if set
   (`[look] glow`, 0 since 0.2.6) so a streak reads as a light wet line from any angle.
-  `[look] style` switches it live in `Shade`: 0 water (that), 1 plain (no own-emit flag, emissive 0,
+  `[look] style` switches it live in `Shade`: 0 water (that; the own-emit flag only while
+  `glow` > 0, so the 0.2.6 default glow 0 draws no emissive pass), 1 plain (no own-emit flag, emissive 0,
   envMapScale 0: some ENB presets turn glow or reflection into solid white, a player
   report), 2 refraction (plain + the `kRefraction` flag and `refractionPower`,
   untested on the envmap shader type). Changing the style flips shader flags, so
@@ -228,7 +229,9 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
 - **Settings** (`Settings.cpp`): one field table drives the toml reader, the user-file
   writer and the menu pages. `Lacrima.toml` holds the shipped defaults;
   `Lacrima_User.toml` holds only what the player changed (written by the menu).
-  Defaults belong in the shipped toml, not in `Settings.h`.
+  Defaults belong in the shipped toml. The `Settings.h` initialisers mirror it as
+  the fallback for a missing toml, and `make_tears.py` authors the tear material at
+  the same values, so a default change edits all three (and regenerates the meshes).
 - **Menu** (`Menu.cpp`): SKSE Menu Framework pages. The vendored header's wrappers do
   not null-check their `GetProcAddress` results, so every wrapper used is on
   `kFrameworkExports`, probed at `kDataLoaded`.

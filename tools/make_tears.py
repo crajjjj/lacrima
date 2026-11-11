@@ -19,16 +19,20 @@ ROPE_BONES = 16
 ROPE_SIDES = 8
 
 # Water, not paint: an environment-mapped shader with a pale, cool, translucent
-# base and a faint light of its own, so a streak reads as a light wet line from any
-# angle, with a reflection of the surroundings and a sharp highlight on top. (A dark
-# base drew as a dark line: the highlight only shows at the right angle.) No depth
-# write: the drops and the trail overlap and transparent things must not z-fight
-# each other. The game sets opacity, highlight, gloss, reflection and glow at run
-# time from the [look] settings; the values here are only what the mesh starts with.
+# base, a reflection of the surroundings and a sharp highlight on top. (A dark base
+# drew as a dark line: the highlight only shows at the right angle.) No depth write:
+# the drops and the trail overlap and transparent things must not z-fight each
+# other. The game sets opacity, highlight, gloss, reflection, glow and the style's
+# flags at run time from the [look] settings; the mesh is authored at the shipped
+# defaults (Lacrima.toml) so it reads the same in a NIF viewer. Own_Emit is authored
+# on with a white emissive colour for a Glow above 0; the game turns the flag off
+# while Glow is 0, the default.
 TEAR_COLOR = (225, 230, 238)
 TEAR_ALPHA = 0.05
-TEAR_REFLECTION = 1.0
-TEAR_GLOW = 0.12
+TEAR_SHINE = 1.2
+TEAR_GLOSS = 400.0
+TEAR_REFLECTION = 0.5
+TEAR_GLOW = 0.0
 CUBEMAP = 'textures\\cubemaps\\chrome_e.dds'  # vanilla, in Skyrim - Textures3.bsa
 
 
@@ -116,10 +120,10 @@ def tear_shader(texset):
     flags2 = SLSF2_ENVMAP_LIGHT_FADE
     out = u32(1) + i32(-1) + u32(0) + i32(-1) + u32(flags1) + u32(flags2)  # shader type 1 = environment map
     out += f32(0.0, 0.0) + f32(1.0, 1.0) + i32(texset)
-    out += f32(1.0, 1.0, 1.0) + f32(TEAR_GLOW)  # emissive colour and multiple: the faint light of its own
+    out += f32(1.0, 1.0, 1.0) + f32(TEAR_GLOW)  # emissive colour and multiple: [look] glow
     out += u32(3)
-    out += f32(TEAR_ALPHA) + f32(0.0) + f32(250.0)
-    out += f32(1.0, 1.0, 1.0) + f32(4.0)
+    out += f32(TEAR_ALPHA) + f32(0.0) + f32(TEAR_GLOSS)
+    out += f32(1.0, 1.0, 1.0) + f32(TEAR_SHINE)
     out += f32(0.3) + f32(2.0)
     out += f32(TEAR_REFLECTION)  # environment map scale (shader type 1 only)
     return out

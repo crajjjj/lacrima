@@ -40,7 +40,7 @@ Updating: install the new version over the old one. Your saved settings are kept
 
 OPTIONAL ADD-ONS: VICTIMS CRY IN SEXLAB AND OSTIM SCENES
 
-Three optional files make Lacrima react to SexLab or OStim on its own; install the one for your framework alongside Lacrima. During a scene, an actor SexLab marks as a victim cries while being penetrated (vaginal, anal or oral), or while forced to penetrate a partner, and keeps crying, more quietly, for a while after it stops or the scene ends. Partners who are not victims never cry from it.
+Three optional files make Lacrima react to SexLab or OStim on its own; install the one for your framework alongside Lacrima. During a scene, a victim cries while being penetrated (vaginal, anal or oral), or while forced to penetrate a partner, and keeps crying, more quietly, for a while after it stops or the scene ends. In SexLab a victim is an actor SexLab marks as one; OStim's is described below. Partners who are not victims never cry from it, unless you set the OStim add-on to let the penetrated side of every scene cry.
 
 - "Lacrima add-on - SexLab P+ victims cry while penetrated", for SexLab P+. On P+ 2.19 or newer it follows P+'s live penetration detection, so the tears start and stop with what actually happens in the scene. On older P+ it goes by the stage tags.
 - "Lacrima add-on - classic SexLab victims cry in penetration scenes", for classic SexLab. Classic SexLab cannot tell when a penetration happens, so victims cry through any stage of a vaginal, anal or oral animation, from a stage you choose on.
@@ -61,7 +61,9 @@ With SKSE Menu Framework, the Lacrima pages change everything live and save your
 
 Without the menu, put the values you want to change into Data\SKSE\Plugins\Lacrima_User.toml, using the sections and keys of Lacrima.toml, which lists every setting with its default.
 
-Tears look white and solid? Some ENB presets amplify materials that reflect or give off a little light of their own, which the default water look does. Set Look style to 1 (plain), and lower Opacity if they still look milky.
+Tears look white and solid? Some ENB presets amplify materials that reflect, which the default water look does. Set Look style to 1 (plain), and lower Opacity if they still look milky.
+
+Tears shine in a dark room? Reflection follows the light (Look page, on by default) dims the reflection with the light falling on the face. If tears still stand out in the dark, lower Reflection and keep Glow at 0.
 
 Tears start in the wrong place (by the ears, on the neck)? Lacrima reads the head's eye and face meshes to find the lower lids. Eye mods that build the eye from several layers are handled since 0.2.4. For a head read wrongly some other way: on the Test page, Face forward set to the value "tears status" does not show will most likely fix it; Eyes mesh space (try 1, then 2) is the other. Please also report it: turn on Detailed log, make your character cry once, and post Documents\My Games\Skyrim Special Edition\SKSE\Lacrima.log with the names of your head and eye mods, so the next version handles that head on its own.
 

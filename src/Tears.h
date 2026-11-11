@@ -364,6 +364,8 @@ namespace Lacrima
 		void    Shade(RE::NiAVObject* a_root, const Settings& a_settings, bool a_restyle);
 		void    ShadeStain(RE::NiAVObject* a_root, const Settings& a_settings);
 		void    Reshade(Cheek& a_cheek, const Settings& a_settings);
+		static bool Restyles(const Cheek& a_cheek, const Settings& a_settings);
+		static bool Reshades(const Cheek& a_cheek, const Settings& a_settings);
 		void    DrawStains(Cheek& a_cheek, const Mount& a_mount, const Settings& a_settings, const Spots& a_spots, const LidSpots& a_lids);
 		// Poses a_rope as a ribbon along _stainPath with _stainRadius, lying on the skin
 		// along _stainNormal; a_taper thins it toward the end.
