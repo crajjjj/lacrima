@@ -240,6 +240,7 @@ namespace Lacrima
 			int                            style{ -1 };
 			float                          refraction{ -1.0f };
 			int                            envFade{ -1 };  // [look] env_light_fade the meshes carry; -1 unknown
+			bool                           strayLogged{ false };  // a mascara point far from the eye was left out and logged
 			Fluid::Vec3                    restDown;        // where down was when the sleeping tears settled
 			bool                           rested{ false };
 			bool                           dirty{ true };   // the fluid changed since the last draw

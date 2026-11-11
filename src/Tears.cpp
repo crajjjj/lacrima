@@ -99,6 +99,11 @@ namespace Lacrima
 		constexpr float       kStainSpacing = 0.006f;   // metres between the points of a streak along the skin
 		constexpr float       kSmudgeRadius = 0.002f;   // the band under the lid: 4 mm tall at half strength
 		constexpr float       kSmudgeReach = 0.005f;    // metres from a lid point a hand smears the band
+		// No mark belongs far from the eye. A point past these is left out of its ribbon
+		// and logged once per cheek, so a ribbon can never stretch off the face.
+		constexpr float       kLidReach = 0.05f;        // metres from the tears' start a point of the band under the lid may lie
+		constexpr float       kLidStep = 0.015f;        // metres between a lid point and the one in the row above
+		constexpr float       kStreakReach = 0.25f;     // metres from the tears' start a point of a streak may lie
 		// A mark's radius is where it is at half strength. The stain texture eases from
 		// full on the ribbon's centre line out to nothing at its edge, reaching half at
 		// this share of the half-width (make_tears.py STAIN_CORE), so a ribbon is posed
@@ -2338,6 +2343,28 @@ namespace Lacrima
 		auto&       path = _stainPath;
 		auto&       normals = _stainNormal;
 		auto&       radius = _stainRadius;
+		// where this eye's tears start: every mark is near it
+		const Spot* anchor = nullptr;
+		for (const auto& spot : a_spots) {
+			if (spot && !anchor) {
+				anchor = &*spot;
+			}
+		}
+		const auto stray = [&](Vec3 a_point, float a_reach, const char* a_what, std::size_t a_row, std::size_t a_index) {
+			if (!anchor) {
+				return false;
+			}
+			const float distance = Fluid::Length(a_point - anchor->point);
+			if (distance <= a_reach) {
+				return false;
+			}
+			if (!a_cheek.strayLogged) {
+				a_cheek.strayLogged = true;
+				logger::warn("mascara: {} {}/{} at ({:.3f}, {:.3f}, {:.3f}) is {:.1f} cm from the tears' start ({:.3f}, {:.3f}, {:.3f}); left out",
+					a_what, a_row, a_index, a_point.x, a_point.y, a_point.z, distance * 100.0f, anchor->point.x, anchor->point.y, anchor->point.z);
+			}
+			return true;
+		};
 
 		// The mascara under the eye: a ribbon along each row of lid points, tiled
 		// top to bottom. The top row is a thin band under the lashes, all the way into
@@ -2418,7 +2445,7 @@ namespace Lacrima
 				const float corners = row == 0 ? 1.0f : 0.55f - 0.35f * static_cast<float>(row - 1);
 				for (std::size_t i = 0; i < Face::kLidPoints; ++i) {
 					const auto& lid = a_lids[row][i];
-					if (!lid) {
+					if (!lid || stray(lid->point, kLidReach, "lid point", row, i)) {
 						continue;
 					}
 					const float bell = corners + (1.0f - corners) * std::sin(std::numbers::pi_v<float> * (static_cast<float>(i) + 0.5f) / static_cast<float>(Face::kLidPoints));
@@ -2432,6 +2459,13 @@ namespace Lacrima
 						}
 						const Vec3  down = Fluid::Normalize(lid->point - above->point, lid->down);
 						const float step = Fluid::Length(lid->point - above->point);
+						if (step > kLidStep) {
+							if (!a_cheek.strayLogged) {
+								a_cheek.strayLogged = true;
+								logger::warn("mascara: lid point {}/{} is {:.1f} cm below the row above; left out", row, i, step * 100.0f);
+							}
+							continue;
+						}
 						half = 0.5f * exposed * step * bell * fade * pooled[i];  // only under a tear's path; a hairline elsewhere
 						center = above->point + down * (bottom[i] + half);
 						bottom[i] += 2.0f * half - step;  // now below this row's point
@@ -2484,6 +2518,9 @@ namespace Lacrima
 					radius.push_back(radiusOf(first));
 				}
 				for (std::size_t i = begin; i < end; ++i) {
+					if (stray(stains[order[i]].position, kStreakReach, "streak point", stains[order[i]].run, i - begin)) {
+						continue;
+					}
 					path.push_back(stains[order[i]].position);
 					normals.push_back(stains[order[i]].normal);
 					radius.push_back(radiusOf(stains[order[i]]));
