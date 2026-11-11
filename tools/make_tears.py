@@ -12,7 +12,8 @@ import math
 import os
 
 from nifkit import (ALPHA_BLEND, SLSF1_ENVIRONMENT_MAPPING, SLSF1_OWN_EMIT, SLSF1_RECEIVE_SHADOWS, SLSF1_SKINNED,
-                    SLSF1_SPECULAR, SLSF1_ZBUFFER_TEST, TEXTURE_DIR, build_skinned_nif, dds_bgra, f32, glint_normal_map, i32, u32)
+                    SLSF1_SPECULAR, SLSF1_ZBUFFER_TEST, SLSF2_ENVMAP_LIGHT_FADE, TEXTURE_DIR, build_skinned_nif, dds_bgra, f32,
+                    glint_normal_map, i32, u32)
 
 ROPE_BONES = 16
 ROPE_SIDES = 8
@@ -110,7 +111,10 @@ def rope_geometry(flat=1.0):
 
 def tear_shader(texset):
     flags1 = SLSF1_SPECULAR | SLSF1_SKINNED | SLSF1_RECEIVE_SHADOWS | SLSF1_ENVIRONMENT_MAPPING | SLSF1_OWN_EMIT | SLSF1_ZBUFFER_TEST
-    out = u32(1) + i32(-1) + u32(0) + i32(-1) + u32(flags1) + u32(0)  # shader type 1 = environment map; SLSF2 empty = no depth write
+    # The environment-map shader type wants EnvMap_Light_Fade (NIF checkers flag its
+    # absence); the game toggles it from [look] env_light_fade anyway. No depth write.
+    flags2 = SLSF2_ENVMAP_LIGHT_FADE
+    out = u32(1) + i32(-1) + u32(0) + i32(-1) + u32(flags1) + u32(flags2)  # shader type 1 = environment map
     out += f32(0.0, 0.0) + f32(1.0, 1.0) + i32(texset)
     out += f32(1.0, 1.0, 1.0) + f32(TEAR_GLOW)  # emissive colour and multiple: the faint light of its own
     out += u32(3)

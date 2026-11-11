@@ -141,7 +141,7 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   (`EyesRead::half`, off the midline by more than its radius) and pairs a left and a
   right half, logs every candidate measured (name, vertices, radius, apart) when the
   named part fails, and turns the glisten off for a paired head (one eye material).
-- **Tears shining in the dark** (user screenshot, 0.2.6): the water style reflects a
+- **Tears shining in the dark** (user screenshot, 0.2.5): the water style reflects a
   static cubemap (chrome, `envMapScale` = `[look] reflection`) and the vanilla lighting
   shader adds an environment reflection unlit by the scene, plus `glow` is an own
   emittance, so in a dark room the tears were bright white lines on a dark face.
@@ -149,8 +149,11 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   (`EShaderPropertyFlag8::kEnvmapLightFade`, bit 47) on the tear shader in `Shade`,
   the game's own switch for fading a reflection with the light on the surface; the
   toggle is a restyle (flags change -> SetupGeometry), tracked per cheek as `envFade`.
-  Whether the flag does what its name says is to be seen in game; the fallback levers
-  are `glow` 0 and a lower `reflection`.
+  Confirmed in game (11-11): the reflection dims with the light. Since 0.2.6
+  `tear_blob.nif` / `tear_rope.nif` carry the flag as authored too (`make_tears.py`
+  `tear_shader`): NIF checkers report an environment-map shader without it, and
+  `Shade` still clears it when the setting is off. Fallback levers are `glow` 0 and
+  a lower `reflection`.
 - **Placement overrides** (`[debug] face_forward`, `eyes_space`, carried in `Face::Placement`,
   stored on the `Head` it was built with; a change rebuilds the head through `HeadOf`'s
   `retune`): two LoversLab users (11-09) had tears start by the ears. The ducts are aimed
