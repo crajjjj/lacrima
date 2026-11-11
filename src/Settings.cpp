@@ -87,6 +87,8 @@ namespace Lacrima
 				"How much mascara gathers in a dark band under the lower lid as the tears carry it out of the lashes. 0 is none." },
 			Field{ "look", "mascara_spread", &Settings::mascaraSpread, 0.0f, 1.0f, "Look", "Mascara under the eye", "%.2f",
 				"How far the smudge spreads down from the lashes over the skin under the eye. 0 is a band along the lid only; 1 covers the whole area under the eye." },
+			Field{ "look", "mascara_corners", &Settings::mascaraCorners, 0.0f, 1.0f, "Look", "Mascara in the corners", "%.2f",
+				"How much mascara gathers under the inner and outer corners of the eye, where no tear need have run. 0 keeps it to where the tears ran; 1 is as much as under a tear's path." },
 			Field{ "look", "mascara_length", &Settings::mascaraLength, 0.0f, 20.0f, "Look", "Mascara length", "%.1f cm",
 				"How far down the face a mascara streak runs, in cm from the eye: 3 stops it above the nose, 7 at the mouth. Each streak runs a little shorter or longer than this, by Variety. 0 lets it run as far as the tear goes." },
 			Field{ "look", "mascara_lifetime", &Settings::mascaraLifetime, 10.0f, 1800.0f, "Look", "Mascara lifetime", "%.0f s",

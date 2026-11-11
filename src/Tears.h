@@ -184,7 +184,8 @@ namespace Lacrima
 
 		// The mascara under one eye, which the tears carry out of the lashes: a band
 		// along the lower lid that spreads down over the skin under the eye with
-		// [look] mascara_spread and with every tear. Drawn as a ribbon per lid row
+		// [look] mascara_spread and with every tear, most where the tears ran and some
+		// under both corners of the eye ([look] mascara_corners). Drawn as a ribbon per lid row
 		// Face finds; a smear shifts it as a whole and spreads it further down.
 		struct Smudge
 		{

@@ -204,7 +204,11 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   the lid point is to a streak's start on the lid (the first stain of each run, placed
   as the streak is drawn) or the welling tear's seat, a Gaussian over `kPoolReach`
   8 mm, so the spread exists only under the tears' paths and is a 0.2 mm hairline
-  elsewhere. Uniform rows read as dark circles under the eyes (user, 0.2.3). The stain
+  elsewhere. Uniform rows read as dark circles under the eyes (user, 0.2.3). Both
+  corner points of the lid (0 inner, 7 outer) pool too, weighted `[look]
+  mascara_corners` (default 0.5, 0.2.7; user: mascara only in the middle of the lid,
+  "do a bit under the eye edges"), so the band is fuller there and a little spread
+  shows under both corners whether or not a tear ran there. The stain
   texture (`make_tears.py` `soft`, 256x128) eases from full on the centre line out to
   nothing at the edge (raised cosine, `STAIN_CORE` 0 = no flat middle, laid out in the
   position across the ribbon: the top of the cross-section is four flat facets, so u

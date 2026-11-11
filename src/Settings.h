@@ -48,6 +48,7 @@ namespace Lacrima
 		float mascaraWidth{ 1.0f };
 		float mascaraSmudge{ 1.0f };
 		float mascaraSpread{ 0.6f };
+		float mascaraCorners{ 0.5f };  // how much mascara gathers under both corners of the eye, as a share of under a tear's path
 		float mascaraLength{ 3.0f };  // cm down the face a streak runs at most; 0 as far as the tear goes
 		float mascaraLifetime{ 300.0f };
 

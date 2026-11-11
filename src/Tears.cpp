@@ -2352,18 +2352,18 @@ namespace Lacrima
 		if (smudge.strength > 0.0f && a_settings.mascaraSmudge > 0.0f) {
 			const float fade = std::sqrt(std::clamp(smudge.life / std::max(smudge.lifetime * kStainFade, 1e-3f), 0.0f, 1.0f));
 			const float band = kSmudgeRadius * a_settings.mascaraWidth * a_settings.mascaraSmudge * (0.5f + 0.5f * smudge.strength) * smudge.widen * fade;
-			// how much each lid point is under a tear's path, 0 to 1
+			// how much each lid point is under a tear's path (or a corner of the eye), 0 to 1
 			std::array<float, Face::kLidPoints> pooled{};
-			const auto                          pool = [&](Vec3 a_at) {
+			const auto                          pool = [&](Vec3 a_at, float a_weight) {
 				for (std::size_t i = 0; i < Face::kLidPoints; ++i) {
 					if (const auto& lid = a_lids[0][i]) {
 						const float d = Fluid::Length(lid->point + smudge.offset - a_at) / kPoolReach;
-						pooled[i] = std::max(pooled[i], std::exp(-d * d));
+						pooled[i] = std::max(pooled[i], a_weight * std::exp(-d * d));
 					}
 				}
 			};
 			if (a_cheek.seatKnown) {
-				pool(a_cheek.seat);
+				pool(a_cheek.seat, 1.0f);
 			}
 			{
 				// each streak's start: the stain laid first in its run, put where the
@@ -2390,7 +2390,17 @@ namespace Lacrima
 				for (std::size_t k = 0; k < runs; ++k) {
 					const auto& first = a_cheek.stains[firsts[k].second];
 					const auto& origin = a_spots[std::min<std::size_t>(first.stream, Face::kMaxStreams - 1)];
-					pool(origin ? LidPoint(*origin, first.start) + (first.smeared ? first.dragDir * first.dragged : Vec3{}) : first.position);
+					pool(origin ? LidPoint(*origin, first.start) + (first.smeared ? first.dragDir * first.dragged : Vec3{}) : first.position, 1.0f);
+				}
+			}
+			// and under both corners of the eye, inner and outer, where mascara gathers
+			// whether or not a tear ran there: the band is fuller there and a little of
+			// the spread shows below the corners, not only in the middle of the lid
+			if (a_settings.mascaraCorners > 0.0f) {
+				for (const std::size_t end : { std::size_t{ 0 }, Face::kLidPoints - 1 }) {
+					if (const auto& corner = a_lids[0][end]) {
+						pool(corner->point + smudge.offset, a_settings.mascaraCorners);
+					}
 				}
 			}
 			// rows below the band exposed, 0 to kLidRows - 1
