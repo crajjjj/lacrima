@@ -107,7 +107,7 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   untested on the envmap shader type). Changing the style flips shader flags, so
   `Shade` rebuilds the passes (`SetupGeometry` / `FinishSetupGeometry`), and does so
   for every new or recycled mesh too, since a clone may carry another style's flags.
-- **Corner tears and the line cap** (0.2.7): `Face::kInnerCorner` / `kOuterCorner` are two
+- **Corner tears and the line cap** (0.3.0): `Face::kInnerCorner` / `kOuterCorner` are two
   ducts after the streams' (`kMaxDucts` = `kMaxStreams` + 2), placed at `kCornerDuct`
   0.8 of the lid line with the depth-weighted pick; `StartTear` sends a tear there with
   chance `[tears] corner_tears` (0.8). `[look] mascara_lines` (3): `LayStain` lays no
@@ -212,7 +212,7 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   8 mm, so the spread exists only under the tears' paths and is a 0.2 mm hairline
   elsewhere. Uniform rows read as dark circles under the eyes (user, 0.2.3). Both
   corner points of the lid (0 inner, 7 outer) pool too, weighted `[look]
-  mascara_corners` (default 1, 0.2.7; user: mascara only in the middle of the lid,
+  mascara_corners` (default 1, 0.3.0; user: mascara only in the middle of the lid,
   "do a bit under the eye edges"), so the band is fuller there and a little spread
   shows under both corners whether or not a tear ran there. The setting also lifts
   the rows' narrowing toward the corners (`corners` toward 0.9), and every smudge
@@ -225,7 +225,7 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   each end. Half strength falls at half the half-width, so `PoseStain`
   poses each ribbon 1 / `kStainHalf` wider than the mark's radius: a radius is where
   the mark is half strength (`kStainRadius` 1.9 mm, `kSmudgeRadius` 2 mm), and rows
-  tiled edge to edge meet at half strength each. Before 0.2.7 the alpha was a sine in
+  tiled edge to edge meet at half strength each. Before 0.3.0 the alpha was a sine in
   u, which on the facets made a semicircle across the ribbon (half strength at 0.8 of
   the half-width, steep at the edge) with a straight cut at both ends; the user asked
   for smoother edges. A streak starts in the band and tapers down the cheek. **Smearing** (`SmearStains`): a hand

@@ -212,7 +212,7 @@ def main():
     # a raised cosine, flat where it starts and ends, so no edge line shows. The top of
     # the cross-section is four flat facets, so u maps to the position across the
     # ribbon piecewise: the profile is laid out in that position, not in u. (Before
-    # 0.2.7 the alpha was a sine in u, which on the facets came out as a semicircle
+    # 0.3.0 the alpha was a sine in u, which on the facets came out as a semicircle
     # across the ribbon, steep at its edges, with a straight cut at both ends.)
     width, height = 256, 128
     facets = [math.cos(2.0 * math.pi * j / ROPE_SIDES) for j in range(ROPE_SIDES // 2 + 1)]
