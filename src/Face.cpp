@@ -18,7 +18,8 @@ namespace Lacrima::Face
 		constexpr float         kDynamicDrift = 3.0f;
 		constexpr float         kDuctFront = 0.8f;
 		constexpr float         kDuctSide = 0.8f;
-		constexpr float         kLidSide = 1.1f;    // eye radii from the centre to the corners of the eye, where the lid line ends
+		constexpr float         kLidDepth = 0.35f;  // how much distance along the face's forward axis counts when a lid point picks its skin vertex
+		constexpr float         kLidSide = 1.2f;    // eye radii from the centre to the corners of the eye, where the lid line ends
 		constexpr float         kLidBelow = 0.78f;  // eye radii under the centre, at the middle of the lid: on the skin just under the lower lashes, clear of the lid margin, which curls under
 		constexpr float         kLidCorner = 0.15f; // ... and at the corners, where the lid line has curved up to the eye's own height
 		constexpr float         kLidRowStep = 0.4f; // eye radii between the rows under the lid: three rows reach the top of the cheek
@@ -723,7 +724,14 @@ namespace Lacrima::Face
 							if (point.normal.Dot(facing) < kFacingFloor) {
 								continue;
 							}
-							const float distance = point.position.GetSquaredDistance(target);
+							// Depth counts for little: the target floats in front of the eye,
+							// and toward the temple the skin falls well back from it, so by
+							// plain distance the outer points all landed on the more forward
+							// skin near the middle of the lid and the smudge stopped short of
+							// the corner.
+							const RE::NiPoint3 delta = point.position - target;
+							const float        depth = delta.Dot(facing);
+							const float        distance = delta.SqrLength() - depth * depth + kLidDepth * kLidDepth * depth * depth;
 							if (distance < best) {
 								best = distance;
 								a_head.lid[e][row][i] = k;
