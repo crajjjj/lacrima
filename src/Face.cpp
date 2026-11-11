@@ -18,6 +18,7 @@ namespace Lacrima::Face
 		constexpr float         kDynamicDrift = 3.0f;
 		constexpr float         kDuctFront = 0.8f;
 		constexpr float         kDuctSide = 0.8f;
+		constexpr float         kCornerDuct = 0.8f;  // where on the lid line the corner tears start: 0 its middle, 1 its end
 		constexpr float         kLidDepth = 0.35f;  // how much distance along the face's forward axis counts when a lid point picks its skin vertex
 		constexpr float         kLidSide = 1.35f;   // eye radii from the centre to the corners of the eye, where the lid line ends
 		constexpr float         kLidBelow = 0.78f;  // eye radii under the centre, at the middle of the lid: on the skin just under the lower lashes, clear of the lid margin, which curls under
@@ -119,7 +120,7 @@ namespace Lacrima::Face
 			// ducts are placed in head-bone space and mapped back into the face's.
 			RE::NiTransform                                     faceToBone;
 			RE::NiTransform                                     boneToFace;
-			std::array<std::array<std::size_t, kMaxStreams>, kEyes> duct{ { { kNone, kNone, kNone, kNone }, { kNone, kNone, kNone, kNone } } };
+			std::array<std::array<std::size_t, kMaxDucts>, kEyes> duct{ { { kNone, kNone, kNone, kNone, kNone, kNone }, { kNone, kNone, kNone, kNone, kNone, kNone } } };
 			Ducts                                               ducts{};
 			std::array<std::array<std::array<std::size_t, kLidPoints>, kLidRows>, kEyes> lid{};
 			Lids                                                lids{};
@@ -688,6 +689,39 @@ namespace Lacrima::Face
 					}
 				}
 			}
+			// The corners of the eye, for the tears that start there: on the lid line
+			// the mascara follows, a little in from its ends. Picked across the face
+			// like the lid points (depth counts for little), or the outer one lands
+			// on the more forward skin near the middle of the lid.
+			for (std::size_t e = 0; e < kEyes; ++e) {
+				const auto& eye = a_head.eyes[e];
+				if (!eye.valid) {
+					continue;
+				}
+				const float out = eye.center.x >= 0.0f ? 1.0f : -1.0f;
+				const float r = std::clamp(eye.radius, kEyeRadiusMin, kEyeRadiusMax);
+				for (const std::size_t corner : { kInnerCorner, kOuterCorner }) {
+					const float        across = corner == kInnerCorner ? -kCornerDuct : kCornerDuct;
+					const float        curve = std::sqrt(std::max(0.0f, 1.0f - across * across));
+					const float        below = kLidCorner + (a_placement.below - kLidCorner) * curve;
+					const RE::NiPoint3 inBone = eye.center + RE::NiPoint3{ out * r * kLidSide * across, a_head.forward * r * kDuctFront, -r * below };
+					const RE::NiPoint3 target = a_head.boneToFace * inBone;
+					float              best = std::numeric_limits<float>::max();
+					for (std::size_t k = 0; k < a_head.points.size(); ++k) {
+						const auto& point = a_head.points[k];
+						if (point.normal.Dot(facing) < kFacingFloor) {
+							continue;
+						}
+						const RE::NiPoint3 delta = point.position - target;
+						const float        depth = delta.Dot(facing);
+						const float        distance = delta.SqrLength() - depth * depth + kLidDepth * kLidDepth * depth * depth;
+						if (distance < best) {
+							best = distance;
+							a_head.duct[e][corner] = k;
+						}
+					}
+				}
+			}
 			for (std::size_t e = 0; e < kEyes; ++e) {
 				const auto& eye = a_head.eyes[e];
 				if (a_head.duct[e][0] != kNone) {
@@ -1181,7 +1215,7 @@ namespace Lacrima::Face
 				a_head.scale = scale;
 			};
 			for (std::size_t e = 0; e < kEyes; ++e) {
-				for (std::size_t s = 0; s < kMaxStreams; ++s) {
+				for (std::size_t s = 0; s < kMaxDucts; ++s) {
 					poseSpot(a_head.duct[e][s], a_head.ducts[e][s]);
 				}
 				for (std::size_t row = 0; row < kLidRows; ++row) {

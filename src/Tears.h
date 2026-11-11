@@ -126,7 +126,7 @@ namespace Lacrima
 		};
 
 		// One eye's ducts, one per stream; a stream whose duct was not found is empty.
-		using Spots = std::array<std::optional<Spot>, Face::kMaxStreams>;
+		using Spots = std::array<std::optional<Spot>, Face::kMaxDucts>;
 		// The skin under one eye in head space: rows down from the lashes, each inner
 		// corner to outer.
 		using LidSpots = std::array<std::array<std::optional<Spot>, Face::kLidPoints>, Face::kLidRows>;

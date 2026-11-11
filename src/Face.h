@@ -28,7 +28,12 @@ namespace Lacrima::Face
 
 	// Tears can start from several points along the lower lid of one eye.
 	constexpr std::size_t kMaxStreams = 4;
-	using Ducts = std::array<std::array<Duct, kMaxStreams>, kEyes>;
+	// ... and from both corners of the eye: two more ducts after the streams', the
+	// inner corner's at kInnerCorner and the outer corner's at kOuterCorner.
+	constexpr std::size_t kInnerCorner = kMaxStreams;
+	constexpr std::size_t kOuterCorner = kMaxStreams + 1;
+	constexpr std::size_t kMaxDucts = kMaxStreams + 2;
+	using Ducts = std::array<std::array<Duct, kMaxDucts>, kEyes>;
 
 	// The skin under the lower lid, inner corner to outer along the curve of the eye,
 	// in rows from just under the lashes downward: where running mascara gathers. The

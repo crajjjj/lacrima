@@ -107,6 +107,12 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   untested on the envmap shader type). Changing the style flips shader flags, so
   `Shade` rebuilds the passes (`SetupGeometry` / `FinishSetupGeometry`), and does so
   for every new or recycled mesh too, since a clone may carry another style's flags.
+- **Corner tears and the line cap** (0.2.7): `Face::kInnerCorner` / `kOuterCorner` are two
+  ducts after the streams' (`kMaxDucts` = `kMaxStreams` + 2), placed at `kCornerDuct`
+  0.8 of the lid line with the depth-weighted pick; `StartTear` sends a tear there with
+  chance `[tears] corner_tears` (0.25). `[look] mascara_lines` (2): `LayStain` lays no
+  streak for a new run while that many runs are on the cheek (they stay until they fade;
+  dropping the oldest made lines jump).
 - **Variety** (`[tears] variety`, in `StartTear` and at the end of `Emit`): each tear
   starts up to 6 mm (at 1) to one side of its duct along the lid (`startOffset`, kept on
   its particles and streak points as `start` so the trail and the mascara streak start

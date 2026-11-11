@@ -780,7 +780,7 @@ namespace Lacrima
 			std::array<LidSpots, Face::kEyes> lids{};
 			if (view) {
 				for (std::size_t e = 0; e < Face::kEyes; ++e) {
-					for (std::size_t s = 0; s < Face::kMaxStreams; ++s) {
+					for (std::size_t s = 0; s < Face::kMaxDucts; ++s) {
 						if (view->ducts[e][s].valid) {
 							spots[e][s] = SpotOf(crier.frame, view->ducts[e][s]);
 						}
@@ -1089,6 +1089,10 @@ namespace Lacrima
 		// each tear picks one of the eye's streams
 		const int streams = std::clamp(a_streams, 1, static_cast<int>(Face::kMaxStreams));
 		a_cheek.stream = streams > 1 ? std::uniform_int_distribution<int>(0, streams - 1)(_rng) : 0;
+		// ... or, now and then, a corner of the eye
+		if (unit(_rng) < a_settings.cornerTears) {
+			a_cheek.stream = static_cast<int>(unit(_rng) < 0.5f ? Face::kInnerCorner : Face::kOuterCorner);
+		}
 		a_cheek.startOffset = (2.0f * unit(_rng) - 1.0f) * variety * kStartJitter;
 		a_cheek.reach = 1.0f + (2.0f * unit(_rng) - 1.0f) * variety * kLengthJitter;  // so the streaks of different tears end at different heights
 		a_cheek.left = std::max(2, static_cast<int>(std::lround(size)));
@@ -1114,7 +1118,7 @@ namespace Lacrima
 			}
 		}
 		// The duct of the stream this tear runs from, or another one that was found.
-		const Spot* chosen = a_spots[static_cast<std::size_t>(std::clamp(a_cheek.stream, 0, static_cast<int>(Face::kMaxStreams) - 1))] ?
+		const Spot* chosen = a_spots[static_cast<std::size_t>(std::clamp(a_cheek.stream, 0, static_cast<int>(Face::kMaxDucts) - 1))] ?
 		                         &*a_spots[static_cast<std::size_t>(a_cheek.stream)] : nullptr;
 		for (const auto& candidate : a_spots) {
 			if (!chosen && candidate) {
@@ -1166,7 +1170,7 @@ namespace Lacrima
 			particle.position = seat + jitter;
 			particle.velocity = a_spot.down * kWellSpeed;
 			particle.run = a_cheek.run;
-			particle.stream = static_cast<std::uint8_t>(std::clamp(a_cheek.stream, 0, static_cast<int>(Face::kMaxStreams) - 1));
+			particle.stream = static_cast<std::uint8_t>(std::clamp(a_cheek.stream, 0, static_cast<int>(Face::kMaxDucts) - 1));
 			particle.start = a_cheek.startOffset;
 			particle.reach = a_cheek.reach;
 			// Born on the lid: the solver's stick-pull only reaches for particles already
@@ -1496,6 +1500,11 @@ namespace Lacrima
 			}
 		}
 		const bool newRun = std::ranges::none_of(stains, [&](const Stain& a_stain) { return a_stain.run == a_particle.run; });
+		// [look] mascara_lines: with that many streaks on the cheek, a tear on a new
+		// path leaves none, so the lines there are stay put until they fade.
+		if (newRun && runs >= static_cast<std::size_t>(std::clamp(a_settings.mascaraLines, 1, static_cast<int>(kMaxStainRuns)))) {
+			return;
+		}
 		if ((newRun && runs >= kMaxStainRuns) || stains.size() >= kMaxStains) {
 			std::erase_if(stains, [&](const Stain& a_stain) { return a_stain.run == oldest; });
 		}
@@ -2417,7 +2426,7 @@ namespace Lacrima
 				}
 				for (std::size_t k = 0; k < runs; ++k) {
 					const auto& first = a_cheek.stains[firsts[k].second];
-					const auto& origin = a_spots[std::min<std::size_t>(first.stream, Face::kMaxStreams - 1)];
+					const auto& origin = a_spots[std::min<std::size_t>(first.stream, Face::kMaxDucts - 1)];
 					pool(origin ? LidPoint(*origin, first.start) + (first.smeared ? first.dragDir * first.dragged : Vec3{}) : first.position, 1.0f);
 				}
 			}
@@ -2525,7 +2534,7 @@ namespace Lacrima
 				normals.clear();
 				radius.clear();
 				// the streak starts in the smudge under the lid, where the tear welled
-				const auto& origin = a_spots[std::min<std::size_t>(first.stream, Face::kMaxStreams - 1)];
+				const auto& origin = a_spots[std::min<std::size_t>(first.stream, Face::kMaxDucts - 1)];
 				if (origin) {
 					const Vec3 lid = LidPoint(*origin, first.start) + (first.smeared ? first.dragDir * first.dragged : Vec3{});
 					path.push_back(lid + origin->normal * kStainLift);

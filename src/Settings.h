@@ -25,6 +25,7 @@ namespace Lacrima
 		int   streams{ 2 };
 		float streamSpread{ 0.6f };
 		float variety{ 0.5f };
+		float cornerTears{ 0.25f };  // chance a tear starts at a corner of the eye
 		bool  bothEyes{ true };
 		int   maxActors{ 6 };
 		int   maxParticles{ 160 };
@@ -49,7 +50,8 @@ namespace Lacrima
 		float mascaraSmudge{ 1.0f };
 		float mascaraSpread{ 0.6f };
 		float mascaraCorners{ 0.5f };  // how much mascara gathers under both corners of the eye, as a share of under a tear's path
-		float mascaraLength{ 3.0f };  // cm down the face a streak runs at most; 0 as far as the tear goes
+		int   mascaraLines{ 2 };  // streaks on one cheek at most
+		float mascaraLength{ 4.0f };  // cm down the face a streak runs at most; 0 as far as the tear goes
 		float mascaraLifetime{ 300.0f };
 
 		float stickiness{ 1.5f };

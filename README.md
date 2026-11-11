@@ -37,7 +37,8 @@ up under the lower lid and spreads over the skin under the eye (`mascara_spread`
 band along the lid only, or the whole area under the eye), most where the tears ran and
 a little under both corners of the eye (`mascara_corners`), and a streak runs down the
 exact path the tear took, as far as you let it (`mascara_length`: in cm from the eye, so
-3, the default, stops it above the nose; 0 as far as the tear goes). Both
+4, the default, stops it beside the nose; 0 as far as the tear goes), with at most
+`mascara_lines` streaks under one eye (2 by default). Both
 outlive the water and fade after a few minutes. A hand wiping the face smears them:
 it drags them along the skin the way it moves, wider and flatter, and they go sooner.
 
