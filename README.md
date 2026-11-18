@@ -79,7 +79,9 @@ shipped default, which can change between versions; Reset everything to the ship
 defaults (Test page) or deleting `Lacrima_User.toml` starts over from them.
 
 **What counts as a whip?** A weapon or spell whose name has a word starting with
-`whip`, `bullwhip`, `crop`, `flogger` or `cane`, in any case. Blocked hits do not
+`whip`, `bullwhip`, `crop`, `flogger`, `cane` or `paddle`, in any case, and every
+punishment weapon of ZaZ Animation Pack (by its keyword, whatever the weapon is
+called), which covers the mods that whip through ZaZ. Blocked hits do not
 count. To add words (for a game in another language, say) or to name a weapon, spell,
 enchantment or keyword by form (`"Plugin.esp|0x800"`), write the whole list under
 `[whip]` in `Lacrima_User.toml` as `names = [...]` or `forms = [...]`; `Lacrima.toml`

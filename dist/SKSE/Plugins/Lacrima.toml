@@ -76,10 +76,12 @@ npcs = true            # whip hits on everyone else count
 # What counts as a whip: a weapon or spell whose name has a word starting with one of
 # these, in any case ("cane" finds "Leather Cane", not "Arcane Bolt"). For a game in
 # another language, list the words its whips are called by.
-names = ["whip", "bullwhip", "crop", "flogger", "cane"]
+names = ["whip", "bullwhip", "crop", "flogger", "cane", "paddle"]
 # And, whatever it is called: "Plugin.esp|0x800" names a weapon, spell or enchantment,
-# or a keyword, which matches everything that carries it.
-forms = []
+# or a keyword, which matches everything that carries it. The one listed is ZaZ
+# Animation Pack's keyword for its punishment weapons (canes, crops, paddles, the cat
+# o' nine, branding irons), which the mods that whip through ZaZ use.
+forms = ["ZaZAnimationPack.esm|0xD5DD"]
 # To change either list, write it whole under [whip] in Lacrima_User.toml.
 
 [debug]

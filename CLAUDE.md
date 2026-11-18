@@ -276,7 +276,10 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   count (also a session reset). A whip is the hit's source form (weapon, spell or
   enchantment) when its name has a word STARTING with one of `[whip] names` (ASCII
   case folded; word start so "cane" does not find "Arcane"), or it is listed in
-  `[whip] forms`, or carries a keyword listed there; the verdict is cached per source
+  `[whip] forms`, or carries a keyword listed there (shipped: ZaZ's
+  `zbfWeaponPunishment`, `ZaZAnimationPack.esm|0xD5DD`, on every ZaZ punishment
+  weapon; Naked Defeat and Submissive Lola both whip with ZaZ's `zbfWeaponCane`
+  0x6004, and list builds rename the ZaZ weapons, so the keyword is the stable match); the verdict is cached per source
   form until the next `Whip::Load`. Hits within `kOneBlow` (150 ms) of the last are
   one blow (an enchanted whip sends a hit for the weapon and one per effect), and
   only an actor with `ActorTypeNPC` on the race or base counts (a creature has no

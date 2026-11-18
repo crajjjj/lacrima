@@ -283,7 +283,7 @@ namespace Lacrima
 	{
 		auto      guard = Lock();
 		Settings  loaded;
-		WhipLists whips{ { "whip", "bullwhip", "crop", "flogger", "cane" }, {} };
+		WhipLists whips{ { "whip", "bullwhip", "crop", "flogger", "cane", "paddle" }, { "ZaZAnimationPack.esm|0xD5DD" } };
 		ReadFile(kBaseFile, loaded, whips, true);
 		g_defaults = loaded;
 		g_defaultWhips = whips;
