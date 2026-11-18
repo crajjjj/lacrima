@@ -2,6 +2,7 @@
 
 #include "Settings.h"
 #include "Tears.h"
+#include "Whip.h"
 
 namespace Lacrima::Papyrus
 {
@@ -75,6 +76,7 @@ namespace Lacrima::Papyrus
 		void ReloadConfig(RE::StaticFunctionTag*)
 		{
 			Settings::Load();
+			Whip::Load();
 		}
 
 		RE::BSFixedString GetStatus(RE::StaticFunctionTag*, RE::Actor* a_actor)
@@ -116,6 +118,11 @@ namespace Lacrima::Papyrus
 			Tears::Get().WipeAll();
 		}
 
+		RE::BSFixedString WhipNative(RE::StaticFunctionTag*, RE::Actor* a_actor, std::int32_t a_hits)
+		{
+			return Whip::Test(a_actor, a_hits);
+		}
+
 		std::int32_t CryingCountNative(RE::StaticFunctionTag*)
 		{
 			return static_cast<std::int32_t>(Tears::Get().CryingCount());
@@ -144,6 +151,7 @@ namespace Lacrima::Papyrus
 		a_vm->RegisterFunction("ShowDuctsNative"sv, kTestScript, ShowDuctsNative);
 		a_vm->RegisterFunction("MountWorldNative"sv, kTestScript, MountWorldNative);
 		a_vm->RegisterFunction("WipeAllNative"sv, kTestScript, WipeAllNative);
+		a_vm->RegisterFunction("WhipNative"sv, kTestScript, WhipNative);
 		a_vm->RegisterFunction("CryingCountNative"sv, kTestScript, CryingCountNative, true);
 		logger::info("Papyrus API version {} registered", kAPIVersion);
 		return true;

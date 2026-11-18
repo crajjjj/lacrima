@@ -103,6 +103,14 @@ subs:
         type: float
         default: 1.0
         help: 0.0 to 1.0, or -1 for the setting
+  - name: whip
+    func: Whip
+    help: Count whip hits on the target as if a whip had landed them ([whip] in Lacrima.toml sets how many start the crying)
+    args:
+      - name: hits
+        type: int
+        default: 1
+        help: How many hits to count
   - name: enable
     func: Enable
     help: Turn Lacrima on (1) or off (0) for this session

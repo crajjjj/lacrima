@@ -57,6 +57,7 @@ With SKSE Menu Framework, the Lacrima pages change everything live and save your
 - Look - the look style, tear size, trail width, opacity, highlight, reflection, glow, wet eyes, how long a trail stays wet; running mascara: on or off, how dark and wide, how much gathers under the lid, how far it spreads under the eye and how much under its corners, how many streaks at most and how far each runs, how long it lasts.
 - Physics - how firmly tears stick, how fast they run, how far a tear runs before it stops, how long a drop clings under the chin.
 - Wipe - hands taking tears away, the wipe gesture.
+- Whip - crying from a whipping: an actor hit with a whip (a weapon or spell named whip, bullwhip, crop, flogger or cane; more words or exact forms can be listed in the config file) a few times in a row starts crying. On or off, how many hits start it, how long a pause forgets them, how heavy and how long the crying is, player and NPCs.
 - Test - make the player cry, shed one tear, stop or wipe; make nearby actors cry; show where tears start; a detailed log; two settings for a head Lacrima reads wrongly; reset everything to the shipped defaults.
 
 Without the menu, put the values you want to change into Data\SKSE\Plugins\Lacrima_User.toml, using the sections and keys of Lacrima.toml, which lists every setting with its default.
@@ -80,13 +81,14 @@ Commands act on the actor selected in the console, or on the player when none is
 - tears nearby 0.7 30 1500 - every actor within 1500 units of the player cries
 - tears status - what Lacrima found on the head and what the tears are doing; also written to Lacrima.log
 - tears ducts 1 - mark where tears start (0 to hide)
+- tears whip 3 - counts 3 whip hits on this actor, as if a whip had landed them
 - tears mascara 1 - this actor wears running mascara (0 none; -1 forgets it, so the player's setting applies)
 - tears enable 0 - turn Lacrima off for this session (1 on)
 
 
 FOR MOD AUTHORS
 
-Lacrima does nothing on its own; it is meant to be driven by your mod. Every call is a global function, so an optional integration needs no master and no property:
+Apart from crying from a whipping, Lacrima does nothing on its own; it is meant to be driven by your mod. Every call is a global function, so an optional integration needs no master and no property:
 
     If Lacrima.GetAPIVersion() > 0          ; 0 = Lacrima is not installed
         Lacrima.Cry(akActor, 0.7, 20.0)     ; intensity 0.0 to 1.0, seconds (0 or less = until stopped)

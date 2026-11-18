@@ -2,6 +2,7 @@
 
 #include "Face.h"
 #include "Tears.h"
+#include "Whip.h"
 
 // The frame driver is adapted from OStrands' Hooks.cpp by LeonVanWinkle (Saint),
 // GPL-3.0: the input device manager sends its event every frame, and the sink
@@ -90,6 +91,7 @@ namespace Lacrima::Hooks
 	{
 		Tears::Get().Reset();
 		Face::Reset();
+		Whip::Reset();
 	}
 
 	void Install()

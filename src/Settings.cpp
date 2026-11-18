@@ -15,6 +15,8 @@ namespace Lacrima
 		Settings             g_settings;
 		Settings             g_persisted;
 		Settings             g_defaults;
+		Settings::WhipLists  g_whips;
+		Settings::WhipLists  g_defaultWhips;
 
 		// clang-format off
 		const std::array kFields{
@@ -124,6 +126,21 @@ namespace Lacrima
 			Field{ "wipe", "gesture_wait", &Settings::gestureWait, 0.5f, 10.0f, "Wipe", "Gesture wait", "%.1f s",
 				"How long a wipe gesture waits for the hand to reach the face before it dries it anyway." },
 
+			Field{ "whip", "enabled", &Settings::whipEnabled, 0, 1, "Whip", "Cry when whipped", nullptr,
+				"An actor hit with a whip often enough starts crying. What counts as a whip is set by names and forms under [whip] in Lacrima.toml." },
+			Field{ "whip", "hits", &Settings::whipHits, 1, 50, "Whip", "Hits before crying", "%d",
+				"The hit that starts the crying. Every hit after it keeps the crying going." },
+			Field{ "whip", "window", &Settings::whipWindow, 2.0f, 600.0f, "Whip", "Hits forgotten after", "%.0f s",
+				"Seconds without a whip hit after which the count starts over." },
+			Field{ "whip", "intensity", &Settings::whipIntensity, 0.05f, 1.0f, "Whip", "Crying intensity", "%.2f",
+				"How heavily a whipped actor cries. A heavier crying already under way keeps its weight." },
+			Field{ "whip", "seconds", &Settings::whipSeconds, 2.0f, 600.0f, "Whip", "Crying after the last hit", "%.0f s",
+				"Seconds the crying lasts after the last whip hit." },
+			Field{ "whip", "player", &Settings::whipPlayer, 0, 1, "Whip", "The player cries", nullptr,
+				"Whip hits on the player count." },
+			Field{ "whip", "npcs", &Settings::whipNpcs, 0, 1, "Whip", "NPCs cry", nullptr,
+				"Whip hits on everyone else count." },
+
 			Field{ "debug", "show_ducts", &Settings::showDucts, 0, 1, "Test", "Show tear starts", nullptr,
 				"Marks where tears start on the console-selected actor, or on the player. While it is on, that actor's tears draw at least 0.4 opaque, so the marks show." },
 			Field{ "debug", "face_forward", &Settings::faceForward, -1, 1, "Test", "Face forward", "%d",
@@ -152,7 +169,33 @@ namespace Lacrima
 			}
 		}
 
-		bool ReadFile(const char* a_path, Settings& a_settings, bool a_required)
+		void ReadList(const toml::table& a_table, const char* a_key, std::vector<std::string>& a_list)
+		{
+			const auto* array = a_table["whip"][a_key].as_array();
+			if (!array) {
+				return;
+			}
+			a_list.clear();
+			for (const auto& entry : *array) {
+				if (const auto text = entry.value<std::string>(); text && !text->empty()) {
+					a_list.push_back(*text);
+				}
+			}
+		}
+
+		void WriteList(toml::table& a_table, const char* a_key, const std::vector<std::string>& a_list)
+		{
+			toml::array array;
+			for (const auto& entry : a_list) {
+				array.push_back(entry);
+			}
+			if (!a_table.contains("whip")) {
+				a_table.insert("whip", toml::table{});
+			}
+			a_table["whip"].as_table()->insert_or_assign(a_key, std::move(array));
+		}
+
+		bool ReadFile(const char* a_path, Settings& a_settings, Settings::WhipLists& a_whips, bool a_required)
 		{
 			std::error_code error;
 			if (!std::filesystem::exists(a_path, error)) {
@@ -192,6 +235,8 @@ namespace Lacrima
 					},
 					field.member);
 			}
+			ReadList(table, "names", a_whips.names);
+			ReadList(table, "forms", a_whips.forms);
 			Clamp(a_settings);
 			return true;
 		}
@@ -228,13 +273,22 @@ namespace Lacrima
 		return g_defaults;
 	}
 
+	Settings::WhipLists Settings::Whips()
+	{
+		auto guard = Lock();
+		return g_whips;
+	}
+
 	void Settings::Load()
 	{
-		auto     guard = Lock();
-		Settings loaded;
-		ReadFile(kBaseFile, loaded, true);
+		auto      guard = Lock();
+		Settings  loaded;
+		WhipLists whips{ { "whip", "bullwhip", "crop", "flogger", "cane" }, {} };
+		ReadFile(kBaseFile, loaded, whips, true);
 		g_defaults = loaded;
-		const bool user = ReadFile(kUserFile, loaded, false);
+		g_defaultWhips = whips;
+		const bool user = ReadFile(kUserFile, loaded, whips, false);
+		g_whips = whips;
 		g_settings = loaded;
 		g_persisted = loaded;
 		logger::info("settings loaded from {}{}", kBaseFile, user ? std::format(" and {}", kUserFile) : std::string{});
@@ -265,6 +319,12 @@ namespace Lacrima
 					}
 				},
 				field.member);
+		}
+		if (g_whips.names != g_defaultWhips.names) {
+			WriteList(table, "names", g_whips.names);
+		}
+		if (g_whips.forms != g_defaultWhips.forms) {
+			WriteList(table, "forms", g_whips.forms);
 		}
 		const std::filesystem::path target{ kUserFile };
 		std::error_code             error;
@@ -302,5 +362,6 @@ namespace Lacrima
 		auto guard = Lock();
 		g_settings = g_defaults;
 		g_persisted = g_defaults;
+		g_whips = g_defaultWhips;
 	}
 }

@@ -9,6 +9,7 @@ Function ShowDuctsNative(Bool abShow) global native
 Function MountWorldNative(Bool abWorld) global native
 Function WipeAllNative() global native
 Int Function CryingCountNative() global native
+String Function WhipNative(Actor akActor, Int aiHits) global native
 
 Actor Function Target() global
 	Actor target = Game.GetCurrentConsoleRef() as Actor
@@ -151,4 +152,12 @@ String Function Mascara(Float strength) global
 		Return Who() + " has no running mascara."
 	EndIf
 	Return Who() + " has running mascara at " + strength + "."
+EndFunction
+
+; Params in YAML order: hits
+String Function Whip(Int hits) global
+	If !Loaded()
+		Return "Lacrima.dll is not loaded."
+	EndIf
+	Return Who() + ": " + WhipNative(Target(), hits)
 EndFunction

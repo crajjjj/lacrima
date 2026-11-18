@@ -142,6 +142,13 @@ namespace Lacrima::Menu
 			RenderPage("Wipe");
 		}
 
+		void __stdcall RenderWhip()
+		{
+			Text("An actor whipped often enough starts crying. What counts as a whip is set by names and forms under [whip] in Lacrima.toml.");
+			Ui::Separator();
+			RenderPage("Whip");
+		}
+
 		void __stdcall RenderTest()
 		{
 			RenderPage("Test");
@@ -226,6 +233,7 @@ namespace Lacrima::Menu
 		SKSEMenuFramework::AddSectionItem("Look", &RenderLook);
 		SKSEMenuFramework::AddSectionItem("Physics", &RenderPhysics);
 		SKSEMenuFramework::AddSectionItem("Wipe", &RenderWipe);
+		SKSEMenuFramework::AddSectionItem("Whip", &RenderWhip);
 		SKSEMenuFramework::AddSectionItem("Test", &RenderTest);
 		SKSEMenuFramework::AddEvent(&OnEvent, 0.0f);  // lives as long as the game
 		logger::info("menu: registered");

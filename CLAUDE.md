@@ -8,7 +8,8 @@ Lacrima is an SKSE plugin (`Lacrima.dll`, C++23 on CommonLibSSE-NG, alandtse for
 v15.2.0 as a git submodule at `lib/commonlibsse-ng`) plus a small Papyrus layer. It
 draws procedural tears: fluid that wells up below the eyes and runs down the face. It
 is a framework: nothing cries until a script, another plugin, the console harness or
-the settings menu asks.
+the settings menu asks, with one exception it starts itself: crying from a whipping
+(`Whip.cpp`).
 
 The fluid core is adapted from OStrands (LeonVanWinkle / Saint, GPL-3.0); NOTICE.txt
 lists exactly what. Lacrima is GPL-3.0 because of it.
@@ -269,6 +270,19 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   `Lacrima_MascaraStart` / `Stop` mod events, which it sends on the same transitions
   (not on a session reset). Keywords were asked for as an alternative and rejected:
   a keyword sits on the base record, shared by every actor made from it.
+- **Whip** (`Whip.cpp`, 0.4.1): a `TESHitEvent` sink counts unblocked hits per actor
+  from a whip; from the `[whip] hits`-th on, each calls `Tears::Cry` for `[whip]
+  seconds` at `[whip] intensity`, and `[whip] window` seconds without a hit forget the
+  count (also a session reset). A whip is the hit's source form (weapon, spell or
+  enchantment) when its name has a word STARTING with one of `[whip] names` (ASCII
+  case folded; word start so "cane" does not find "Arcane"), or it is listed in
+  `[whip] forms`, or carries a keyword listed there; the verdict is cached per source
+  form until the next `Whip::Load`. It never takes over another caller's crying: one
+  without an end is left alone, a running one keeps the greater intensity and time.
+  The two lists are not `Field`s (the table holds bool / int / float only):
+  `Settings::Whips()` returns them, the user file replaces a list it names, and
+  `Settings::Save` writes a list that differs from the shipped one, so the menu's
+  save does not drop a hand-written one. `tears whip N` counts N hits without a whip.
 - **APIs**: `Lacrima.psc` (natives in `Papyrus.cpp`, `kAPIVersion`: 2 added
   `CryEx` / `SetMascara`), C exports in `Api.cpp` / `include/API/LacrimaAPI.h` /
   `exports.def` (interface version packed MMmmpp: 10100 added the same two). Never

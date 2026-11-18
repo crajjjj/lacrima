@@ -68,6 +68,14 @@ namespace Lacrima
 		float reach{ 7.0f };
 		float gestureWait{ 3.5f };
 
+		bool  whipEnabled{ true };   // crying from a whipping (Whip.cpp)
+		int   whipHits{ 3 };         // the hit that starts the crying
+		float whipWindow{ 30.0f };   // seconds without a hit that forget the count
+		float whipIntensity{ 0.7f };
+		float whipSeconds{ 30.0f };  // crying after the last hit
+		bool  whipPlayer{ true };
+		bool  whipNpcs{ true };
+
 		bool showDucts{ false };
 		bool mountWorld{ false };  // false: tears under the head bone, carried by the engine in the same frame; true: under the cell node in world space (a frame behind a turning head)
 		int  faceForward{ 0 };     // [debug] face_forward: 0 from the meshes, 1 / -1 forced
@@ -80,6 +88,16 @@ namespace Lacrima
 		static Settings&                              Persisted();
 		static Settings                               Snapshot();
 		static const Settings&                        Defaults();
+
+		// What counts as a whip (`[whip] names` / `forms`). Lists, so not in the field
+		// table and not on a menu page: Lacrima_User.toml replaces a list it names, and
+		// the menu's save carries such a list over.
+		struct WhipLists
+		{
+			std::vector<std::string> names;  // words a weapon's or spell's name has a word starting with
+			std::vector<std::string> forms;  // "Plugin.esp|0x800": a weapon, spell, enchantment or keyword
+		};
+		static WhipLists Whips();
 
 		static void Load();
 		static bool Save();

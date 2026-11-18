@@ -6,7 +6,9 @@ leave a wet trail that dries up, and a drop that reaches the chin clings for a m
 then falls off. Optionally, each tear leaves a streak of running mascara behind.
 
 Lacrima is a framework: it makes an actor cry when another mod, a script, the console
-or its own settings menu asks it to. On its own it does nothing in game. While an
+or its own settings menu asks it to. The one thing it starts by itself is crying from
+a whipping: an actor hit with a whip a few times in a row cries (the Whip page turns
+it off or sets how many hits it takes). While an
 actor cries, and while run mascara shows on their face, they are in a faction, so
 dialogue and other conditions can react to it.
 
@@ -58,7 +60,7 @@ once the hand comes near the eyes.
 
 ## Settings
 
-With SKSE Menu Framework installed, the Lacrima pages (Tears, Look, Physics, Wipe, Test)
+With SKSE Menu Framework installed, the Lacrima pages (Tears, Look, Physics, Wipe, Whip, Test)
 change everything live and save your changes when the menu closes. Without it, write
 the values you want to change into `Data\SKSE\Plugins\Lacrima_User.toml`, using the
 sections and keys of `Lacrima.toml`, which lists every setting with its default.
@@ -69,11 +71,19 @@ sections and keys of `Lacrima.toml`, which lists every setting with its default.
 | Look | Look style, tear size, trail width, opacity, shine, reflection, glow, wet eyes, trail lifetime; running mascara: amount, darkness, width, band, spread under the eye, corners, lines, length, lifetime |
 | Physics | How firmly tears stick, how fast they run, how far a tear runs, how long a drop clings under the chin |
 | Wipe | Hands taking tears away, the wipe gesture |
+| Whip | Crying from a whipping: on or off, how many hits start it, how long a pause forgets them, how heavy and how long the crying is, player and NPCs |
 | Test | Make the player or nearby actors cry, shed one tear, wipe; show where tears start; detailed log; two fixes for a head read wrongly; reset to the shipped defaults |
 
 An update never touches your own values. A setting you have not changed follows the
 shipped default, which can change between versions; Reset everything to the shipped
 defaults (Test page) or deleting `Lacrima_User.toml` starts over from them.
+
+**What counts as a whip?** A weapon or spell whose name has a word starting with
+`whip`, `bullwhip`, `crop`, `flogger` or `cane`, in any case. Blocked hits do not
+count. To add words (for a game in another language, say) or to name a weapon, spell,
+enchantment or keyword by form (`"Plugin.esp|0x800"`), write the whole list under
+`[whip]` in `Lacrima_User.toml` as `names = [...]` or `forms = [...]`; `Lacrima.toml`
+shows both. A crying another mod started is never cut short or weakened by it.
 
 **Tears look white and solid?** Some ENB presets amplify materials that reflect or
 give off a little light of their own, which the default water look does. Set Look
@@ -119,6 +129,7 @@ or on the player when none is selected.
 | `tears status` | What Lacrima found on the head and what the tears are doing; the line is also written to `Lacrima.log` |
 | `tears ducts 1` | Mark where tears start (`tears ducts 0` to hide) |
 | `tears mount 1` | Draw the tears in world space instead of under the head bone (debug; a frame behind a turning head; `tears mount 0` is the default) |
+| `tears whip 3` | Counts 3 whip hits on this actor, as if a whip had landed them |
 | `tears mascara 1` | Running mascara on this actor (`0` none, `-1` = the setting) |
 | `tears count` | How many actors are crying |
 | `tears enable 0` | Turn Lacrima off for this session (`1` on) |

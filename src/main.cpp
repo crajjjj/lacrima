@@ -3,6 +3,7 @@
 #include "Menu.h"
 #include "Papyrus.h"
 #include "Settings.h"
+#include "Whip.h"
 
 namespace
 {
@@ -15,6 +16,8 @@ namespace
 		case SKSE::MessagingInterface::kDataLoaded:
 			Lacrima::Menu::Register();
 			Lacrima::Factions::Load();
+			Lacrima::Whip::Load();
+			Lacrima::Whip::Install();
 			break;
 		case SKSE::MessagingInterface::kPreLoadGame:
 		case SKSE::MessagingInterface::kNewGame:
