@@ -16,6 +16,10 @@ namespace Lacrima::Whip
 		};
 
 		constexpr std::size_t kPruneAt = 64;
+		// One blow of an enchanted whip sends a hit for the weapon and one for each
+		// effect of the enchantment; hits this close together are one blow.
+		constexpr auto        kOneBlow = std::chrono::milliseconds(150);
+		constexpr RE::FormID  kActorTypeNPC = 0x13794;  // Skyrim.esm
 
 		std::mutex                              g_lock;
 		std::vector<std::string>                g_names;     // lower case
@@ -94,9 +98,24 @@ namespace Lacrima::Whip
 			return whip;
 		}
 
+		// An actor with a face to cry on. A creature would only take a crier's place
+		// away from someone who has one. Read off the keyword lists by pointer: the
+		// name-based helpers trip over a null keyword name.
+		bool Humanoid(RE::Actor* a_actor)
+		{
+			static const auto* npc = RE::TESForm::LookupByID<RE::BGSKeyword>(kActorTypeNPC);
+			if (!npc) {
+				return true;
+			}
+			const auto* race = a_actor->GetRace();
+			const auto* base = a_actor->GetActorBase();
+			return (race && race->HasKeyword(npc)) || (base && base->HasKeyword(npc));
+		}
+
 		// Counts one hit and, from the threshold on, asks for the crying. Returns the
-		// count. g_lock held.
-		int Count(RE::Actor* a_actor, const Settings& a_settings)
+		// count. a_blow: a hit right after the last one is the same blow and not
+		// counted. g_lock held.
+		int Count(RE::Actor* a_actor, const Settings& a_settings, bool a_blow)
 		{
 			const auto now = Clock::now();
 			const auto window = std::chrono::duration<float>(a_settings.whipWindow);
@@ -106,6 +125,8 @@ namespace Lacrima::Whip
 			auto& tally = g_tallies[a_actor->GetFormID()];
 			if (now - tally.last > window) {
 				tally.hits = 0;
+			} else if (a_blow && tally.hits > 0 && now - tally.last < kOneBlow) {
+				return tally.hits;
 			}
 			++tally.hits;
 			tally.last = now;
@@ -113,7 +134,8 @@ namespace Lacrima::Whip
 				return tally.hits;
 			}
 			// Someone else's crying is never cut short or weakened: one without an end
-			// stays as it is, a longer or heavier one keeps its length and weight.
+			// stays as it is, a longer or heavier one keeps its length and weight, and
+			// any keeps the streams and mascara it was started with.
 			const auto handle = a_actor->GetHandle();
 			const auto state = Tears::Get().Query(handle);
 			if (state.crying && state.timeLeft < 0.0f) {
@@ -121,11 +143,15 @@ namespace Lacrima::Whip
 			}
 			float intensity = a_settings.whipIntensity;
 			float seconds = a_settings.whipSeconds;
+			int   streams = 0;
+			float mascara = -1.0f;
 			if (state.crying) {
 				intensity = std::max(intensity, state.intensity);
 				seconds = std::max(seconds, state.timeLeft);
+				streams = state.streams;
+				mascara = state.mascara;
 			}
-			Tears::Get().Cry(handle, intensity, seconds);
+			Tears::Get().Cry(handle, intensity, seconds, streams, mascara);
 			return tally.hits;
 		}
 
@@ -142,14 +168,14 @@ namespace Lacrima::Whip
 					return RE::BSEventNotifyControl::kContinue;
 				}
 				auto* actor = a_event->target->As<RE::Actor>();
-				if (!actor || actor->IsDead() || !(actor->IsPlayerRef() ? settings.whipPlayer : settings.whipNpcs)) {
+				if (!actor || actor->IsDead() || !(actor->IsPlayerRef() ? settings.whipPlayer : settings.whipNpcs) || !Humanoid(actor)) {
 					return RE::BSEventNotifyControl::kContinue;
 				}
 				std::scoped_lock guard(g_lock);
 				if (!IsWhip(a_event->source)) {
 					return RE::BSEventNotifyControl::kContinue;
 				}
-				const int hits = Count(actor, settings);
+				const int hits = Count(actor, settings, true);
 				if (settings.debugLog) {
 					logger::info("whip: {} ({:08X}) hit with {:08X}, {} of {}", actor->GetName(), actor->GetFormID(), a_event->source, hits,
 						settings.whipHits);
@@ -205,7 +231,7 @@ namespace Lacrima::Whip
 		std::scoped_lock guard(g_lock);
 		int              hits = 0;
 		for (int i = 0; i < std::clamp(a_hits, 1, 100); ++i) {
-			hits = Count(a_actor, settings);
+			hits = Count(a_actor, settings, false);
 		}
 		return std::format("{} whip hit(s) counted, crying starts at {}: {}.", hits, settings.whipHits,
 			hits >= settings.whipHits ? "crying" : "not yet");

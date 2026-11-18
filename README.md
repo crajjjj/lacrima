@@ -83,7 +83,8 @@ defaults (Test page) or deleting `Lacrima_User.toml` starts over from them.
 count. To add words (for a game in another language, say) or to name a weapon, spell,
 enchantment or keyword by form (`"Plugin.esp|0x800"`), write the whole list under
 `[whip]` in `Lacrima_User.toml` as `names = [...]` or `forms = [...]`; `Lacrima.toml`
-shows both. A crying another mod started is never cut short or weakened by it.
+shows both. Creatures do not cry. A crying another mod started is never cut short or
+weakened by it.
 
 **Tears look white and solid?** Some ENB presets amplify materials that reflect or
 give off a little light of their own, which the default water look does. Set Look
@@ -203,19 +204,21 @@ Event OnCryStart(String asEventName, String asUnused, Float afIntensity, Form ak
 EndEvent
 ```
 
-Lacrima also listens for two mod events, sent on the actor. A mod that sends them
+Lacrima also listens for three mod events, sent on the actor. A mod that sends them
 needs nothing from Lacrima to compile, and nothing happens when Lacrima is not
 installed:
 
 | Event | numArg | strArg | Does |
 |---|---|---|---|
-| `Lacrima_Cry` | intensity, 0 to 1 (0 or less: 0.6) | `"seconds streams mascara"`, each optional, separated by spaces: seconds (none: 20; `0`: until stopped), streams (`0`: the setting), mascara (`-1`: not set here) | the same as `CryEx` |
+| `Lacrima_Cry` | intensity, 0 to 1 (0 or less: 0.6) | `"seconds streams"`, each optional, separated by a space: seconds (none: 20; `0`: until stopped), streams (`0`: the setting) | the same as `CryEx`, without its mascara |
 | `Lacrima_StopCrying` | not 0: wipe the tears off at once | | the same as `StopCrying` |
+| `Lacrima_SetMascara` | running mascara for this actor, 0 none to 1 full; negative: the player's setting again | | the same as `SetMascara` |
 
 ```papyrus
 akActor.SendModEvent("Lacrima_Cry", "30", 0.7)       ; 30 s at intensity 0.7
-akActor.SendModEvent("Lacrima_Cry", "0 3 1", 0.9)    ; until stopped, 3 streams, full mascara
+akActor.SendModEvent("Lacrima_Cry", "0 3", 0.9)      ; until stopped, 3 streams per eye
 akActor.SendModEvent("Lacrima_StopCrying")
+akActor.SendModEvent("Lacrima_SetMascara", "", 1.0)  ; this actor's tears run mascara from now on
 ```
 
 ### Factions, for dialogue and other conditions

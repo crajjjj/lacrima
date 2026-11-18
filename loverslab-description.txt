@@ -115,10 +115,12 @@ Mod events, with the crying actor as the sender, so an expression mod can react 
 - Lacrima_MascaraStop (the last mark has faded or been wiped off)
 
 Mod events Lacrima listens for, sent on the actor. A mod that sends them needs nothing from Lacrima to compile, and nothing happens when Lacrima is not installed:
-- Lacrima_Cry - the same as CryEx. numArg = intensity, 0 to 1 (0 or less: 0.6); strArg = "seconds streams mascara", each optional, separated by spaces (no seconds: 20; 0: until stopped).
+- Lacrima_Cry - numArg = intensity, 0 to 1 (0 or less: 0.6); strArg = "seconds streams", each optional, separated by a space (no seconds: 20; 0: until stopped; streams 0: the setting).
     akActor.SendModEvent("Lacrima_Cry", "30", 0.7)
 - Lacrima_StopCrying - the same as StopCrying; numArg not 0 wipes the tears off at once.
     akActor.SendModEvent("Lacrima_StopCrying")
+- Lacrima_SetMascara - the same as SetMascara: numArg = running mascara for this actor, 0 none to 1 full; negative goes back to the player's setting.
+    akActor.SendModEvent("Lacrima_SetMascara", "", 1.0)
 
 Factions, for dialogue and other conditions (Lacrima.esp, ESL-flagged):
 - LacrimaCryingFaction (xx000800) - the actor is in it while crying; rank 0 to 100 is the intensity. Condition: GetInFaction LacrimaCryingFaction == 1.

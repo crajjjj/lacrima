@@ -19,7 +19,7 @@ namespace Lacrima::Events
 			});
 		}
 
-		// The numbers in "30, 2 0.5", in order; a piece that is not a number ends it.
+		// The numbers in "30, 2", in order; a piece that is not a number ends it.
 		std::vector<float> Numbers(std::string_view a_text)
 		{
 			std::vector<float> numbers;
@@ -32,7 +32,7 @@ namespace Lacrima::Events
 				}
 				float      value = 0.0f;
 				const auto read = std::from_chars(at, end, value);
-				if (read.ec != std::errc{}) {
+				if (read.ec != std::errc{} || !std::isfinite(value)) {
 					break;
 				}
 				numbers.push_back(value);
@@ -50,23 +50,27 @@ namespace Lacrima::Events
 					return RE::BSEventNotifyControl::kContinue;
 				}
 				const bool cry = Same(a_event->eventName, "Lacrima_Cry");
-				if (!cry && !Same(a_event->eventName, "Lacrima_StopCrying")) {
+				const bool stop = !cry && Same(a_event->eventName, "Lacrima_StopCrying");
+				if (!cry && !stop && !Same(a_event->eventName, "Lacrima_SetMascara")) {
 					return RE::BSEventNotifyControl::kContinue;
 				}
 				auto* actor = a_event->sender->As<RE::Actor>();
 				if (!actor) {
 					return RE::BSEventNotifyControl::kContinue;
 				}
-				if (!cry) {
+				if (stop) {
 					Tears::Get().Stop(actor->GetHandle(), a_event->numArg != 0.0f);
+					return RE::BSEventNotifyControl::kContinue;
+				}
+				if (!cry) {
+					Tears::Get().SetMascara(actor->GetHandle(), a_event->numArg);
 					return RE::BSEventNotifyControl::kContinue;
 				}
 				const auto  numbers = Numbers(a_event->strArg.c_str() ? a_event->strArg.c_str() : "");
 				const float intensity = a_event->numArg > 0.0f ? a_event->numArg : kIntensity;
 				const float seconds = numbers.size() > 0 ? numbers[0] : kSeconds;
 				const int   streams = numbers.size() > 1 ? static_cast<int>(numbers[1]) : 0;
-				const float mascara = numbers.size() > 2 ? numbers[2] : -1.0f;
-				Tears::Get().Cry(actor->GetHandle(), intensity, seconds, streams, mascara);
+				Tears::Get().Cry(actor->GetHandle(), intensity, seconds, streams);
 				return RE::BSEventNotifyControl::kContinue;
 			}
 		};
@@ -77,9 +81,9 @@ namespace Lacrima::Events
 		static Sink sink;
 		if (auto* source = SKSE::GetModCallbackEventSource()) {
 			source->AddEventSink(&sink);
-			logger::info("events: listening for Lacrima_Cry and Lacrima_StopCrying");
+			logger::info("events: listening for Lacrima_Cry, Lacrima_StopCrying and Lacrima_SetMascara");
 		} else {
-			logger::error("events: no mod event source; Lacrima_Cry and Lacrima_StopCrying are not heard");
+			logger::error("events: no mod event source; Lacrima_Cry, Lacrima_StopCrying and Lacrima_SetMascara are not heard");
 		}
 	}
 }

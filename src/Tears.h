@@ -24,6 +24,8 @@ namespace Lacrima
 			bool  crying{ false };
 			float intensity{ 0.0f };
 			float timeLeft{ 0.0f };
+			int   streams{ 0 };      // what the crying's Cry asked for; 0 = the setting
+			float mascara{ -1.0f };  // negative = the actor's SetMascara, else the setting
 		};
 
 		// a_streams: how many points along the lower lid this crying sheds from, 1 to 4;

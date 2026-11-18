@@ -2,6 +2,7 @@
 
 #include "Settings.h"
 #include "Tears.h"
+#include "Whip.h"
 
 // The ONLY include site of the vendored SKSE Menu Framework header (see
 // vendor\SKSEMenuFramework\README.txt). Its ImGui wrappers resolve the framework's
@@ -193,6 +194,7 @@ namespace Lacrima::Menu
 			Ui::SameLine();
 			if (Ui::Button("Reset everything to the shipped defaults")) {
 				Settings::ResetToDefaults();
+				Whip::Load();  // the whip lists went back too
 				g_dirty = true;
 				Save();
 			}

@@ -277,16 +277,23 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   enchantment) when its name has a word STARTING with one of `[whip] names` (ASCII
   case folded; word start so "cane" does not find "Arcane"), or it is listed in
   `[whip] forms`, or carries a keyword listed there; the verdict is cached per source
-  form until the next `Whip::Load`. It never takes over another caller's crying: one
-  without an end is left alone, a running one keeps the greater intensity and time.
+  form until the next `Whip::Load`. Hits within `kOneBlow` (150 ms) of the last are
+  one blow (an enchanted whip sends a hit for the weapon and one per effect), and
+  only an actor with `ActorTypeNPC` on the race or base counts (a creature has no
+  face and would take a crier's place under `max_actors`). It never takes over
+  another caller's crying: one without an end is left alone, a running one keeps the
+  greater intensity and time and the streams and mascara it was started with
+  (`Tears::State::streams` / `mascara`, there for this).
   The two lists are not `Field`s (the table holds bool / int / float only):
   `Settings::Whips()` returns them, the user file replaces a list it names, and
   `Settings::Save` writes a list that differs from the shipped one, so the menu's
   save does not drop a hand-written one. `tears whip N` counts N hits without a whip.
 - **Incoming mod events** (`Events.cpp`, 0.5.0): a `ModCallbackEvent` sink turns
-  `Lacrima_Cry` (sender = actor, numArg = intensity, strArg = "seconds streams
-  mascara") into `Tears::Cry` and `Lacrima_StopCrying` (numArg not 0 = wipe) into
-  `Tears::Stop`, for a mod that wants no compile-time dependency. The sink also sees
+  `Lacrima_Cry` (sender = actor, numArg = intensity, strArg = "seconds streams")
+  into `Tears::Cry`, `Lacrima_StopCrying` (numArg not 0 = wipe) into `Tears::Stop`
+  and `Lacrima_SetMascara` (numArg = strength, negative = the setting) into
+  `Tears::SetMascara` (mascara is its own event on the user's ask, not a third
+  number in the cry's string), for a mod that wants no compile-time dependency. The sink also sees
   the events Lacrima sends (`Lacrima_CryStart` and so on); the names differ.
 - **APIs**: `Lacrima.psc` (natives in `Papyrus.cpp`, `kAPIVersion`: 2 added
   `CryEx` / `SetMascara`), C exports in `Api.cpp` / `include/API/LacrimaAPI.h` /

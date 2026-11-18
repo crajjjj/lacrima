@@ -269,6 +269,8 @@ namespace Lacrima
 		state.crying = intensity > 0.0f;
 		state.intensity = intensity;
 		state.timeLeft = intensity > 0.0f ? (seconds > 0.0f ? seconds : -1.0f) : 0.0f;
+		state.streams = request.streams;
+		state.mascara = request.mascara;
 	}
 
 	void Tears::Stop(RE::ActorHandle a_actor, bool a_wipe)
@@ -951,6 +953,8 @@ namespace Lacrima
 			state.crying = crier->crying;
 			state.intensity = crier->crying ? crier->target : 0.0f;
 			state.timeLeft = crier->crying ? (crier->forever ? -1.0f : std::max(crier->timeLeft, 0.0f)) : 0.0f;
+			state.streams = crier->callStreams;
+			state.mascara = crier->callMascara;
 		}
 	}
 
