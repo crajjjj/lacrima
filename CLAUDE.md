@@ -270,7 +270,7 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   `Lacrima_MascaraStart` / `Stop` mod events, which it sends on the same transitions
   (not on a session reset). Keywords were asked for as an alternative and rejected:
   a keyword sits on the base record, shared by every actor made from it.
-- **Whip** (`Whip.cpp`, 0.4.1): a `TESHitEvent` sink counts unblocked hits per actor
+- **Whip** (`Whip.cpp`, 0.5.0): a `TESHitEvent` sink counts unblocked hits per actor
   from a whip; from the `[whip] hits`-th on, each calls `Tears::Cry` for `[whip]
   seconds` at `[whip] intensity`, and `[whip] window` seconds without a hit forget the
   count (also a session reset). A whip is the hit's source form (weapon, spell or
