@@ -11,6 +11,13 @@ Lacrima sends mod events with the crying actor as the sender:
 Register with RegisterForModEvent("Lacrima_CryStart", "OnCryStart") and handle
   Event OnCryStart(String asEventName, String asUnused, Float afIntensity, Form akSender)
 
+Lacrima also listens for two mod events, sent on the actor, so a mod can make an
+actor cry without compiling against this script; nothing happens without Lacrima:
+  akActor.SendModEvent("Lacrima_Cry", "30", 0.7)   ; 30 s at intensity 0.7
+  akActor.SendModEvent("Lacrima_StopCrying")       ; numArg 1.0 wipes the tears off too
+Lacrima_Cry is CryEx: numArg = intensity (0 or less: 0.6), strArg = "seconds streams
+mascara", each optional, separated by spaces (no seconds: 20; "0": until stopped).
+
 Crying does not survive loading a save, and no Lacrima_CryStop is sent then. A mod
 that tracks crying actors should forget them on load, or ask IsCrying again.
 

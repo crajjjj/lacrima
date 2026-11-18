@@ -203,6 +203,21 @@ Event OnCryStart(String asEventName, String asUnused, Float afIntensity, Form ak
 EndEvent
 ```
 
+Lacrima also listens for two mod events, sent on the actor. A mod that sends them
+needs nothing from Lacrima to compile, and nothing happens when Lacrima is not
+installed:
+
+| Event | numArg | strArg | Does |
+|---|---|---|---|
+| `Lacrima_Cry` | intensity, 0 to 1 (0 or less: 0.6) | `"seconds streams mascara"`, each optional, separated by spaces: seconds (none: 20; `0`: until stopped), streams (`0`: the setting), mascara (`-1`: not set here) | the same as `CryEx` |
+| `Lacrima_StopCrying` | not 0: wipe the tears off at once | | the same as `StopCrying` |
+
+```papyrus
+akActor.SendModEvent("Lacrima_Cry", "30", 0.7)       ; 30 s at intensity 0.7
+akActor.SendModEvent("Lacrima_Cry", "0 3 1", 0.9)    ; until stopped, 3 streams, full mascara
+akActor.SendModEvent("Lacrima_StopCrying")
+```
+
 ### Factions, for dialogue and other conditions
 
 `Lacrima.esp` (ESL-flagged; tears work the same without it) holds two factions, so

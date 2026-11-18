@@ -1,3 +1,4 @@
+#include "Events.h"
 #include "Factions.h"
 #include "Hooks.h"
 #include "Menu.h"
@@ -18,6 +19,7 @@ namespace
 			Lacrima::Factions::Load();
 			Lacrima::Whip::Load();
 			Lacrima::Whip::Install();
+			Lacrima::Events::Install();
 			break;
 		case SKSE::MessagingInterface::kPreLoadGame:
 		case SKSE::MessagingInterface::kNewGame:

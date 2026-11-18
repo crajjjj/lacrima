@@ -283,6 +283,11 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
   `Settings::Whips()` returns them, the user file replaces a list it names, and
   `Settings::Save` writes a list that differs from the shipped one, so the menu's
   save does not drop a hand-written one. `tears whip N` counts N hits without a whip.
+- **Incoming mod events** (`Events.cpp`, 0.5.0): a `ModCallbackEvent` sink turns
+  `Lacrima_Cry` (sender = actor, numArg = intensity, strArg = "seconds streams
+  mascara") into `Tears::Cry` and `Lacrima_StopCrying` (numArg not 0 = wipe) into
+  `Tears::Stop`, for a mod that wants no compile-time dependency. The sink also sees
+  the events Lacrima sends (`Lacrima_CryStart` and so on); the names differ.
 - **APIs**: `Lacrima.psc` (natives in `Papyrus.cpp`, `kAPIVersion`: 2 added
   `CryEx` / `SetMascara`), C exports in `Api.cpp` / `include/API/LacrimaAPI.h` /
   `exports.def` (interface version packed MMmmpp: 10100 added the same two). Never
