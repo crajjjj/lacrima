@@ -2,7 +2,7 @@ set_xmakever("3.0.0")  -- the commonlibsse-ng submodule requires 3.0
 
 -- Globals
 PROJECT_NAME = "Lacrima"
-PROJECT_VERSION = "0.5.0"
+PROJECT_VERSION = "0.5.1"
 PROJECT_AUTHOR = "crajjjj"
 
 -- Project
@@ -24,8 +24,9 @@ option("mod_name")
 option_end()
 
 -- Dependencies & Includes
--- Lacrima installs no trampoline hooks, so CommonLib's patch-site diagnostics
--- have nothing to check; off, their MinHook HDE64 code stays out of the DLL.
+-- Lacrima's one hook (the main update call, src/Hooks.cpp) checks its own site,
+-- so CommonLib's patch-site diagnostics stay off; off, their MinHook HDE64 code
+-- stays out of the DLL.
 set_config("skse_patch_safety", false)
 includes("lib/commonlibsse-ng")
 

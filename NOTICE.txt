@@ -20,7 +20,7 @@ GPL-3.0, taken from OStrands 0.8.0 (https://gitlab.com/LilRicefield/ostrands):
   with tear duct placement added.
 - src/Tears.cpp: the fluid rendering (blobs, ropes, drops), with emitters,
   reservoirs and ground sampling replaced by tear ducts, in the head bone's frame.
-- src/Hooks.cpp: the frame driver.
+- src/Hooks.cpp: the input-event frame driver (the fallback since 0.5.1).
 - tools/nifkit.py and tools/make_tears.py: the NIF and DDS writers.
 
 vendor/SKSEMenuFramework/SKSEMenuFramework.h is the client header of SKSE Menu

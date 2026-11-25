@@ -33,7 +33,8 @@ namespace
 
 SKSEPluginLoad(const SKSE::LoadInterface* a_skse)
 {
-	SKSE::Init(a_skse);
+	// 14 bytes: the one call hook of src/Hooks.cpp
+	SKSE::Init(a_skse, { .trampoline = true, .trampolineSize = 14 });
 	// CommonLib loads the Address Library at the first relocation; load it here so a
 	// missing one fails at game start, not mid-session
 	(void)REL::IDDB::get();

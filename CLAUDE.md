@@ -32,8 +32,14 @@ lists exactly what. Lacrima is GPL-3.0 because of it.
 
 ## Architecture
 
-- **Threading.** `Hooks.cpp` registers an input-event sink that queues one SKSE task
-  per frame; that task runs `Tears::Update` on the main thread. Papyrus natives, C
+- **Threading.** `Hooks.cpp` runs `Tears::Update` once a frame on the main thread.
+  Since 0.5.1 the frame comes from a call hook early in the game's main update (SE
+  35565 + 0x748, AE 36564 + 0xC26, from 1.7.99 on + 0xC38, VR + 0x7EE; the trampoline
+  is asked for in `SKSE::Init`). On 1.7.104 the 1.6 offset is also a call, to another
+  function, so the offset goes by version. If the site holds no call (`E8`) or there
+  is no trampoline memory, the old driver takes over: an input-event sink that queues
+  one SKSE task per frame. The log's `frame driver:` line says which one runs (the
+  same driver as Oninus Lactis NG 2.3.4, seen working in game there). Papyrus natives, C
   exports and the menu never touch the scene graph: they queue requests
   (`Tears::Cry/Stop/Shed/Wipe`) or read a snapshot (`Query`, `Status`). While the game
   is paused, `Update(0, true)` still applies requests and refreshes status text, but
